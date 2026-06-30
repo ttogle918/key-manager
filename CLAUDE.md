@@ -1,0 +1,51 @@
+# CLAUDE.md — 프로젝트 규칙
+
+> 프로젝트: [한 줄 설명 — 예: 스크린샷·URL에서 API 키/ID를 분류·매핑해 안전하게 보관하는 개인용 도구]
+> 이 파일은 AI 코딩 에이전트가 따라야 할 규칙이다. 아래 규칙을 항상 지켜라.
+
+## 라이선스 규칙 (반드시 지킬 것)
+
+- 이 프로젝트의 라이선스는 **MIT**다. 루트의 `LICENSE` 파일을 유지하라.
+- 새 의존성은 **허용적(permissive) 라이선스만** 추가하라: `MIT`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`.
+- **카피레프트 금지**: `GPL`, `AGPL`, `LGPL`, `MPL` 등은 추가하지 마라. 꼭 필요하면 **멈추고 사용자에게 먼저 물어봐라.**
+- 다른 레포의 코드를 **그대로 복사하지 마라.** 로직을 참고했다면 직접 재구현하고, 출처와 라이선스를 `THIRD-PARTY-NOTICES.md`에 기록하라.
+- ⚠️ **TruffleHog의 코드/탐지 패턴을 포팅하지 마라** (AGPL-3.0이라 MIT와 충돌한다). 키 포맷은 각 서비스의 공식 문서를 보고 정규식으로 직접 작성하거나, MIT 라이선스인 Gitleaks 패턴을 출처 명시 후 사용하라.
+
+## 파일 헤더 (모든 새 파일)
+
+- 새 파일을 만들 때마다 맨 위에 SPDX 헤더 두 줄을 붙여라. 주석 기호는 언어에 맞게 바꾼다.
+
+```text
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+```
+
+예시:
+
+```python
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+```
+
+```javascript
+// SPDX-FileCopyrightText: 2026 [Your Name]
+// SPDX-License-Identifier: MIT
+```
+
+## 보안 (키 관리 도구라 특히 중요)
+
+- **진짜 API 키·시크릿을 절대 커밋하지 마라.** 코드·문서의 예시는 `sk-xxxxxxxx`처럼 명백히 가짜인 placeholder만 써라.
+- `.env`, 키 파일, 자격증명 JSON(서비스 계정 등)은 반드시 `.gitignore`에 넣어라.
+- 테스트·데모용 샘플 키는 더미 값만 사용하고, 실제 발급된 키는 저장소에 남기지 마라.
+
+## 빌드·재현성
+
+- 설치 한 번으로 실행되게 유지하라. 의존성은 `requirements.txt` / `package.json`에 버전 고정.
+- `README`에 설치·실행 단계를 항상 최신으로 유지하라. (대회 2차 평가는 다른 환경에서 직접 돌려본다.)
+
+## 커밋·제출 전 체크리스트
+
+- [ ] 라이선스 스캔(`pip-licenses` 또는 `license-checker`)에 카피레프트가 없는지 확인
+- [ ] `reuse lint`로 SPDX 헤더 누락 파일이 없는지 확인
+- [ ] 저장소에 실제 키·시크릿이 섞여 있지 않은지 확인
+- [ ] 깨끗한 환경에서 README 단계대로 설치·실행이 되는지 확인

@@ -1,0 +1,44 @@
+# --- 시크릿 & 자격증명 ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# --- 금고/앱 데이터 (실데이터 절대 커밋 금지) ---
+*.sqlite
+*.sqlite3
+*.db
+vault.db
+
+# --- Python (FastAPI 백엔드) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Node / React 프론트엔드 ---
+node_modules/
+dist/
+build/
+.vite/
+*.local
+npm-debug.log*
+
+# --- OS / 에디터 ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- OCR 모델 캐시(용량 크고 재생성 가능) ---
+*.traineddata
+.cache/
