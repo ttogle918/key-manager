@@ -1,0 +1,275 @@
+// SPDX-FileCopyrightText: 2026 [Your Name]
+// SPDX-License-Identifier: MIT
+import type { DragEvent, ReactNode } from 'react'
+import { TYPE_MAP } from '@/data/services'
+import { useKeylens } from '@/store/keylensStore'
+import { ResultCard } from '@/components/input/ResultCard'
+
+/** 화면 1: 새 자격증명 분석 입력. */
+export function InputScreen() {
+  const s = useKeylens()
+  const {
+    vault,
+    analyzed,
+    analyzing,
+    results,
+    attachedImage,
+    attachedName,
+    dragOver,
+    urlVal,
+    textVal,
+    projVal,
+    memoVal,
+    sourceLabel,
+  } = s
+
+  const firstRun = vault.length === 0 && !analyzed && !analyzing
+  const showStage = !analyzing && !analyzed
+  const showResults = analyzed && results.length > 0
+  const showDone = analyzed && results.length === 0
+  const hasRealImg = !!(attachedImage && attachedImage !== 'sample')
+  const hasSampleImg = attachedImage === 'sample'
+  const savableCount = results.filter((r) =>
+    TYPE_MAP[r.service].some((t) => t.v === r.typeKey),
+  ).length
+
+  const onDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    if (!dragOver) s.setDragOver(true)
+  }
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault()
+    s.setDragOver(false)
+    const f = e.dataTransfer?.files?.[0]
+    if (f && f.type.startsWith('image')) {
+      const rd = new FileReader()
+      rd.onload = () => s.attachImage(rd.result as string, f.name)
+      rd.readAsDataURL(f)
+    } else {
+      s.attachSample()
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-[700px] px-8 pb-[90px] pt-[52px] [animation:klFadeUp_.35s_ease]">
+      <h1 className="m-0 text-[20px] font-bold tracking-[-.015em]">새 자격증명 분석</h1>
+      <p className="mb-6 mt-[7px] text-[13.5px] leading-[1.55] text-muted">
+        스크린샷·URL·텍스트를 함께 던지면 맥락으로 정체를 판별해 공식 환경변수명에 매핑합니다.
+        <br />
+        모든 분석은 이 기기 안에서만 일어납니다.
+      </p>
+
+      {firstRun && (
+        <div className="mb-5 flex items-center gap-[10px] rounded-[10px] border border-[rgba(62,207,142,.25)] bg-[rgba(62,207,142,.06)] px-[14px] py-3 text-[13px] text-mint-pale">
+          <span className="size-[7px] flex-none rounded-full bg-mint" />
+          처음이시네요 — 아래에 스크린샷을 던져보세요. 무엇인지 알아서 알아봅니다.
+        </div>
+      )}
+
+      {showStage && (
+        <div className="overflow-hidden rounded-[14px] border border-line-2 bg-surface-2">
+          {/* 첨부 영역 */}
+          <div className="px-[14px] pt-[14px]">
+            {!attachedImage ? (
+              <div
+                onClick={s.attachSample}
+                onDragOver={onDragOver}
+                onDragLeave={() => s.setDragOver(false)}
+                onDrop={onDrop}
+                className="cursor-pointer rounded-[10px] border-[1.5px] border-dashed px-5 pb-[30px] pt-[34px] text-center transition-colors"
+                style={{
+                  borderColor: dragOver ? 'rgba(62,207,142,.7)' : '#2A313B',
+                  background: dragOver ? 'rgba(62,207,142,.05)' : '#0E1116',
+                }}
+              >
+                <div className="mx-auto flex size-10 items-center justify-center rounded-full border-[1.5px] border-border-strong bg-[#12151A]">
+                  <div className="relative size-[10px] rounded-full border-2 border-mint">
+                    <div className="absolute left-1/2 top-[9px] h-[7px] w-[3px] -translate-x-1/2 rounded-[1px] bg-mint" />
+                  </div>
+                </div>
+                <div className="mt-3 text-[14px] font-semibold">스크린샷을 여기로 던져보세요</div>
+                <div className="mt-[5px] text-[12px] text-faint-2">
+                  드래그 앤 드롭 · ⌘V 붙여넣기 · 클릭하면 샘플 첨부
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 rounded-[10px] border border-[rgba(62,207,142,.3)] bg-[rgba(62,207,142,.04)] px-3 py-[10px]">
+                {hasRealImg && (
+                  <div
+                    role="img"
+                    aria-label="첨부 스크린샷"
+                    className="size-[52px] w-[76px] flex-none rounded-[6px] border border-border bg-cover bg-center"
+                    style={{ backgroundImage: `url(${attachedImage})` }}
+                  />
+                )}
+                {hasSampleImg && (
+                  <div className="flex h-[52px] w-[76px] flex-none items-center justify-center rounded-[6px] border border-border [background:repeating-linear-gradient(45deg,#12151A,#12151A_6px,#161B21_6px,#161B21_12px)]">
+                    <span className="font-mono text-[9px] text-dim">sample</span>
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] font-semibold">
+                    {attachedName}
+                  </div>
+                  <div className="mt-[2px] text-[11px] text-mint-soft">
+                    첨부됨 — 분석 시 원본이 보관함에 함께 저장됩니다
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={s.removeImage}
+                  className="flex-none cursor-pointer rounded-[6px] border border-border bg-none px-[10px] py-[5px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+                >
+                  제거
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* URL / 텍스트 / 프로젝트 / 메모 */}
+          <div className="flex flex-col gap-3 px-[14px] pt-[14px]">
+            <Field label="URL" hint="(선택)">
+              <input
+                value={urlVal}
+                onChange={(e) => s.setUrl(e.target.value)}
+                placeholder="https://www.notion.so/team/3f9a1c2e7b4d4e8a9c1f2d5e8a7b4c3f?v=…"
+                className="w-full rounded-lg border border-border bg-surface px-3 py-[10px] font-mono text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+              />
+            </Field>
+            <Field label="텍스트 붙여넣기" hint="(선택 — 스크린샷에 안 나온 키를 여기에)">
+              <textarea
+                value={textVal}
+                onChange={(e) => s.setText(e.target.value)}
+                rows={3}
+                placeholder={'NOTION_KEY=secret_ntn_…\nkakao rest: 4f8e2a1b… — 아무 형식이나 붙여넣으세요'}
+                className="w-full resize-y rounded-lg border border-border bg-surface px-3 py-[10px] font-mono text-[12px] leading-[1.6] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+              />
+            </Field>
+            <div className="flex gap-3">
+              <div className="w-[200px] flex-none">
+                <Field label="프로젝트" hint="(선택)">
+                  <input
+                    value={projVal}
+                    onChange={(e) => s.setProj(e.target.value)}
+                    list="kl-projects"
+                    placeholder="예: 개인 블로그"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-[10px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+                  />
+                </Field>
+              </div>
+              <div className="min-w-0 flex-1">
+                <Field label="메모" hint="(언제·왜 발급받은 키인가요?)">
+                  <input
+                    value={memoVal}
+                    onChange={(e) => s.setMemo(e.target.value)}
+                    placeholder="예: 6월 사이드프로젝트 블로그 자동화용으로 발급"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-[10px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-[2px] flex items-center gap-3 p-[14px]">
+            <div className="flex-1 text-[11.5px] text-dim-2">
+              아무것도 넣지 않고 분석하면 샘플 스크린샷으로 시연합니다.
+            </div>
+            <button
+              type="button"
+              onClick={s.startAnalyze}
+              className="flex-none cursor-pointer rounded-[9px] border-none bg-mint px-[22px] py-[11px] text-[13.5px] font-bold text-on-mint hover:brightness-[1.08]"
+            >
+              분석
+            </button>
+          </div>
+        </div>
+      )}
+
+      {analyzing && (
+        <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface px-6 py-[60px] text-center [animation:klFade_.2s]">
+          <div className="absolute inset-x-[6%] top-[10%] h-[2px] rounded-[2px] bg-[linear-gradient(90deg,transparent,rgba(62,207,142,.7),transparent)] [animation:klScan_1.5s_ease-in-out_infinite]" />
+          <div className="mx-auto size-[34px] rounded-full border-2 border-border border-t-mint [animation:klRingSpin_.8s_linear_infinite]" />
+          <div className="mt-[18px] text-[14.5px] font-semibold">분류 중…</div>
+          <div className="mt-[6px] font-mono text-[12.5px] text-faint-2">
+            형식 시그니처 · 주변 텍스트 · URL 구조 대조
+          </div>
+        </div>
+      )}
+
+      {showResults && (
+        <div className="[animation:klFadeUp_.3s_ease]">
+          <div className="mb-[14px] flex items-center gap-[10px]">
+            <div className="flex-1 text-[14px]">
+              <strong className="font-bold">{results.length}개 항목 발견</strong>{' '}
+              <span className="text-[12.5px] text-faint-2">· {sourceLabel}</span>
+            </div>
+            <button
+              type="button"
+              onClick={s.resetResults}
+              className="cursor-pointer rounded-lg border border-border bg-none px-3 py-[7px] text-[12px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+            >
+              새로 분석
+            </button>
+            <button
+              type="button"
+              onClick={s.saveAll}
+              className="cursor-pointer rounded-lg border border-[rgba(62,207,142,.35)] bg-[#1B2620] px-3 py-[7px] text-[12px] font-bold text-mint-soft hover:bg-[#1F2E26]"
+            >
+              {savableCount}개 모두 저장
+            </button>
+          </div>
+          {results.map((r) => (
+            <ResultCard key={r.id} r={r} />
+          ))}
+        </div>
+      )}
+
+      {showDone && (
+        <div className="rounded-[14px] border border-[rgba(62,207,142,.25)] bg-[rgba(62,207,142,.04)] px-6 py-12 text-center [animation:klFadeUp_.3s_ease]">
+          <div className="mx-auto flex size-11 items-center justify-center rounded-full border border-[rgba(62,207,142,.4)] bg-[rgba(62,207,142,.12)] text-[19px] font-extrabold text-mint">
+            ✓
+          </div>
+          <div className="mt-4 text-[15px] font-bold">모두 저장했어요</div>
+          <div className="mt-[5px] text-[12.5px] text-muted">
+            원본 스크린샷·메모와 함께 암호화되어 이 기기에만 보관됩니다.
+          </div>
+          <div className="mt-5 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={s.goVault}
+              className="cursor-pointer rounded-lg border-none bg-mint px-4 py-[9px] text-[12.5px] font-bold text-on-mint hover:brightness-[1.08]"
+            >
+              보관함 보기
+            </button>
+            <button
+              type="button"
+              onClick={s.resetResults}
+              className="cursor-pointer rounded-lg border border-border bg-none px-4 py-[9px] text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+            >
+              새로 분석
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint: string
+  children: ReactNode
+}) {
+  return (
+    <div>
+      <div className="mb-[6px] text-[11.5px] font-semibold text-muted-2">
+        {label} <span className="font-medium text-dim-2">{hint}</span>
+      </div>
+      {children}
+    </div>
+  )
+}

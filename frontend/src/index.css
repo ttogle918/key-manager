@@ -1,0 +1,148 @@
+/* SPDX-FileCopyrightText: 2026 [Your Name] */
+/* SPDX-License-Identifier: MIT */
+@import 'tailwindcss';
+
+/* ── KeyLens 디자인 토큰 (프로토타입 KeyLens.dc.html에서 이식) ── */
+@theme {
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, 'Apple SD Gothic Neo',
+    sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* 배경/표면 */
+  --color-bg: #0b0d10;
+  --color-inset: #0b0d10;
+  --color-sidebar: #0e1114;
+  --color-surface: #12151a;
+  --color-surface-2: #0f1216;
+  --color-surface-3: #0e1116;
+  --color-panel: #101318;
+  --color-panel-head: #13161b;
+  --color-elevated: #15191f;
+  --color-chip: #171b21;
+
+  /* 테두리 */
+  --color-line: #1b2027;
+  --color-line-2: #1e242c;
+  --color-border: #232931;
+  --color-border-2: #20262e;
+  --color-border-strong: #2a313b;
+  --color-border-input: #262d36;
+
+  /* 전경/텍스트 */
+  --color-fg: #e7eaee;
+  --color-fg-soft: #c7cdd6;
+  --color-muted: #98a1ae;
+  --color-muted-2: #8b93a1;
+  --color-faint: #727c89;
+  --color-faint-2: #626c7a;
+  --color-dim: #5c6572;
+  --color-dim-2: #525b67;
+  --color-dim-3: #49515c;
+
+  /* 액센트 — 민트 */
+  --color-mint: #3ecf8e;
+  --color-mint-soft: #5fd9a4;
+  --color-mint-pale: #a7e8c9;
+  --color-on-mint: #05231a;
+
+  /* 상태색 */
+  --color-amber: #e3b341;
+  --color-amber-soft: #d8c089;
+  --color-danger: #e5675c;
+  --color-blue: #4e8df5;
+  --color-blue-soft: #9fb2cc;
+  --color-blue-tag: #8fa3bf;
+
+  /* 서비스 타일 */
+  --color-svc-notion: #e7eaee;
+  --color-svc-kakao: #f2d14b;
+  --color-svc-gcp: #4e8df5;
+  --color-svc-openai: #17b597;
+
+  /* 애니메이션 */
+  --animate-fade-up: klFadeUp 0.35s ease;
+  --animate-fade: klFade 0.2s ease;
+}
+
+@keyframes klFadeUp {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes klFade {
+  from {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes klScan {
+  0% {
+    top: 6%;
+  }
+  50% {
+    top: 90%;
+  }
+  100% {
+    top: 6%;
+  }
+}
+@keyframes klShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+@keyframes klVaultOut {
+  to {
+    opacity: 0;
+    transform: scale(1.07);
+    filter: blur(8px);
+  }
+}
+@keyframes klRingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 전역 기본 ── */
+:root {
+  color-scheme: dark;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+}
+body {
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: rgba(62, 207, 142, 0.28);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-dim-2);
+}
