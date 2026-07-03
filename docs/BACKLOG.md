@@ -23,36 +23,51 @@ SPDX-License-Identifier: MIT
 
 | 스프린트 | 기간 | 테마 | 주요 TASK | L 개수 |
 |---|---|---|---|---|
-| **S1** | 6/23–7/6 | 뼈대 + 쉬운 분류 | CORE-1, VAULT-0(스캐폴딩), UI-1 | 0 |
-| **S2** | 7/7–7/20 | **맥락 기반 분류(차별점)** | CORE-2, CORE-3, CORE-4 | 1 (CORE-2) |
-| **S3** | 7/21–8/3 | 금고 + 인증 + 조회 | VAULT-1, VAULT-2, UI-2 | 1 (VAULT-1) |
-| **S4** | 8/4–8/17 | 신뢰 기능 + 안정화 | TRUST-1, TRUST-2, CORE-5, OSS-1 | 0 |
+| **S1** | 6/23–7/6 | 뼈대 + 쉬운 분류 + 연결 | ✅CORE-1, ✅CORE-4, ✅VAULT-0, ✅UI 골격(프로토타입 이식), 🔄INTEG-1 | 0 |
+| **S2** | 7/7–7/20 | **맥락 기반 분류(차별점)** | CORE-2(text·URL 우선), CORE-3(OCR·분리), INTEG-1 완료 | 1 (CORE-2) |
+| **S3** | 7/21–8/3 | 금고 + 인증 + 조회 | VAULT-1, VAULT-2, UI-2(폴리시) | 1 (VAULT-1) |
+| **S4** | 8/4–8/17 | 신뢰 기능 + 안정화 | TRUST-1, TRUST-2, CORE-5, SYNC-0, OSS-1 | 0 |
 | **제출** | 8/18–8/27 | 제출물 + 재현성 | OSS-2, OSS-3, OSS-4 | 0 |
 
-> **⚠️ 용량 점검(솔로)**: 배치 원칙 상 L은 스프린트당 최대 1개로 잡았다(S2·S3 각 1개). S4 이후는 신규 L 없이 **안정화·신뢰 기능·제출물**로만 채워, 막판 과적을 방지한다. TRUST 계열(validity/expiry)은 **stretch**로 표시 — S4에서 시간이 부족하면 가장 먼저 잘라낼 후보다(잘라도 MVP는 성립).
+> **⚠️ 용량 점검(솔로)**: 배치 원칙 상 L은 스프린트당 최대 1개로 잡았다(S2·S3 각 1개). S4 이후는 신규 L 없이 **안정화·신뢰 기능·제출물**로만 채워, 막판 과적을 방지한다. TRUST 계열(validity/expiry)과 SYNC-0은 **stretch**로 표시 — S4에서 시간이 부족하면 가장 먼저 잘라낼 후보다(잘라도 MVP는 성립).
+
+### 진행 현황 (2026-07-03 기준, S1 중반)
+
+- ✅ **CORE-1** 값 기반 분류(Stage1) — 백엔드 구현·테스트(21개) 완료. ⚠️ 현재 검출 범위는 지식베이스 4종(Notion/GCP/OpenAI 접두어)뿐 — GitHub/AWS/Slack 등 "10종"은 미구현(→ CORE-1 하위 "검출 전용 값 규칙" 결정 참고).
+- ✅ **CORE-4** 지식베이스 4종 + 로더·검증 완료.
+- ✅ **VAULT-0** 스캐폴딩(프론트+백엔드+SPDX+gitignore) 완료.
+- ✅ **UI 골격** — Claude Design 프로토타입을 React로 전체 이식(입력·결과카드·보관함·잠금·모달, 목업 데이터). UI-1/UI-2가 원래 일정보다 앞서 완료 → 남은 예산을 INTEG·CORE-2로 재배치.
+- 🔄 **INTEG-1** 프론트↔백엔드 연결 — 다음 작업(신설, 아래 EPIC-INTEG).
+- **순서 변경**: CORE-2(맥락 분류)를 OCR(CORE-3)과 분리 — text·URL 신호로 먼저 증명, OCR은 입력 경로로 나중에.
+- **상시화**: OSS-2 라이선스 검증은 제출주간이 아니라 의존성 추가 때마다 수행(S1에서 이미 `certifi`=MPL-2.0 감지·제거).
 
 ---
 
 ## EPIC-CORE — 분류·매핑 엔진 (프로젝트의 심장)
 
-### CORE-1 🟠 값 기반 분류기 (Stage 1, 쉬운 키)
-- **중요도**: 🟠 High | **스프린트**: S1 | **의존성**: 없음 | **사이즈**: M
+### CORE-1 🟠 값 기반 분류기 (Stage 1, 쉬운 키) — ✅ 완료(범위 축소)
+- **중요도**: 🟠 High | **스프린트**: S1 | **의존성**: 없음 | **사이즈**: M | **상태**: ✅ 커밋 `413f816`
 - **배경**: 접두사가 명확한 키(OpenAI `sk-`, GitHub `ghp_`, AWS `AKIA`, Google `AIza`, Slack `xoxb-`)는 값만으로 100% 식별 가능. 이건 "쉽고 흔한" 영역이라 빠르게 끝내고 차별점(CORE-2)에 시간을 몰아준다.
+- **구현 노트**: 별도 `detectors/value_rules.py` 대신 **지식베이스의 `value_regex`로 통합**했다(`backend/app/classify/stage1.py`). 값 규칙 = KB 파일. 그래서 검출 범위가 KB에 등록된 접두어(OpenAI/GCP/Notion/OpenAI org)로 한정된다.
 - **하위 할일**
-  - **[Engine] 정규식 룰셋 `detectors/value_rules.py`**
-    - [ ] 주요 10종 키 포맷 정규식 정의 (OpenAI/GitHub/GitLab/AWS/GCP API/Slack/Stripe/SendGrid/Anthropic/Discord)
-    - [ ] Gitleaks(MIT) 패턴 참고분은 `THIRD-PARTY-NOTICES.md`에 출처 기록
-    - [ ] 엔트로피 보조 판정(고랜덤 문자열 가점)으로 오탐 감소
+  - **[Engine] 값 기반 분류 (`backend/app/classify/stage1.py`)**
+    - [x] KB `value_regex` 기반 접두어 키 식별 (OpenAI `sk-`/`org-`, GCP `AIza`, Notion `secret_`/`ntn_`)
+    - [x] 접두어 없는 값(UUID·32hex)은 단정 없이 `unknown`으로 안전 분류
+    - [x] 엔트로피 보조 판정(`_looks_secret`)으로 unknown 후보 필터
   - **[Engine] 분류 결과 스키마 확정**
-    - [ ] 출력: `{raw_value, service, kind, official_name, confidence, source}` (예: `service=openai, kind=api_key, official_name=OPENAI_API_KEY`)
+    - [x] 출력 `ClassifiedItem`: `{value, masked, service, kind, official_env_name, confidence, format, source, stage, meta}`
+  - **[결정] 검출 전용 값 규칙 확장 범위** *(미결)*
+    - [ ] GitHub `ghp_`/AWS `AKIA`/Slack `xoxb-`/Stripe `sk_live_` 등 흔한 접두어를 **KB 없이 서비스만 플래그**하는 `value_rules`를 추가할지, 아니면 CORE-1의 "10종"을 KB 4종으로 좁힐지 결정. 추가 시 Gitleaks(MIT) 참고분은 `THIRD-PARTY-NOTICES.md`에 출처 기록.
 - **테스트 체크리스트**
-  - [ ] 🧪 `sk-...` 입력 → `openai/api_key/OPENAI_API_KEY` 반환
-  - [ ] 🧪 무작위 base64 문자열 → "미상(unknown)"으로 안전하게 분류(오식별 금지)
-  - [ ] ✅ 10종 샘플(더미 키) 전부 올바른 official_name 매핑
+  - [x] 🧪 `sk-...` 입력 → `openai/api_key/OPENAI_API_KEY` 반환
+  - [x] 🧪 무작위 문자열/평문 → 결과 없음, 애매값은 `unknown`(오식별 금지)
+  - [x] ✅ 값 기반 4종(OpenAI api/org·GCP·Notion) 더미 키 → 올바른 official_env_name 매핑
+  - [ ] ⏸ (확장 시) GitHub/AWS/Slack 등 추가 접두어 매핑 — 위 결정 후
 
 ### CORE-2 🔴 맥락 기반 분류 (Stage 2, 차별점)
-- **중요도**: 🔴 Critical | **스프린트**: S2 | **의존성**: CORE-1, CORE-3(OCR), CORE-4(지식베이스) | **사이즈**: L
+- **중요도**: 🔴 Critical | **스프린트**: S2 | **의존성**: CORE-1, CORE-4(지식베이스) *(CORE-3/OCR과 분리)* | **사이즈**: L *(text·URL 부분은 M)*
 - **배경**: 노션 database ID·data source ID·page ID는 전부 동일한 32자 UUID라 **값만으론 구분 불가**. 기존 도구(SecurityWall 등)가 정확히 여기서 손든다. 라벨·URL 구조 같은 **출처 맥락**으로 가려내는 게 이 프로젝트의 존재 이유.
+- **⚠️ 순서 변경(리스크 축소)**: OCR(CORE-3)에 물려두지 않는다. `/analyze`가 이미 **text·URL을 받으므로**, 붙여넣은 텍스트 라벨과 URL 구조만으로 Stage2 로직을 **먼저 완성·증명**한다(라벨 사전 대조 + `url_patterns` 매칭 + 신호 가중). OCR은 "이미지 → 텍스트+라벨"을 만들어 이 파이프라인에 **먹이는 입력 경로**로 나중에 붙인다 — 차별점이 OCR 안정성에 인질로 잡히지 않게.
 - **하위 할일**
   - **[Engine] 맥락 신호 수집기 `context_classifier.py`**
     - [ ] OCR 라벨 매칭: 값 주변 텍스트("Database ID", "Internal Integration Secret", "REST API 키")를 지식베이스 라벨 사전과 대조
@@ -67,14 +82,15 @@ SPDX-License-Identifier: MIT
   - [ ] 🧪 카카오 키 화면 OCR(REST/JS/Admin 라벨 동시 존재) → 각 값에 올바른 종류 매핑
   - [ ] ✅ 신호 충돌 시 "확인 필요"로 표시(임의 단정 금지)
 
-### CORE-3 🟠 OCR 파이프라인 (스크린샷 → 텍스트+라벨)
-- **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: M
-- **배경**: 차별점의 입력단. 핵심은 단순 텍스트가 아니라 **값과 라벨의 위치 관계**를 보존하는 것(라벨이 분류 단서이므로).
+### CORE-3 🟠 OCR 파이프라인 (스크린샷 → 텍스트+라벨) — CORE-2의 *입력 경로*
+- **중요도**: 🟠 High | **스프린트**: S2(후반) | **의존성**: DEMO-1(테스트 이미지) | **사이즈**: M~L *(라벨-값 공간 페어링이 난이도 핵심 — L 가능성*)
+- **배경**: 차별점의 입력단. 핵심은 단순 텍스트가 아니라 **값과 라벨의 위치 관계**를 보존하는 것(라벨이 분류 단서이므로). **CORE-2가 완성된 뒤** 그 파이프라인에 "이미지→텍스트+라벨"을 먹이는 역할 — CORE-2를 막지 않는다.
 - **하위 할일**
   - **[Engine] `ocr_node.py`**
     - [ ] Tesseract/PaddleOCR 연동, 이미지 → 텍스트 박스 목록(text + bbox) 추출
     - [ ] 라벨–값 페어링: 같은 행/바로 위 행에 있는 텍스트를 라벨 후보로 연결
     - [ ] 노이즈 정리(마스킹된 `••••`, 복사 버튼 텍스트 제거)
+    - [ ] 출력을 CORE-2 Stage2 입력 형식(text + label 후보)에 맞춤
   - **[Engine] 전처리**
     - [ ] 대비 보정·확대 등 기본 전처리로 인식률 향상
 - **테스트 체크리스트**
@@ -82,18 +98,30 @@ SPDX-License-Identifier: MIT
   - [ ] 🧪 마스킹된 값(`secret_••••`) → "마스킹됨"으로 표시(가짜 값 생성 금지)
   - [ ] ✅ 한글/영문 라벨 혼재 화면에서 라벨 인식
 
-### CORE-4 🟠 서비스 지식베이스 (선언적 정의)
-- **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: M
+### DEMO-1 ⚪ 데모/테스트 스크린샷 세트 (`docs/demo/`) — 신설
+- **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: S
+- **배경**: CORE-3(OCR 테스트)와 OSS-4(영상 magic moment)가 **실제 콘솔 스크린샷**을 공유한다. 루트 README도 `docs/demo/`를 참조. 만드는 태스크가 없어 신설.
+- **하위 할일**
+  - [ ] Notion 통합 설정 / Kakao 콘솔(4종 키) / GCP API 키 / OpenAI 키 화면을 **더미 값으로** 재현한 스크린샷 4~5장
+  - [ ] ⚠️ 반드시 가짜 값(placeholder) — 실제 키 캡처 금지(CLAUDE.md 시크릿 위생)
+  - [ ] OCR 회귀 테스트 픽스처로 `backend/tests/fixtures/`에도 연결
+
+### CORE-4 🟠 서비스 지식베이스 (선언적 정의) — ✅ 완료(GCP 일부)
+- **중요도**: 🟠 High | **스프린트**: S1(앞당김) | **의존성**: 없음 | **사이즈**: M | **상태**: ✅ 커밋 `413f816`
 - **배경**: "각 서비스의 키 종류·라벨·URL 패턴·공식 변수명"을 코드가 아니라 **데이터(YAML/JSON)**로 정의해, 새 서비스 추가가 PR 한 건으로 끝나게 한다. 오픈소스 기여 유도 포인트이자 확장성의 핵심.
 - **하위 할일**
   - **[Data] `knowledge/*.yaml` 스키마 설계**
-    - [ ] 필드: `service, credentials:[{kind, label_patterns, url_patterns, value_regex?, official_env_name, expiry_known:bool}]`
-    - [ ] 초기 4종 작성: **Notion**(api_key/database_id/data_source_id/page_id), **Kakao**(rest/js/admin/native), **GCP**(api_key/service_account_json/oauth_client), **OpenAI**(api_key/org_id)
+    - [x] 필드: `service, credentials:[{kind, label, label_patterns, url_patterns, value_regex?, official_env_name, expiry_known}]` + `_SCHEMA.md`
+    - [x] 초기 4종: **Notion**(api/database/data_source/page), **Kakao**(rest/js/admin/native), **GCP**(api_key), **OpenAI**(api_key/org_id)
+    - [ ] GCP `service_account_json`/`oauth_client` 종류 추가(현재 api_key만)
   - **[Engine] 로더 + 검증**
-    - [ ] 시작 시 YAML 로드·스키마 검증, 중복 official_name 경고
+    - [x] 시작 시 YAML 로드·pydantic 스키마 검증, service·official_env_name 중복 에러, 정규식 컴파일 검증
+  - **[OSS] `CONTRIBUTING.md` — "새 서비스 추가법"** *(신설: README·SPEC 7.3이 참조하나 태스크 없었음)*
+    - [ ] YAML 한 개 추가 → PR 절차 가이드 (`new-service` 스킬 연동)
 - **테스트 체크리스트**
-  - [ ] 🧪 잘못된 스키마 YAML → 명확한 에러로 기동 실패
-  - [ ] ✅ 새 서비스 YAML 한 개 추가만으로 분류 대상에 즉시 포함(코드 수정 0)
+  - [x] 🧪 지식베이스 로드·검증 통과, 중복 official_env_name 차단
+  - [x] ✅ `value_matchers`가 접두어 명확 종류만 포함(UUID/hex 종류 제외) 검증
+  - [ ] 🧪 잘못된 스키마 YAML → 명확한 에러로 기동 실패 (엣지 테스트 보강)
 
 ### CORE-5 🟡 `.env` 내보내기 / 변수명 매핑 확정
 - **중요도**: 🟡 Medium | **스프린트**: S4 | **의존성**: CORE-2, VAULT-1 | **사이즈**: S
@@ -107,18 +135,40 @@ SPDX-License-Identifier: MIT
 
 ---
 
+## EPIC-INTEG — 프론트 ↔ 백엔드 연결 (신설)
+
+> 백로그 원안은 "UI가 CORE를 직접 호출"로 뭉뚱그렸으나, React↔FastAPI 분리 구조에는 실제 **통합 계층**이 존재한다. 프론트(목업)와 백엔드(Stage1)가 각각 생긴 지금이 이걸 잇고 엔드투엔드를 조기 검증할 시점.
+
+### INTEG-1 🟠 프론트 ↔ 백엔드 연결 (엔드투엔드)
+- **중요도**: 🟠 High | **스프린트**: S1 말 ~ S2 | **의존성**: CORE-1(✅), UI 골격(✅) | **사이즈**: M
+- **배경**: 지금 프론트의 분석은 `setTimeout` 목업(`freshResults()`)이고 종류맵(`TYPE_MAP`/`SVC_META`)이 하드코딩돼 있다. 백엔드 `/analyze`·`/knowledge`(포트 8003)로 교체해 실제로 한 번 돌린다.
+- **하위 할일**
+  - **[FE] API 클라이언트 (`src/api/`)**
+    - [ ] `POST :8003/analyze` 호출 + 응답→`AnalysisResult` 매핑, 로딩·에러·타임아웃 상태 처리
+    - [ ] 프론트 `startAnalyze` 목업을 실제 호출로 교체(목업은 백엔드 미기동 시 폴백으로 유지 옵션)
+    - [ ] `GET :8003/knowledge`로 종류맵 단일화(하드코딩 `TYPE_MAP` 제거 방향)
+  - **[계약] 응답 스키마 정합**
+    - [ ] 백엔드 `ClassifiedItem` ↔ 프론트 `AnalysisResult` 필드 매핑표 확정(신뢰도·마스킹·source·meta)
+    - [ ] 개발용 실행: 백/프론트 동시 기동 스크립트(→ OSS-3와 연계)
+- **테스트 체크리스트**
+  - [ ] 🧪 `.env` 텍스트 붙여넣기 → 백엔드 분류 결과가 카드로 렌더
+  - [ ] ✅ 백엔드 미기동 시 명확한 에러(크래시 금지)
+  - [ ] ✅ CORS: 프론트(5173/5199) → 백엔드(8003) 정상
+
+---
+
 ## EPIC-VAULT — 저장 & 인증
 
-### VAULT-0 ⚪ 레포 스캐폴딩 & OSS 베이스
-- **중요도**: 🟠 High | **스프린트**: S1 | **의존성**: 없음 | **사이즈**: S
+### VAULT-0 ⚪ 레포 스캐폴딩 & OSS 베이스 — ✅ 완료
+- **중요도**: 🟠 High | **스프린트**: S1 | **의존성**: 없음 | **사이즈**: S | **상태**: ✅
 - **배경**: 첫날 OSS 위생을 깔고 시작(막판에 몰면 라이선스 검증에서 깨짐).
 - **하위 할일**
-  - [ ] `LICENSE`(MIT), `CLAUDE.md`(가드레일), `.gitignore`(`.env`·키파일·SQLite 제외) 배치
-  - [ ] FastAPI + React 최소 골격, 실행 README 초안
-  - [ ] CLAUDE.md 규칙대로 모든 새 파일에 SPDX 헤더 자동 삽입 확인
+  - [x] `LICENSE`(MIT), `CLAUDE.md`(가드레일), `.gitignore`(`.env`·키파일·SQLite 제외) 배치
+  - [x] FastAPI + React 최소 골격, 실행 README (루트/frontend/backend)
+  - [x] 모든 새 파일에 SPDX 헤더 (수동 삽입 확인)
 - **테스트 체크리스트**
-  - [ ] ✅ `git status`에 `.env`·`*.sqlite`가 안 잡힘
-  - [ ] ✅ `reuse lint` 통과(헤더 누락 0)
+  - [x] ✅ `git status`에 `.env`·`*.sqlite`·`.venv`·`node_modules`가 안 잡힘
+  - [ ] ✅ `reuse lint` 통과(헤더 누락 0) — 제출 전 자동 검증으로 확정(OSS-2)
 
 ### VAULT-1 🔴 암호화 저장소
 - **중요도**: 🔴 Critical | **스프린트**: S3 | **의존성**: VAULT-0 | **사이즈**: L
@@ -152,29 +202,30 @@ SPDX-License-Identifier: MIT
 
 ## EPIC-UI — 입력 & 조회
 
-### UI-1 🟠 입력 화면 (스크린샷 + URL + 붙여넣기)
-- **중요도**: 🟠 High | **스프린트**: S1(붙여넣기) → S2(스크린샷/URL) | **의존성**: CORE-1/2/3 | **사이즈**: M
+### UI-1 🟠 입력 화면 (스크린샷 + URL + 붙여넣기) — ✅ 골격 완료(목업)
+- **중요도**: 🟠 High | **스프린트**: S1 완료 | **의존성**: CORE-1/2/3 | **사이즈**: M | **상태**: ✅ UI 완료, 실데이터 연결만 남음(INTEG-1)
 - **배경**: "메모장 대신 여기에 던진다"의 입구. 스크린샷이 1번 무기, URL 보조, 텍스트 붙여넣기 기본.
 - **하위 할일**
-  - [ ] 텍스트 붙여넣기 입력 → CORE-1 호출(S1)
-  - [ ] 이미지 드래그&드롭/붙여넣기 → CORE-3 OCR(S2)
-  - [ ] URL 입력 필드 → CORE-2 맥락 분류(S2)
-  - [ ] 분류 결과 미리보기 카드: 추정 종류·official_name·confidence, 사용자가 수정·확정
+  - [x] 텍스트 붙여넣기 입력 (UI 완료 — 호출은 INTEG-1에서 실 API로)
+  - [x] 이미지 드래그&드롭/붙여넣기 UI (OCR 연결은 CORE-3)
+  - [x] URL 입력 필드 (맥락 분류 연결은 CORE-2)
+  - [x] 분류 결과 미리보기 카드: 종류·official_name·confidence·신호충돌 해소·수정·확정
 - **테스트 체크리스트**
-  - [ ] ✅ 스크린샷 붙여넣기 → 수 초 내 분류 결과 카드 표시
-  - [ ] ✅ confidence 낮은 항목은 "확인 필요" 뱃지
+  - [x] ✅ (목업)붙여넣기 → 분류 결과 카드 표시 — 실 API는 INTEG-1
+  - [x] ✅ confidence 낮은 항목 "확인 필요" 뱃지
 
-### UI-2 🟠 조회 대시보드 (서비스별 한눈에)
-- **중요도**: 🟠 High | **스프린트**: S3 | **의존성**: VAULT-1/2 | **사이즈**: M
+### UI-2 🟠 조회 대시보드 (서비스별 한눈에) — ✅ 골격 완료(목업)
+- **중요도**: 🟠 High | **스프린트**: S3(폴리시만 잔여) | **의존성**: VAULT-1/2 | **사이즈**: M | **상태**: ✅ UI 완료, 실 금고/인증 연결 남음
 - **배경**: 사용자가 원했던 "한눈에 보고 관리". 서비스 단위 그룹핑 + 연결 관계(같은 워크스페이스 키 묶음).
 - **하위 할일**
-  - [ ] 서비스별 그룹 카드(Notion·Kakao·GCP…) + 키 종류별 행
-  - [ ] 값 복사 버튼(인증 상태에서만, 복사 시 마스킹 해제 짧게)
-  - [ ] 검색·필터, 만료 임박 뱃지(TRUST-2 연동)
-  - [ ] 항목 편집·삭제(삭제는 확인 다이얼로그)
+  - [x] 서비스별 그룹 카드(Notion·Kakao·GCP…) + 키 종류별 행
+  - [x] 값 복사 버튼 + 마스킹/공개 토글(4초 후 재마스킹) — 인증 연동은 VAULT-2
+  - [x] 검색·필터, 만료 임박 뱃지, 회전 이력, 상세 펼침
+  - [x] 항목 편집·삭제(확인 다이얼로그), `.env` 내보내기 모달
+  - [ ] 실 금고(VAULT-1)·인증(VAULT-2) 연결 + 폴리시
 - **테스트 체크리스트**
-  - [ ] ✅ 같은 서비스 키들이 한 그룹으로 묶여 표시
-  - [ ] ✅ 잠금 상태에서 값 마스킹 유지
+  - [x] ✅ 같은 서비스 키들이 한 그룹으로 묶여 표시
+  - [x] ✅ 잠금 상태에서 값 마스킹 유지
 
 ---
 
@@ -204,6 +255,34 @@ SPDX-License-Identifier: MIT
 
 ---
 
+## EPIC-SYNC — 멀티 기기 (⚠️ stretch / post-MVP)
+
+### SYNC-0 🟡 암호화 금고 내보내기/가져오기
+- **중요도**: 🟡 Medium(stretch) | **스프린트**: S4 | **의존성**: VAULT-1, VAULT-2 | **사이즈**: S
+- **배경**: 서버 없이 멀티 기기를 해결하는 최소 단위. 금고 내용물은 전부 암호문이므로, **암호화된 금고 파일 자체**를 내보내 개인 클라우드(Google Drive 등)·USB로 옮기고 다른 기기의 KeyLens에서 가져오면 된다. 여는 열쇠는 여전히 마스터 비밀번호 — 제로 널리지가 유지된다(KeePass + Dropbox 패턴).
+- **하위 할일**
+  - [ ] 금고 파일 내보내기: 암호문 SQLite(또는 단일 암호화 번들 포맷) + 포맷 버전 메타데이터 포함
+  - [ ] 가져오기: 파일 선택 → 포맷/버전 검증 → 마스터 비밀번호로 복호화 시도 → 성공 시에만 병합/교체
+  - [ ] 가져오기 시 기존 금고와의 관계 선택 UI: "교체" / "병합(중복 official_name은 확인)"
+  - [ ] 내보내기는 **인증 상태에서만** 가능(단, 파일 자체는 암호문이므로 `.env` 내보내기와 달리 평문 경고 불필요 — 대신 "마스터 비밀번호 없이는 열 수 없음" 안내)
+- **테스트 체크리스트**
+  - [ ] 🧪 내보낸 파일을 새 환경에서 가져오기 → 동일 마스터 비밀번호로 전체 항목 복원
+  - [ ] 🧪 틀린 마스터 비밀번호로 가져오기 → 복호화 거부, 기존 금고 무손상
+  - [ ] 🧪 내보낸 파일을 직접 열어도 평문 미노출
+  - [ ] ✅ 손상된/구버전 파일 가져오기 시 명확한 에러(크래시 금지)
+
+### SYNC-1 ⚪ Google Drive 자동 동기화 (post-MVP — 로드맵 전용, 이번 범위 아님)
+- **중요도**: ⚪ Roadmap | **스프린트**: 대회 이후 | **의존성**: SYNC-0 | **사이즈**: M~L
+- **배경**: SYNC-0의 수동 파일 이동을 자동화. Google OAuth 로그인 후 **사용자 본인의 Drive appDataFolder**에 암호문 번들을 자동 업로드/다운로드. 우리 서버는 여전히 없음(사용자의 클라우드가 저장소) — 로컬 우선 원칙을 유지하면서 멀티 기기를 얻는 구조. Drive에는 암호문만 올라가므로 계정 유출 시에도 키는 안전(제로 널리지).
+- **설계 메모 (착수 시 참고)**
+  - OAuth 스코프는 **`drive.appdata`만** 사용(앱 전용 숨김 폴더) — 사용자 드라이브 전체 접근 권한 요구 금지
+  - OAuth 클라이언트 미검증 상태 한계(경고 화면, 테스트 사용자 제한) → README에 "본인 클라이언트 ID 발급" 절차 필요
+  - 충돌 처리: MVP 수준은 타임스탬프 비교 + "원격이 더 최신, 덮어쓸까요?" 확인 다이얼로그. 자동 병합은 범위 밖
+  - 로그인은 "어느 계정의 암호문을 받을지" 식별 용도일 뿐, 복호화 열쇠는 항상 마스터 비밀번호
+- **테스트 체크리스트** (착수 시 작성)
+
+---
+
 ## EPIC-OSS — 제출물 & 재현성 (코드만큼 채점됨)
 
 ### OSS-1 🟠 테스트·에러처리·안정화
@@ -219,6 +298,7 @@ SPDX-License-Identifier: MIT
 ### OSS-2 🔴 라이선스 셀프 검증 (2차 평가 대비)
 - **중요도**: 🔴 Critical | **스프린트**: 제출주간 | **의존성**: 전체 | **사이즈**: S
 - **배경**: 대회가 **명시적으로 라이선스 충돌을 검증**한다. 제출 전 같은 기준으로 셀프 통과시켜 두는 게 최대 리스크 해소.
+- **⚠️ 상시화**: 제출주간에 몰지 말고 **의존성 추가 때마다** 검사한다(`/done`·`/pre-commit` 스킬에 내장). — S1에서 이미 `certifi`(MPL-2.0, httpx 경유) 감지·제거함.
 - **하위 할일**
   - [ ] `pip-licenses`/`license-checker`로 전체 의존성 라이선스 출력 → 카피레프트 0 확인
   - [ ] `THIRD-PARTY-NOTICES.md` 완성(Gitleaks 패턴 등 참고 출처·라이선스)
@@ -234,7 +314,8 @@ SPDX-License-Identifier: MIT
 - **중요도**: 🔴 Critical | **스프린트**: 제출주간 | **의존성**: 전체 | **사이즈**: M
 - **배경**: 2차 기능테스트는 **남의 환경에서** 돌린다. "내 컴퓨터에서만 됨"이면 0점.
 - **하위 할일**
-  - [ ] 의존성 버전 고정, 설치 한 번(`docker compose up` 또는 단일 스크립트)으로 실행
+  - [ ] **[결정] 실행 형태**: 로컬 우선 데스크톱 도구라 `docker compose`는 결이 안 맞음. 백/프론트 동시 기동 **단일 dev 스크립트**(예: `scripts/dev`)로 갈지, 안정화 시 **PyWebView 패키징**(SPEC 데스크톱 셸)으로 갈지 확정. (INTEG-1의 동시 기동 스크립트와 연계)
+  - [ ] 의존성 버전 고정(✅ 이미 pinned: requirements.txt / package-lock.json), 설치 한 번으로 실행
   - [ ] README: 한 줄 소개·스크린샷·설치·실행·예시 워크플로
   - [ ] **깨끗한 환경(새 VM/컨테이너)에서 README대로 처음부터 실행 검증**
 - **테스트 체크리스트**
@@ -259,7 +340,10 @@ SPDX-License-Identifier: MIT
 
 ## 잘라내기 우선순위 (시간 부족 시)
 
-1. **TRUST-1/2** (stretch) — 없어도 MVP 성립. 가장 먼저 컷.
-2. **CORE-5** `.env` 내보내기 — 데모 비핵심.
-3. **UI 폴리시** — 기능 우선, 미관 후순위.
+1. **SYNC-0** (stretch) — 멀티 기기는 로드맵으로 답해도 됨. 가장 먼저 컷.
+2. **TRUST-1/2** (stretch) — 없어도 MVP 성립.
+3. **CORE-5** `.env` 내보내기 — 데모 비핵심.
+4. **UI 폴리시** — 기능 우선, 미관 후순위.
+
+※ SYNC-1(Drive 자동 동기화)은 애초에 이번 범위가 아님 — 결과보고서 로드맵에만 기재.
 > 절대 사수: **CORE-2(맥락 분류)**, **VAULT-1(암호화)**, **OSS-2/3/4(라이선스·재현·영상)**. 이 다섯이 무너지면 프로젝트 정체성·채점 모두 흔들린다.

@@ -39,6 +39,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# --- Claude Code (프로젝트 자산은 커밋, 머신 로컬 설정만 제외) ---
+.claude/settings.local.json
+
 # --- OCR 모델 캐시(용량 크고 재생성 가능) ---
 *.traineddata
 .cache/
