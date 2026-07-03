@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# 런타임 의존성 (전부 permissive 라이선스).
+fastapi==0.115.6      # MIT
+uvicorn==0.34.0       # BSD-3-Clause
+pydantic==2.10.4      # MIT
+PyYAML==6.0.2         # MIT

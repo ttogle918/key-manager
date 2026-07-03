@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# OpenAI. API 키는 "sk-"(프로젝트 키는 "sk-proj-") 접두어로, 조직 ID는 "org-" 접두어로 명확.
+service: openai
+display_name: OpenAI
+credentials:
+  - kind: api_key
+    label: "API Key"
+    label_patterns:
+      - "Secret key"
+      - "API key"
+    url_patterns: []
+    value_regex: "^sk-(proj-)?[A-Za-z0-9_\\-]{20,}$"
+    official_env_name: OPENAI_API_KEY
+    expiry_known: false
+
+  - kind: org_id
+    label: "Organization ID"
+    label_patterns:
+      - "Organization ID"
+      - "Organization"
+    url_patterns: []
+    value_regex: "^org-[A-Za-z0-9]{20,}$"
+    official_env_name: OPENAI_ORG_ID
+    expiry_known: false

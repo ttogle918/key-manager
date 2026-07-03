@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Kakao Developers. REST/JavaScript/Admin/Native 키가 모두 32자리 hex로 형식이 같다
+# → value_regex 없이 콘솔 탭 라벨(Stage2)로만 구분한다. KeyLens 차별점의 대표 사례.
+service: kakao
+display_name: Kakao
+credentials:
+  - kind: rest_api_key
+    label: "REST API 키"
+    label_patterns:
+      - "REST API 키"
+      - "REST API key"
+    url_patterns: []
+    value_regex: null
+    official_env_name: KAKAO_REST_API_KEY
+    expiry_known: false
+
+  - kind: javascript_key
+    label: "JavaScript 키"
+    label_patterns:
+      - "JavaScript 키"
+      - "JavaScript key"
+    url_patterns: []
+    value_regex: null
+    official_env_name: KAKAO_JS_KEY
+    expiry_known: false
+
+  - kind: admin_key
+    label: "Admin 키"
+    label_patterns:
+      - "Admin 키"
+      - "Admin key"
+    url_patterns: []
+    value_regex: null
+    official_env_name: KAKAO_ADMIN_KEY
+    expiry_known: false
+
+  - kind: native_app_key
+    label: "Native 앱 키"
+    label_patterns:
+      - "Native 앱 키"
+      - "Native app key"
+    url_patterns: []
+    value_regex: null
+    official_env_name: KAKAO_NATIVE_APP_KEY
+    expiry_known: false

@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Google Cloud. API 키는 "AIza" 접두어 + 35자(총 39자)로 값 기반 식별이 명확하다.
+# (서비스 계정 JSON·OAuth 클라이언트는 별도 종류 — 후속 확장.)
+service: gcp
+display_name: Google Cloud
+credentials:
+  - kind: api_key
+    label: "API Key"
+    label_patterns:
+      - "API key"
+      - "API 키"
+    url_patterns: []
+    value_regex: "^AIza[0-9A-Za-z_\\-]{35}$"
+    official_env_name: GOOGLE_API_KEY
+    expiry_known: false

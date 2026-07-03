@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Notion. API 토큰은 접두사(secret_ / ntn_)로 값 기반 식별 가능하지만,
+# database/data_source/page ID는 전부 동일한 32자리 UUID라 값만으로는 구분 불가 → Stage2(라벨·URL).
+service: notion
+display_name: Notion
+credentials:
+  - kind: api_key
+    label: "API Key"
+    label_patterns:
+      - "Internal Integration Token"
+      - "Internal Integration Secret"
+      - "Integration Token"
+      - "API key"
+      - "Secret"
+    url_patterns: []
+    value_regex: "^(secret_|ntn_)[A-Za-z0-9]{36,}$"
+    official_env_name: NOTION_API_KEY
+    expiry_known: false
+
+  - kind: database_id
+    label: "Database ID"
+    label_patterns:
+      - "Database ID"
+      - "데이터베이스 ID"
+    url_patterns:
+      - "notion\\.so/[^/?]+/([0-9a-fA-F]{32})\\?v="
+    value_regex: null
+    official_env_name: NOTION_DATABASE_ID
+    expiry_known: false
+
+  - kind: data_source_id
+    label: "Data Source ID"
+    label_patterns:
+      - "Data source"
+      - "Data sources"
+      - "데이터 소스"
+    url_patterns: []
+    value_regex: null
+    official_env_name: NOTION_DATA_SOURCE_ID
+    expiry_known: false
+
+  - kind: page_id
+    label: "Page ID"
+    label_patterns:
+      - "Page ID"
+      - "페이지 ID"
+    url_patterns:
+      - "notion\\.so/(?:[^/?]+/)?(?:[^/?]*-)?([0-9a-fA-F]{32})(?:$|\\?p=|#)"
+    value_regex: null
+    official_env_name: NOTION_PAGE_ID
+    expiry_known: false
