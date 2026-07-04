@@ -96,7 +96,7 @@ SPDX-License-Identifier: MIT
   - **[Engine] 전처리 / 값 정확도** — 조사 완료, 방향 전환
     - [x] 재구성 개선: 구두점에서 쪼개진 토큰 간격 기반 재결합(`6789. Dumm`→`6789.Dumm`) — 실측 win, vitest
     - [x] 🔬 이미지 전처리 실험(grayscale·대비·sharpen·2x확대·Otsu 이진화) → **채택 안 함**: 한글 단일글자("키"→"7\|", "앱"→"2/&")·base62 `1↔i` 오독은 모델 한계라 개선 안 되고, 공격적 변형은 오히려 퇴행(sharpen=환각 `tn)_`, Otsu=hex `0→@`). 고DPI 스크린샷은 전처리 이득 없음.
-    - [ ] ⏸ 값 정확도의 실제 해법은 필드 영역 크롭 + PSM/charset whitelist(값 전용 인식) — 큰 후속. **단, 값은 복붙 전제라 우선순위 낮음.**
+    - [x] **값 전용 정밀 재인식**: 값 토큰 bbox 영역만 PSM(단일 라인)+charset whitelist 로 2차 인식(`ocr.ts refineValues`). 실측: 실제 Ollama 키 끝자리 `i`→`1` 오독 교정(57/57자 정답). **길이 가드**(1차와 같은 길이일 때만 채택)로 kakao 퇴행(33≠32) 자동 거부. reconstruct 가 `valueTokens{text,bbox}` 노출, vitest.
     - [x] **값 신뢰도 플래깅 UX**: OCR 이 이어붙인 이음매(불확실 지점)를 결과 카드에 빨간 `v` 표식 + 토스트로 안내(경계·공백 기반, 값은 복붙 권장). `reconstruct().flagged` → 카드. vitest.
     - [x] **서비스 분류 정확도**: Ollama 지식베이스 추가 → 실제 스크린샷이 `OLLAMA_API_KEY`로 분류(위 CORE-4 참고)
 - **테스트 체크리스트**

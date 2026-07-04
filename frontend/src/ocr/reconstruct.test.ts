@@ -5,7 +5,14 @@
  * 실제 tesseract.js 없이 word-box 픽스처로 공간 로직만 검증한다.
  */
 import { describe, expect, it } from 'vitest'
-import { groupRows, isMasked, reconstruct, reconstructText, type OcrWord } from './reconstruct'
+import {
+  groupRows,
+  isMasked,
+  looksLikeValue,
+  reconstruct,
+  reconstructText,
+  type OcrWord,
+} from './reconstruct'
 
 /** (text, x, y) → 대략적 word box. 높이 20px, 너비는 글자수 비례로 픽스처를 간결히. */
 function w(text: string, x: number, y: number): OcrWord {
@@ -93,6 +100,34 @@ describe('reconstructText', () => {
 
   it('정상 간격만 있으면 flagged 는 비어있다', () => {
     expect(reconstruct([w('Database', 100, 100), w('ID', 210, 100)]).flagged).toEqual([])
+  })
+
+  it('값처럼 보이는 세그먼트를 bbox 와 함께 valueTokens 로 노출(2차 재인식용)', () => {
+    const words = [
+      w('Database', 100, 100),
+      w('ID', 210, 100),
+      w('a2b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9', 100, 130), // 32 hex 값
+    ]
+    const rec = reconstruct(words)
+    expect(rec.valueTokens).toHaveLength(1)
+    expect(rec.valueTokens[0].text).toBe('a2b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9')
+    // 라벨("Database", "ID")은 값 아님 → 제외
+    expect(rec.valueTokens[0].bbox).toMatchObject({ x0: 100, y0: 130 })
+  })
+
+  it('이어붙인 값 토큰의 bbox 는 구성 단어 합집합', () => {
+    const a = { text: 'abcdef0123456789abcdef0123456789.', bbox: { x0: 100, y0: 100, x1: 420, y1: 122 } }
+    const b = { text: 'DummyOllamaSuffixi234567', bbox: { x0: 423, y0: 100, x1: 640, y1: 122 } }
+    const rec = reconstruct([a, b])
+    expect(rec.valueTokens).toHaveLength(1)
+    expect(rec.valueTokens[0].bbox).toEqual({ x0: 100, y0: 100, x1: 640, y1: 122 })
+  })
+
+  it('looksLikeValue: 긴 영숫자·hex 는 값, 짧거나 일반 단어는 아님', () => {
+    expect(looksLikeValue('a2b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9')).toBe(true)
+    expect(looksLikeValue('AIzaSyDummyKeyTwoThreeFourFiveSixSevenAb')).toBe(true)
+    expect(looksLikeValue('Database')).toBe(false)
+    expect(looksLikeValue('REST')).toBe(false)
   })
 
   it('한글/영문 라벨 혼재 여러 키를 각 줄로 보존(카카오 다중 키 화면)', () => {

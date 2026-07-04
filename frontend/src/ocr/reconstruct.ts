@@ -9,10 +9,18 @@
  * OCR 엔진(tesseract.js)은 이 함수에 박스를 공급하는 입력 경로일 뿐.
  */
 
+/** 픽셀 bbox. */
+export interface BBox {
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+}
+
 /** tesseract.js word 와 호환되는 최소 형태. bbox 좌표는 픽셀. */
 export interface OcrWord {
   text: string
-  bbox: { x0: number; y0: number; x1: number; y1: number }
+  bbox: BBox
 }
 
 /** 마스킹 문자(가려진 값)로 흔히 쓰이는 글리프 — 진짜 값이 아니므로 값 후보에서 제외한다. */
@@ -52,6 +60,14 @@ function isNoise(token: string): boolean {
   return NOISE_WORDS.has(t.toLowerCase())
 }
 
+/**
+ * 자격증명 값처럼 보이는 토큰인지 — 값 전용 정밀 재인식(2차 OCR) 대상 선별용.
+ * 공백 없는 긴 영숫자(+구분자) 토큰, 또는 16자 이상 hex. 라벨은 보통 짧거나 공백을 포함해 걸러진다.
+ */
+export function looksLikeValue(token: string): boolean {
+  return /^[A-Za-z0-9._-]{20,}$/.test(token) || /^[0-9a-fA-F]{16,}$/.test(token)
+}
+
 const cy = (w: OcrWord) => (w.bbox.y0 + w.bbox.y1) / 2
 const height = (w: OcrWord) => Math.max(1, w.bbox.y1 - w.bbox.y0)
 /** 글자당 평균 너비(px) 추정 — 토큰 사이 간격이 '진짜 공백'인지 판단하는 기준. */
@@ -87,11 +103,30 @@ export interface FlaggedToken {
   marks: number[]
 }
 
+/** 값처럼 보이는 토큰과 그 화면 영역(2차 정밀 재인식 대상). */
+export interface ValueToken {
+  /** 1차 OCR 로 읽은 값 토큰(= 분류에 쓰인 값). */
+  text: string
+  /** 구성 단어들의 합집합 bbox — 이 영역만 잘라 PSM/whitelist 로 다시 읽는다. */
+  bbox: BBox
+}
+
 export interface Reconstruction {
   /** 라인 보존 텍스트(백엔드 분류 입력). */
   text: string
   /** 간격 결합으로 만들어진 토큰들(사용자에게 "여기 확인" 표식용). */
   flagged: FlaggedToken[]
+  /** 값처럼 보이는 토큰들 — ocr.ts 가 이 영역만 정밀 재인식해 정확도를 높인다. */
+  valueTokens: ValueToken[]
+}
+
+function unionBBox(ws: OcrWord[]): BBox {
+  return {
+    x0: Math.min(...ws.map((w) => w.bbox.x0)),
+    y0: Math.min(...ws.map((w) => w.bbox.y0)),
+    x1: Math.max(...ws.map((w) => w.bbox.x1)),
+    y1: Math.max(...ws.map((w) => w.bbox.y1)),
+  }
 }
 
 /**
@@ -107,25 +142,32 @@ export function reconstruct(words: OcrWord[]): Reconstruction {
   const rows = groupRows(words)
   const lines: string[] = []
   const flagged: FlaggedToken[] = []
+  const valueTokens: ValueToken[] = []
 
   for (const row of rows) {
     const kept = row.filter((w) => !isNoise(w.text))
     const segments: string[] = [] // 공백으로 나뉜 논리 토큰들
     let seg = ''
     let segMarks: number[] = []
+    let segWords: OcrWord[] = [] // 현재 세그먼트를 이루는 원본 단어들(값 영역 bbox 계산용)
     const flush = () => {
       if (seg) {
         segments.push(seg)
         if (segMarks.length) flagged.push({ text: seg, marks: segMarks })
+        if (looksLikeValue(seg) && segWords.length) {
+          valueTokens.push({ text: seg, bbox: unionBBox(segWords) })
+        }
       }
       seg = ''
       segMarks = []
+      segWords = []
     }
     for (let i = 0; i < kept.length; i++) {
       const w = kept[i]
       const token = isMasked(w.text) ? '[마스킹됨]' : w.text
       if (i === 0) {
         seg = token
+        segWords = [w]
         continue
       }
       const prev = kept[i - 1]
@@ -136,16 +178,18 @@ export function reconstruct(words: OcrWord[]): Reconstruction {
       if (tight) {
         segMarks.push(seg.length) // 이음매 = 다음 토큰이 시작되는 글자 위치
         seg += token
+        segWords.push(w)
       } else {
         flush()
         seg = token
+        segWords = [w]
       }
     }
     flush()
     const line = segments.join(' ').trim()
     if (line) lines.push(line)
   }
-  return { text: lines.join('\n'), flagged }
+  return { text: lines.join('\n'), flagged, valueTokens }
 }
 
 /** 텍스트만 필요할 때(백엔드 입력·회귀 픽스처). */
