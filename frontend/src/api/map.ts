@@ -17,6 +17,7 @@ const SERVICE_BY_ID: Record<string, Service> = {
 const CONF_BY_API: Record<ApiConfidence, Confidence> = {
   high: 'high',
   medium: 'mid',
+  low: 'low',
   unknown: 'low',
 }
 
@@ -49,6 +50,35 @@ export function toAnalysisResults(
 
   items.forEach((it, i) => {
     const svc = it.service ? SERVICE_BY_ID[it.service] : undefined
+
+    // Stage2 신호 충돌 → 프론트 충돌 카드(사용자가 종류 선택). option.k = 프론트 typeKey.
+    if (it.conflict && svc) {
+      results.push({
+        id: `api_${i}`,
+        service: svc,
+        typeKey: '',
+        conflict: true,
+        conf: 'low',
+        masked: it.masked,
+        full: it.value,
+        format: it.format,
+        source: it.source,
+        context: contextFrom(it.meta),
+        memo,
+        project,
+        metaOpen: false,
+        meta: it.meta,
+        options: it.options.map((o) => ({
+          k: TYPE_MAP[svc].find((t) => t.var === o.official_env_name)?.v ?? '',
+          label: o.label,
+          varName: o.official_env_name,
+          evidence: o.evidence,
+          signal: o.signal,
+          strong: o.strong,
+        })),
+      })
+      return
+    }
 
     if (svc && it.official_env_name) {
       const typeDef = TYPE_MAP[svc].find((t) => t.var === it.official_env_name)

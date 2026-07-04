@@ -40,7 +40,18 @@ class AnalyzeRequest(BaseModel):
     url: Optional[str] = None
 
 
-Confidence = Literal["high", "medium", "unknown"]
+Confidence = Literal["high", "medium", "low", "unknown"]
+
+
+class ConflictOption(BaseModel):
+    """신호 충돌 시 사용자가 고르는 후보 한 개 (Stage2)."""
+
+    kind: str
+    label: str
+    official_env_name: str
+    evidence: str
+    signal: str
+    strong: bool
 
 
 class ClassifiedItem(BaseModel):
@@ -57,6 +68,8 @@ class ClassifiedItem(BaseModel):
     format: str
     source: str
     stage: int
+    conflict: bool = False
+    options: list[ConflictOption] = Field(default_factory=list)
     meta: dict = Field(default_factory=dict)
 
 

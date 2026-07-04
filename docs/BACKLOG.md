@@ -64,23 +64,23 @@ SPDX-License-Identifier: MIT
   - [x] ✅ 값 기반 4종(OpenAI api/org·GCP·Notion) 더미 키 → 올바른 official_env_name 매핑
   - [ ] ⏸ (확장 시) GitHub/AWS/Slack 등 추가 접두어 매핑 — 위 결정 후
 
-### CORE-2 🔴 맥락 기반 분류 (Stage 2, 차별점)
-- **중요도**: 🔴 Critical | **스프린트**: S2 | **의존성**: CORE-1, CORE-4(지식베이스) *(CORE-3/OCR과 분리)* | **사이즈**: L *(text·URL 부분은 M)*
+### CORE-2 🔴 맥락 기반 분류 (Stage 2, 차별점) — ✅ text·URL 완료(OCR 입력경로 대기)
+- **중요도**: 🔴 Critical | **스프린트**: S2 | **의존성**: CORE-1, CORE-4(지식베이스) *(CORE-3/OCR과 분리)* | **사이즈**: L *(text·URL 부분은 M)* | **상태**: ✅ `stage2.py`, pytest 28개
 - **배경**: 노션 database ID·data source ID·page ID는 전부 동일한 32자 UUID라 **값만으론 구분 불가**. 기존 도구(SecurityWall 등)가 정확히 여기서 손든다. 라벨·URL 구조 같은 **출처 맥락**으로 가려내는 게 이 프로젝트의 존재 이유.
 - **⚠️ 순서 변경(리스크 축소)**: OCR(CORE-3)에 물려두지 않는다. `/analyze`가 이미 **text·URL을 받으므로**, 붙여넣은 텍스트 라벨과 URL 구조만으로 Stage2 로직을 **먼저 완성·증명**한다(라벨 사전 대조 + `url_patterns` 매칭 + 신호 가중). OCR은 "이미지 → 텍스트+라벨"을 만들어 이 파이프라인에 **먹이는 입력 경로**로 나중에 붙인다 — 차별점이 OCR 안정성에 인질로 잡히지 않게.
 - **하위 할일**
-  - **[Engine] 맥락 신호 수집기 `context_classifier.py`**
-    - [ ] OCR 라벨 매칭: 값 주변 텍스트("Database ID", "Internal Integration Secret", "REST API 키")를 지식베이스 라벨 사전과 대조
-    - [ ] URL 구조 매칭: 입력 URL을 서비스별 패턴과 대조 (예: `notion.so/{workspace}/{database_id}?v=...` → database_id 추출)
-    - [ ] 신호 가중 합산 → confidence 산출, 라벨·URL이 충돌하면 사용자에게 확인 요청 플래그
-  - **[Engine] Stage1 → Stage2 파이프라인 연결**
-    - [ ] Stage1에서 unknown/ambiguous로 떨어진 값만 Stage2로 라우팅
-    - [ ] 최종 official_name 매핑 (`NOTION_DATABASE_ID`, `NOTION_DATA_SOURCE_ID`, `KAKAO_REST_API_KEY` 등)
+  - **[Engine] 맥락 신호 수집기 (`backend/app/classify/stage2.py`)**
+    - [x] 라벨 매칭: 값 주변 텍스트(현재줄+바로 위 줄)를 KB `label_patterns`와 대조(값 기반 아닌 종류만)
+    - [x] URL 구조 매칭: `url_patterns`로 위치 도출(`?v=` 앞=database_id 강함 / 마지막 세그먼트=page_id 약함)
+    - [x] 신호 압축 → confidence(강함=high/약함=medium), 여러 종류로 갈리면 `conflict` + `options`
+  - **[Engine] Stage1 → Stage2 파이프라인 연결 (`pipeline.py`)**
+    - [x] Stage1 high 값은 skip, 애매값만 Stage2로. 값 기준 병합(Stage2가 unknown 대체)
+    - [x] 계약 확장: `ClassifiedItem.conflict/options` + 프론트 매핑(`map.ts`, 충돌 카드로 연결)
 - **테스트 체크리스트**
-  - [ ] 🧪 노션 DB URL + UUID → `database_id`로 분류 (page URL과 구분되는지)
-  - [ ] 🧪 라벨 "Internal Integration Secret"가 있는 스크린샷 텍스트 → `notion/api_key`
-  - [ ] 🧪 카카오 키 화면 OCR(REST/JS/Admin 라벨 동시 존재) → 각 값에 올바른 종류 매핑
-  - [ ] ✅ 신호 충돌 시 "확인 필요"로 표시(임의 단정 금지)
+  - [x] 🧪 노션 DB URL → `database_id`(high), page URL → `page_id`(medium) 구분
+  - [x] 🧪 라벨(`Database ID`/`REST API 키`) 옆 값 → 해당 종류 매핑 (한글 라벨 pytest 통과)
+  - [x] ✅ 신호 충돌(data_source 라벨 vs page URL) → `conflict`+선택지, 단정 안 함
+  - [ ] ⏸ 스크린샷(OCR) 경유 라벨 — CORE-3에서 이 파이프라인에 연결
 
 ### CORE-3 🟠 OCR 파이프라인 (스크린샷 → 텍스트+라벨) — CORE-2의 *입력 경로*
 - **중요도**: 🟠 High | **스프린트**: S2(후반) | **의존성**: DEMO-1(테스트 이미지) | **사이즈**: M~L *(라벨-값 공간 페어링이 난이도 핵심 — L 가능성*)

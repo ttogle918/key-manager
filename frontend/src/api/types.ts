@@ -2,7 +2,17 @@
 // SPDX-License-Identifier: MIT
 /** 백엔드 `/analyze` 응답 계약 (backend/app/models.py 와 일치). */
 
-export type ApiConfidence = 'high' | 'medium' | 'unknown'
+export type ApiConfidence = 'high' | 'medium' | 'low' | 'unknown'
+
+/** Stage2 신호 충돌 시 사용자 선택지. */
+export interface ApiConflictOption {
+  kind: string
+  label: string
+  official_env_name: string
+  evidence: string
+  signal: string
+  strong: boolean
+}
 
 export interface ClassifiedItem {
   value: string
@@ -16,6 +26,8 @@ export interface ClassifiedItem {
   format: string
   source: string
   stage: number
+  conflict: boolean
+  options: ApiConflictOption[]
   meta: Record<string, unknown>
 }
 
