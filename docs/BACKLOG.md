@@ -179,22 +179,23 @@ SPDX-License-Identifier: MIT
   - [x] ✅ `git status`에 `.env`·`*.sqlite`·`.venv`·`node_modules`가 안 잡힘
   - [ ] ✅ `reuse lint` 통과(헤더 누락 0) — 제출 전 자동 검증으로 확정(OSS-2)
 
-### VAULT-1 🔴 암호화 저장소
-- **중요도**: 🔴 Critical | **스프린트**: S3 | **의존성**: VAULT-0 | **사이즈**: L
+### VAULT-1 🔴 암호화 저장소 — ✅ 코어 완료(엔진+저장소, API/프론트 연결은 VAULT-2)
+- **중요도**: 🔴 Critical | **스프린트**: S3 | **의존성**: VAULT-0 | **사이즈**: L | **상태**: ✅ `crypto.py`·`vault_repo.py`, pytest 10개, `cryptography==49.0.0`(감사 통과)
 - **배경**: "나만 보기"의 실체. 마스터 비밀번호에서 키를 유도해 값을 암호화 저장. **마스터 비밀번호·복호화 키는 절대 디스크에 평문 저장하지 않는다.**
 - **하위 할일**
   - **[Engine] `crypto.py`**
-    - [ ] Argon2id로 마스터 비밀번호 → 암호화 키 유도(솔트 저장, 키는 메모리에만)
-    - [ ] 값별 AES-256-GCM 암호화(고유 nonce), 무결성 태그 검증
-    - [ ] 마스터 비밀번호 변경 시 재암호화 경로
+    - [x] Argon2id로 마스터 비밀번호 → 32B 키 유도(솔트·파라미터만 저장, 키는 메모리에만)
+    - [x] 값별 AES-256-GCM 암호화(고유 nonce), GCM 태그 무결성·인증 검증(변조/오답 거부)
+    - [x] 마스터 비밀번호 변경 시 새 솔트로 검증기+전 항목 재암호화(원자적)
   - **[Storage] `vault_repo.py` (SQLite)**
-    - [ ] 스키마: `entries(id, service, kind, official_name, ciphertext, nonce, label, created_at, expires_at?)`
-    - [ ] 암호문만 저장(평문 값 컬럼 없음)
+    - [x] 스키마: `entries(id, service, kind, official_name, label, nonce, ciphertext, created_at, expires_at?)` + `meta`(KDF 파라미터·비밀번호 검증기)
+    - [x] 암호문만 저장(평문 값 컬럼 없음). 항목별 `official_name` AAD 바인딩(라벨 스왑 변조 탐지)
 - **테스트 체크리스트**
-  - [ ] 🧪 저장→로드 라운드트립으로 원문 복원
-  - [ ] 🧪 틀린 마스터 비밀번호 → 복호화 실패(태그 불일치)로 안전하게 거부
-  - [ ] 🧪 SQLite 파일을 직접 열어도 평문 키가 안 보임
-  - [ ] ✅ 마스터 비밀번호 변경 후에도 기존 항목 정상 복호화
+  - [x] 🧪 저장→로드 라운드트립으로 원문 복원
+  - [x] 🧪 틀린 마스터 비밀번호 → 복호화 실패(태그 불일치)로 안전하게 거부
+  - [x] 🧪 SQLite 파일을 직접 열어도 평문 키가 안 보임(컬럼·바이트 스캔)
+  - [x] ✅ 마스터 비밀번호 변경 후에도 기존 항목 정상 복호화, 옛 비밀번호 거부
+  - [ ] ⏸ API 엔드포인트(/vault …) + 프론트 목업 → 실제 금고 연결 — VAULT-2(인증 게이트)에서
 
 ### VAULT-2 🟠 인증 게이트
 - **중요도**: 🟠 High | **스프린트**: S3 | **의존성**: VAULT-1 | **사이즈**: M
