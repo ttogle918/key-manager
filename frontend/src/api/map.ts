@@ -11,6 +11,7 @@ const SERVICE_BY_ID: Record<string, Service> = {
   kakao: 'Kakao',
   gcp: 'GCP',
   openai: 'OpenAI',
+  ollama: 'Ollama',
 }
 
 /** 백엔드 confidence → 프론트 conf. */

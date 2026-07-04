@@ -15,13 +15,13 @@ OPENAI_KEY = "sk-proj-" + "a" * 20
 def test_health():
     r = health()
     assert r.status == "ok"
-    assert r.services == 4
-    assert r.credentials == 11
+    assert r.services == 5
+    assert r.credentials == 12
 
 
 def test_knowledge_endpoint():
     services = knowledge()["services"]
-    assert len(services) == 4
+    assert len(services) == 5
     notion = next(s for s in services if s["service"] == "notion")
     api = next(c for c in notion["credentials"] if c["kind"] == "api_key")
     assert api["value_based"] is True

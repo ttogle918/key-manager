@@ -7,7 +7,8 @@
 credentials.json
 service-account*.json
 # 실제 키가 담긴 테스트 입력 이미지 등(로컬 전용, 커밋 금지). 데모용 더미는 docs/demo/ 사용.
-data/
+# 루트 앵커(/) — frontend/src/data 같은 하위 data 디렉터리는 건드리지 않는다.
+/data/
 
 # --- 금고/앱 데이터 (실데이터 절대 커밋 금지) ---
 *.sqlite

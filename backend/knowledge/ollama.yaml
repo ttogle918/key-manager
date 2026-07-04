@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Ollama (ollama.com). 클라우드 API 키는 "<32 hex>.<24 base62>" 포맷.
+# 접두어(sk- 같은)는 없지만 '.'로 나뉜 hex+base62 구조가 독특해 값만으로 식별 가능(Stage1).
+service: ollama
+display_name: Ollama
+credentials:
+  - kind: api_key
+    label: "API Key"
+    label_patterns:
+      - "API key"
+      - "API keys"
+    url_patterns: []
+    # 32자리 소문자 hex + '.' + 24자 영숫자. 콘솔에서 발급되는 형식(공식 문서 기준 직접 작성).
+    value_regex: "^[0-9a-f]{32}\\.[A-Za-z0-9]{24}$"
+    official_env_name: OLLAMA_API_KEY
+    expiry_known: false

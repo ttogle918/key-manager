@@ -120,6 +120,7 @@ SPDX-License-Identifier: MIT
   - **[Data] `knowledge/*.yaml` 스키마 설계**
     - [x] 필드: `service, credentials:[{kind, label, label_patterns, url_patterns, value_regex?, official_env_name, expiry_known}]` + `_SCHEMA.md`
     - [x] 초기 4종: **Notion**(api/database/data_source/page), **Kakao**(rest/js/admin/native), **GCP**(api_key), **OpenAI**(api_key/org_id)
+    - [x] **Ollama**(api_key) 추가 — `<32hex>.<24base62>` 값기반. 실제 스크린샷 E2E로 `OLLAMA_API_KEY` 분류 확인(코드수정 0, YAML 1개 + 프론트 서비스맵)
     - [ ] GCP `service_account_json`/`oauth_client` 종류 추가(현재 api_key만)
   - **[Engine] 로더 + 검증**
     - [x] 시작 시 YAML 로드·pydantic 스키마 검증, service·official_env_name 중복 에러, 정규식 컴파일 검증

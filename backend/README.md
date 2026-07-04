@@ -59,7 +59,7 @@ tests/                   pytest — 지식베이스·Stage1·API
 
 ## 분류 원칙 (SPEC 4.2 / 4.3)
 
-- **Stage1(값 기반)**: `sk-`(OpenAI) · `AIza`(Google) · `secret_`/`ntn_`(Notion) 등 접두어가 명확한 키를 `value_regex`로 즉시 식별(신뢰도 high).
+- **Stage1(값 기반)**: `sk-`(OpenAI) · `AIza`(Google) · `secret_`/`ntn_`(Notion) 등 접두어가 명확한 키, 또는 `<32hex>.<24base62>`(Ollama)처럼 구조가 독특한 포맷을 `value_regex`로 즉시 식별(신뢰도 high).
 - **애매한 값은 단정하지 않는다**: 노션의 database/data_source/page ID(동일 UUID)와 카카오 4종 키(동일 32 hex)는 `value_regex`가 없어 `unknown`으로 분류되고 Stage2(라벨·URL 맥락)로 넘어간다 — 이것이 KeyLens의 차별점.
 
 ## 라이선스 주의

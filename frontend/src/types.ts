@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 /** 앱이 다루는 서비스 종류. 지식베이스(SPEC 4.4)가 커지면 확장된다. */
-export type Service = 'Notion' | 'Kakao' | 'GCP' | 'OpenAI'
+export type Service = 'Notion' | 'Kakao' | 'GCP' | 'OpenAI' | 'Ollama'
 
 /** 최상위 화면 상태. */
 export type Screen = 'setup' | 'lock' | 'app'

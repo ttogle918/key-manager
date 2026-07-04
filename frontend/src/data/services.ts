@@ -23,6 +23,7 @@ export const TYPE_MAP: Record<Service, TypeOption[]> = {
     { v: 'admin', label: 'Admin 키', var: 'KAKAO_ADMIN_KEY' },
   ],
   GCP: [{ v: 'api', label: 'API Key', var: 'GOOGLE_API_KEY' }],
+  Ollama: [{ v: 'api', label: 'API Key', var: 'OLLAMA_API_KEY' }],
 }
 
 /** 서비스 타일(약자 + 색). */
@@ -31,10 +32,11 @@ export const SVC_META: Record<Service, SvcMeta> = {
   Kakao: { tile: 'K', bg: '#F2D14B', fg: '#241D00' },
   GCP: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
   OpenAI: { tile: 'O', bg: '#17B597', fg: '#03211B' },
+  Ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
 }
 
 /** 보관함/내보내기에서 사용하는 서비스 표시 순서. */
-export const SERVICE_ORDER: Service[] = ['Notion', 'Kakao', 'GCP', 'OpenAI']
+export const SERVICE_ORDER: Service[] = ['Notion', 'Kakao', 'GCP', 'OpenAI', 'Ollama']
 
 export interface ConfStyle {
   label: string
