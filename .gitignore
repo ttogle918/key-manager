@@ -45,3 +45,6 @@ Thumbs.db
 # --- OCR 모델 캐시(용량 크고 재생성 가능) ---
 *.traineddata
 .cache/
+# tesseract.js 로컬 벤더 자산 — scripts/vendor-tesseract.mjs 가 재생성(커밋 금지)
+frontend/public/tesseract/
+frontend/public/tessdata/

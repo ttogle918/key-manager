@@ -8,6 +8,7 @@
 import { create } from 'zustand'
 import { analyzeApi, ApiError } from '@/api/client'
 import { toAnalysisResults } from '@/api/map'
+import { runOcr } from '@/ocr/ocr'
 import { TYPE_MAP } from '@/data/services'
 import { freshResults, seedVault } from '@/data/seed'
 import { envText, today } from '@/lib/format'
@@ -63,6 +64,8 @@ interface KeylensState {
 
   // 분석
   analyzing: boolean
+  /** 브라우저 OCR 진행률(0~1). 스크린샷 인식 중일 때만 채워지고, 아니면 null. */
+  ocrProgress: number | null
   analyzed: boolean
   results: AnalysisResult[]
   /** Stage1에서 값만으로 판별 불가한 항목(맥락 분류 Stage2 대상). */
@@ -223,6 +226,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     attachedImage: null,
     attachedName: '',
     analyzing: false,
+    ocrProgress: null,
     analyzed: false,
     results: [],
     unknowns: [],
@@ -325,6 +329,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const project = s.projVal.trim()
       set({
         analyzing: true,
+        ocrProgress: null,
         dragOver: false,
         sourceLabel: parts.join(' · '),
         analyzedImage: img,
@@ -332,18 +337,39 @@ export const useKeylens = create<KeylensState>((set, get) => {
         unknowns: [],
       })
 
-      // 텍스트·URL이 없으면(이미지 단독) 백엔드가 분석할 소스가 없다 — OCR 미구현이라 샘플 목업으로 시연.
-      if (!text && !url) {
-        await new Promise((r) => setTimeout(r, Math.max(200, ANALYZE_SECONDS * 1000)))
+      // 실제 스크린샷이면 브라우저 안에서 OCR(CORE-3) → 라벨 보존 텍스트. 이미지는 기기를 떠나지 않는다.
+      let ocrText = ''
+      if (img && img !== 'sample') {
+        set({ ocrProgress: 0 })
+        try {
+          ocrText = await runOcr(img, (p) => {
+            if (get().analyzing) set({ ocrProgress: p.progress })
+          })
+        } catch {
+          get().showToast('스크린샷 인식 실패 — 텍스트·URL만 분석합니다')
+        }
         if (!get().analyzing) return // 중간에 리셋됨
+        set({ ocrProgress: null })
+      }
+
+      // OCR 텍스트 + 직접 입력 텍스트를 합쳐 Stage2 라벨 페어링에 먹인다.
+      const analyzeText = [ocrText, text].filter(Boolean).join('\n')
+
+      // 분석할 소스가 아무것도 없으면(샘플 이미지·OCR 빈 결과) 샘플 목업으로 시연.
+      if (!analyzeText && !url) {
+        await new Promise((r) => setTimeout(r, Math.max(200, ANALYZE_SECONDS * 1000)))
+        if (!get().analyzing) return
         const results = freshResults().map((r) => ({ ...r, memo, project }))
         set({ analyzing: false, analyzed: true, results, unknowns: [] })
         return
       }
 
-      // 백엔드 Stage1 값 기반 분류 호출.
+      // 백엔드 Stage1(값)+Stage2(맥락) 분류 호출.
       try {
-        const resp = await analyzeApi({ text: text || undefined, url: url || undefined })
+        const resp = await analyzeApi({
+          text: analyzeText || undefined,
+          url: url || undefined,
+        })
         if (!get().analyzing) return
         const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
         set({ analyzing: false, analyzed: true, results, unknowns })
@@ -360,6 +386,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
       set({
         analyzed: false,
         analyzing: false,
+        ocrProgress: null,
         results: [],
         unknowns: [],
         apiError: null,
@@ -556,6 +583,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         view: 'input',
         analyzed: false,
         analyzing: false,
+        ocrProgress: null,
         results: [],
         unknowns: [],
         apiError: null,

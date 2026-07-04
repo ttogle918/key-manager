@@ -80,23 +80,26 @@ SPDX-License-Identifier: MIT
   - [x] 🧪 노션 DB URL → `database_id`(high), page URL → `page_id`(medium) 구분
   - [x] 🧪 라벨(`Database ID`/`REST API 키`) 옆 값 → 해당 종류 매핑 (한글 라벨 pytest 통과)
   - [x] ✅ 신호 충돌(data_source 라벨 vs page URL) → `conflict`+선택지, 단정 안 함
-  - [ ] ⏸ 스크린샷(OCR) 경유 라벨 — CORE-3에서 이 파이프라인에 연결
+  - [x] 스크린샷(OCR) 경유 라벨 — CORE-3(브라우저 tesseract.js)가 이 파이프라인에 연결됨
 
-### CORE-3 🟠 OCR 파이프라인 (스크린샷 → 텍스트+라벨) — CORE-2의 *입력 경로*
-- **중요도**: 🟠 High | **스프린트**: S2(후반) | **의존성**: DEMO-1(테스트 이미지) | **사이즈**: M~L *(라벨-값 공간 페어링이 난이도 핵심 — L 가능성*)
+### CORE-3 🟠 OCR 파이프라인 (스크린샷 → 텍스트+라벨) — CORE-2의 *입력 경로* — ✅ 브라우저 OCR 완료
+- **중요도**: 🟠 High | **스프린트**: S2(후반) | **의존성**: DEMO-1(테스트 이미지) | **사이즈**: M~L *(라벨-값 공간 페어링이 난이도 핵심 — L 가능성*) | **상태**: ✅ tesseract.js(클라이언트) — vitest 8개 + 실제 이미지 E2E
 - **배경**: 차별점의 입력단. 핵심은 단순 텍스트가 아니라 **값과 라벨의 위치 관계**를 보존하는 것(라벨이 분류 단서이므로). **CORE-2가 완성된 뒤** 그 파이프라인에 "이미지→텍스트+라벨"을 먹이는 역할 — CORE-2를 막지 않는다.
+- **⚠️ 방식 결정**: `ocr_node.py`(파이썬 백엔드) 대신 **브라우저 클라이언트 OCR(tesseract.js, Apache-2.0)**. "모든 분석은 이 기기 안에서" 프라이버시·서버리스 방향과 일치, 파이썬 의존성 0. 라이선스 심사 통과(THIRD-PARTY-NOTICES.md).
 - **하위 할일**
-  - **[Engine] `ocr_node.py`**
-    - [ ] Tesseract/PaddleOCR 연동, 이미지 → 텍스트 박스 목록(text + bbox) 추출
-    - [ ] 라벨–값 페어링: 같은 행/바로 위 행에 있는 텍스트를 라벨 후보로 연결
-    - [ ] 노이즈 정리(마스킹된 `••••`, 복사 버튼 텍스트 제거)
-    - [ ] 출력을 CORE-2 Stage2 입력 형식(text + label 후보)에 맞춤
+  - **[Engine] `frontend/src/ocr/` (tesseract.js)**
+    - [x] tesseract.js 연동: 이미지 → word 박스(text+bbox), 한글+영문 동시 인식 (`ocr.ts`)
+    - [x] 라벨–값 페어링: word 박스를 행으로 그룹핑(같은 행/바로 위 행 보존) → Stage2 입력 텍스트 (`reconstruct.ts`)
+    - [x] 노이즈 정리(마스킹 `••••` → `[마스킹됨]`, 복사/표시 버튼 등 UI 잡음 제거)
+    - [x] 출력을 CORE-2 Stage2 입력 형식(라인 보존 text)에 맞춰 기존 `/analyze`로 병합
+    - [x] 재현성: WASM core·worker·traineddata 로컬 벤더링(`scripts/vendor-tesseract.mjs`) — 런타임 CDN 미사용
   - **[Engine] 전처리**
-    - [ ] 대비 보정·확대 등 기본 전처리로 인식률 향상
+    - [ ] ⏸ 대비 보정·확대 등 기본 전처리로 인식률 향상 (후속)
 - **테스트 체크리스트**
-  - [ ] 🧪 노션 통합 설정 스크린샷 → 시크릿 값 + "Secret" 라벨 페어 추출
-  - [ ] 🧪 마스킹된 값(`secret_••••`) → "마스킹됨"으로 표시(가짜 값 생성 금지)
-  - [ ] ✅ 한글/영문 라벨 혼재 화면에서 라벨 인식
+  - [x] 🧪 노션 통합 설정 스크린샷 → "Database ID" 라벨+값 페어 추출 → `NOTION_DATABASE_ID`(high) E2E 확인
+  - [x] 🧪 마스킹된 값(`secret_••••`) → `[마스킹됨]` 치환, 가짜 값 분류 생성 안 함 (bbox 경로 vitest)
+    - ⚠️ 한계: OCR이 `••••`를 글자로 오독하면 마스킹 감지 불가 — 단, 이 경우도 값 정규식 불일치라 unknown(오분류 없음). 전처리(후속)로 개선 여지.
+  - [x] ✅ 한글/영문 라벨 혼재(카카오 다중 키) 각 줄 보존 vitest
 
 ### DEMO-1 ⚪ 데모/테스트 스크린샷 세트 (`docs/demo/`) — 신설
 - **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: S

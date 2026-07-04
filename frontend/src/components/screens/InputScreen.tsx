@@ -12,6 +12,7 @@ export function InputScreen() {
     vault,
     analyzed,
     analyzing,
+    ocrProgress,
     results,
     unknowns,
     apiError,
@@ -192,9 +193,13 @@ export function InputScreen() {
         <div className="relative overflow-hidden rounded-[14px] border border-border bg-surface px-6 py-[60px] text-center [animation:klFade_.2s]">
           <div className="absolute inset-x-[6%] top-[10%] h-[2px] rounded-[2px] bg-[linear-gradient(90deg,transparent,rgba(62,207,142,.7),transparent)] [animation:klScan_1.5s_ease-in-out_infinite]" />
           <div className="mx-auto size-[34px] rounded-full border-2 border-border border-t-mint [animation:klRingSpin_.8s_linear_infinite]" />
-          <div className="mt-[18px] text-[14.5px] font-semibold">분류 중…</div>
+          <div className="mt-[18px] text-[14.5px] font-semibold">
+            {ocrProgress !== null ? '스크린샷 인식 중…' : '분류 중…'}
+          </div>
           <div className="mt-[6px] font-mono text-[12.5px] text-faint-2">
-            형식 시그니처 · 주변 텍스트 · URL 구조 대조
+            {ocrProgress !== null
+              ? `브라우저에서 OCR — ${Math.round(ocrProgress * 100)}% (기기 밖으로 나가지 않음)`
+              : '형식 시그니처 · 주변 텍스트 · URL 구조 대조'}
           </div>
         </div>
       )}

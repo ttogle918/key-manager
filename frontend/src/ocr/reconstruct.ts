@@ -1,0 +1,98 @@
+// SPDX-FileCopyrightText: 2026 [Your Name]
+// SPDX-License-Identifier: MIT
+/**
+ * OCR 단어 박스 → 라인 보존 텍스트 재구성 (CORE-3의 난이도 핵심: 라벨-값 공간 페어링).
+ *
+ * 엔진 독립적인 순수 로직 — 입력은 tesseract.js 의 word 출력과 같은 모양이면 무엇이든 된다.
+ * 목적: 값과 라벨의 "위치 관계"(같은 행 / 바로 위 행)를 텍스트 줄 구조로 보존해,
+ * 백엔드 Stage2(`classify_context`)의 라벨-값 페어링에 그대로 먹일 수 있게 만든다.
+ * OCR 엔진(tesseract.js)은 이 함수에 박스를 공급하는 입력 경로일 뿐.
+ */
+
+/** tesseract.js word 와 호환되는 최소 형태. bbox 좌표는 픽셀. */
+export interface OcrWord {
+  text: string
+  bbox: { x0: number; y0: number; x1: number; y1: number }
+}
+
+/** 마스킹 문자(가려진 값)로 흔히 쓰이는 글리프 — 진짜 값이 아니므로 값 후보에서 제외한다. */
+const MASK_GLYPHS = /[•·●∙・*※‧⋅]/
+/** 콘솔 UI 잡음(복사/표시/재발급 버튼 등) — 라벨/값이 아니다. */
+const NOISE_WORDS = new Set([
+  'copy',
+  'copied',
+  '복사',
+  '복사됨',
+  'show',
+  'hide',
+  '표시',
+  '숨기기',
+  'reveal',
+  'regenerate',
+  '재발급',
+  'refresh',
+  'reset',
+  'edit',
+  'delete',
+  '삭제',
+])
+
+/** 토큰이 마스킹된 값인지: 마스킹 글리프가 2개 이상 연속하거나 토큰의 상당 부분이면 마스킹으로 본다. */
+export function isMasked(token: string): boolean {
+  const masks = (token.match(new RegExp(MASK_GLYPHS, 'g')) || []).length
+  if (masks === 0) return false
+  // secret_•••• 처럼 접두어 + 가림, 또는 •••• 통짜 가림 모두 포착.
+  return masks >= 2 || masks / token.length >= 0.4
+}
+
+/** 잡음 토큰(빈 문자열·UI 버튼)인지. */
+function isNoise(token: string): boolean {
+  const t = token.trim()
+  if (!t) return true
+  return NOISE_WORDS.has(t.toLowerCase())
+}
+
+const cy = (w: OcrWord) => (w.bbox.y0 + w.bbox.y1) / 2
+const height = (w: OcrWord) => Math.max(1, w.bbox.y1 - w.bbox.y0)
+
+/**
+ * 단어 박스를 행(row)으로 묶는다. 세로 중심(cy)이 현재 행 평균과 단어 높이의 절반 이내면 같은 행.
+ * 반환: 위→아래 정렬된 행들, 각 행은 좌→우 정렬된 단어 목록.
+ */
+export function groupRows(words: OcrWord[]): OcrWord[][] {
+  const sorted = [...words].sort((a, b) => cy(a) - cy(b))
+  const rows: { center: number; words: OcrWord[] }[] = []
+  for (const w of sorted) {
+    const tol = height(w) * 0.6
+    const row = rows.find((r) => Math.abs(r.center - cy(w)) <= tol)
+    if (row) {
+      row.words.push(w)
+      // 러닝 평균으로 중심 갱신(행이 기울어도 안정적).
+      row.center = (row.center * (row.words.length - 1) + cy(w)) / row.words.length
+    } else {
+      rows.push({ center: cy(w), words: [w] })
+    }
+  }
+  return rows.map((r) => r.words.sort((a, b) => a.bbox.x0 - b.bbox.x0))
+}
+
+/**
+ * 단어 박스들을 라인 보존 텍스트로 재구성한다.
+ * - 행 그룹핑으로 같은 줄/윗줄 관계를 보존(→ Stage2 라벨 페어링).
+ * - 마스킹된 값은 리터럴 `[마스킹됨]` 자리표시자로 치환(가짜 값 생성 금지, SPEC/CORE-3 AC).
+ * - UI 잡음 단어는 제거.
+ */
+export function reconstructText(words: OcrWord[]): string {
+  const rows = groupRows(words)
+  const lines: string[] = []
+  for (const row of rows) {
+    const tokens: string[] = []
+    for (const w of row) {
+      if (isNoise(w.text)) continue
+      tokens.push(isMasked(w.text) ? '[마스킹됨]' : w.text)
+    }
+    const line = tokens.join(' ').trim()
+    if (line) lines.push(line)
+  }
+  return lines.join('\n')
+}
