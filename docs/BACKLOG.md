@@ -93,8 +93,11 @@ SPDX-License-Identifier: MIT
     - [x] 노이즈 정리(마스킹 `••••` → `[마스킹됨]`, 복사/표시 버튼 등 UI 잡음 제거)
     - [x] 출력을 CORE-2 Stage2 입력 형식(라인 보존 text)에 맞춰 기존 `/analyze`로 병합
     - [x] 재현성: WASM core·worker·traineddata 로컬 벤더링(`scripts/vendor-tesseract.mjs`) — 런타임 CDN 미사용
-  - **[Engine] 전처리**
-    - [ ] ⏸ 대비 보정·확대 등 기본 전처리로 인식률 향상 (후속)
+  - **[Engine] 전처리 / 값 정확도** — 조사 완료, 방향 전환
+    - [x] 재구성 개선: 구두점에서 쪼개진 토큰 간격 기반 재결합(`6789. Dumm`→`6789.Dumm`) — 실측 win, vitest
+    - [x] 🔬 이미지 전처리 실험(grayscale·대비·sharpen·2x확대·Otsu 이진화) → **채택 안 함**: 한글 단일글자("키"→"7\|", "앱"→"2/&")·base62 `1↔i` 오독은 모델 한계라 개선 안 되고, 공격적 변형은 오히려 퇴행(sharpen=환각 `tn)_`, Otsu=hex `0→@`). 고DPI 스크린샷은 전처리 이득 없음.
+    - [ ] ⏸ 값 정확도의 실제 해법은 필드 영역 크롭 + PSM/charset whitelist(값 전용 인식) — 큰 후속. **단, 값은 복붙 전제라 우선순위 낮음.**
+    - [ ] → 대신 **값 신뢰도 플래깅 UX**(공백/의심 글자 토스트+표식)와 **서비스 분류 정확도**로 전환 (사용자 결정, 2026-07-04)
 - **테스트 체크리스트**
   - [x] 🧪 노션 통합 설정 스크린샷 → "Database ID" 라벨+값 페어 추출 → `NOTION_DATABASE_ID`(high) E2E 확인
   - [x] 🧪 마스킹된 값(`secret_••••`) → `[마스킹됨]` 치환, 가짜 값 분류 생성 안 함 (bbox 경로 vitest)

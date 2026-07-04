@@ -67,6 +67,21 @@ describe('reconstructText', () => {
     )
   })
 
+  it('구두점에서 쪼개진 토큰을 간격으로 재결합(실측: 6789. Dumm → 6789.Dumm)', () => {
+    // OCR 이 `<hex>.<suffix>` 를 점 뒤에서 둘로 나눈 상황 — 두 박스가 촘촘히 붙어 있음.
+    const a = { text: 'abcdef0123456789abcdef0123456789.', bbox: { x0: 100, y0: 100, x1: 420, y1: 122 } }
+    const b = { text: 'DummyOllamaSuffixi234567', bbox: { x0: 423, y0: 100, x1: 640, y1: 122 } }
+    // 가까운 간격(3px ≪ 글자폭) → 공백 없이 결합.
+    expect(reconstructText([a, b])).toBe(
+      'abcdef0123456789abcdef0123456789.DummyOllamaSuffixi234567',
+    )
+  })
+
+  it('정상 단어 간격은 공백으로 유지(과결합 방지)', () => {
+    // "Database"(x1=190) 와 "ID"(x0=210) 사이 20px 는 글자폭 대비 충분 → 공백 유지.
+    expect(reconstructText([w('Database', 100, 100), w('ID', 210, 100)])).toBe('Database ID')
+  })
+
   it('한글/영문 라벨 혼재 여러 키를 각 줄로 보존(카카오 다중 키 화면)', () => {
     const words = [
       w('REST', 100, 100),

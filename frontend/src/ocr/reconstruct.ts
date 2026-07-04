@@ -54,6 +54,9 @@ function isNoise(token: string): boolean {
 
 const cy = (w: OcrWord) => (w.bbox.y0 + w.bbox.y1) / 2
 const height = (w: OcrWord) => Math.max(1, w.bbox.y1 - w.bbox.y0)
+/** 글자당 평균 너비(px) 추정 — 토큰 사이 간격이 '진짜 공백'인지 판단하는 기준. */
+const charWidth = (w: OcrWord) =>
+  Math.max(1, (w.bbox.x1 - w.bbox.x0) / Math.max(1, w.text.length))
 
 /**
  * 단어 박스를 행(row)으로 묶는다. 세로 중심(cy)이 현재 행 평균과 단어 높이의 절반 이내면 같은 행.
@@ -81,17 +84,30 @@ export function groupRows(words: OcrWord[]): OcrWord[][] {
  * - 행 그룹핑으로 같은 줄/윗줄 관계를 보존(→ Stage2 라벨 페어링).
  * - 마스킹된 값은 리터럴 `[마스킹됨]` 자리표시자로 치환(가짜 값 생성 금지, SPEC/CORE-3 AC).
  * - UI 잡음 단어는 제거.
+ * - **간격 인식 결합**: OCR 이 `key.value` 같은 한 토큰을 구두점에서 둘로 쪼갠 경우(간격이
+ *   글자폭보다 훨씬 작음) 공백 없이 붙인다 — 실제 값이 끊기지 않게(실측: `6789. Dumm` → `6789.Dumm`).
  */
 export function reconstructText(words: OcrWord[]): string {
   const rows = groupRows(words)
   const lines: string[] = []
   for (const row of rows) {
-    const tokens: string[] = []
-    for (const w of row) {
-      if (isNoise(w.text)) continue
-      tokens.push(isMasked(w.text) ? '[마스킹됨]' : w.text)
+    const kept = row.filter((w) => !isNoise(w.text))
+    let line = ''
+    for (let i = 0; i < kept.length; i++) {
+      const w = kept[i]
+      const token = isMasked(w.text) ? '[마스킹됨]' : w.text
+      if (i > 0) {
+        const prev = kept[i - 1]
+        const gap = w.bbox.x0 - prev.bbox.x1
+        // 정상 단어 공백은 글자폭의 ~1배(모노스페이스). 반 글자폭 미만이면 한 토큰이 쪼개진 것 → 붙임.
+        // (실측 보정: 고해상도 스크린샷에서 구두점 분리 간격 ≈ 5px, 글자폭 ≈ 13px.)
+        const tight = gap < 0.5 * Math.min(charWidth(prev), charWidth(w))
+        line += tight ? token : ' ' + token
+      } else {
+        line = token
+      }
     }
-    const line = tokens.join(' ').trim()
+    line = line.trim()
     if (line) lines.push(line)
   }
   return lines.join('\n')
