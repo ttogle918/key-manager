@@ -5,7 +5,7 @@
  * 실제 tesseract.js 없이 word-box 픽스처로 공간 로직만 검증한다.
  */
 import { describe, expect, it } from 'vitest'
-import { groupRows, isMasked, reconstructText, type OcrWord } from './reconstruct'
+import { groupRows, isMasked, reconstruct, reconstructText, type OcrWord } from './reconstruct'
 
 /** (text, x, y) → 대략적 word box. 높이 20px, 너비는 글자수 비례로 픽스처를 간결히. */
 function w(text: string, x: number, y: number): OcrWord {
@@ -80,6 +80,19 @@ describe('reconstructText', () => {
   it('정상 단어 간격은 공백으로 유지(과결합 방지)', () => {
     // "Database"(x1=190) 와 "ID"(x0=210) 사이 20px 는 글자폭 대비 충분 → 공백 유지.
     expect(reconstructText([w('Database', 100, 100), w('ID', 210, 100)])).toBe('Database ID')
+  })
+
+  it('이어붙인 이음매 위치를 flagged 로 남긴다(값 확인 표식용)', () => {
+    const a = { text: 'abcdef0123456789abcdef0123456789.', bbox: { x0: 100, y0: 100, x1: 420, y1: 122 } }
+    const b = { text: 'DummyOllamaSuffixi234567', bbox: { x0: 423, y0: 100, x1: 640, y1: 122 } }
+    const rec = reconstruct([a, b])
+    expect(rec.flagged).toHaveLength(1)
+    expect(rec.flagged[0].text).toBe(rec.text)
+    expect(rec.flagged[0].marks).toEqual([33]) // 첫 토큰 길이 = 두 번째 토큰 시작 위치
+  })
+
+  it('정상 간격만 있으면 flagged 는 비어있다', () => {
+    expect(reconstruct([w('Database', 100, 100), w('ID', 210, 100)]).flagged).toEqual([])
   })
 
   it('한글/영문 라벨 혼재 여러 키를 각 줄로 보존(카카오 다중 키 화면)', () => {

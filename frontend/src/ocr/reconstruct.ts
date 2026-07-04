@@ -79,6 +79,21 @@ export function groupRows(words: OcrWord[]): OcrWord[][] {
   return rows.map((r) => r.words.sort((a, b) => a.bbox.x0 - b.bbox.x0))
 }
 
+/** OCR 이 촘촘한 간격 때문에 이어붙인 토큰과, 그 이음매(불확실) 글자 위치. */
+export interface FlaggedToken {
+  /** 이어붙여 만든 최종 토큰 문자열(= 분류에 쓰인 값과 동일). */
+  text: string
+  /** 이음매 글자 인덱스 목록(그 지점 앞뒤가 OCR 상 불확실 — 사용자 확인 권장). */
+  marks: number[]
+}
+
+export interface Reconstruction {
+  /** 라인 보존 텍스트(백엔드 분류 입력). */
+  text: string
+  /** 간격 결합으로 만들어진 토큰들(사용자에게 "여기 확인" 표식용). */
+  flagged: FlaggedToken[]
+}
+
 /**
  * 단어 박스들을 라인 보존 텍스트로 재구성한다.
  * - 행 그룹핑으로 같은 줄/윗줄 관계를 보존(→ Stage2 라벨 페어링).
@@ -86,29 +101,54 @@ export function groupRows(words: OcrWord[]): OcrWord[][] {
  * - UI 잡음 단어는 제거.
  * - **간격 인식 결합**: OCR 이 `key.value` 같은 한 토큰을 구두점에서 둘로 쪼갠 경우(간격이
  *   글자폭보다 훨씬 작음) 공백 없이 붙인다 — 실제 값이 끊기지 않게(실측: `6789. Dumm` → `6789.Dumm`).
+ *   이렇게 이어붙인 이음매는 OCR 상 불확실하므로 위치를 `flagged`로 남겨 UI가 표시하게 한다.
  */
-export function reconstructText(words: OcrWord[]): string {
+export function reconstruct(words: OcrWord[]): Reconstruction {
   const rows = groupRows(words)
   const lines: string[] = []
+  const flagged: FlaggedToken[] = []
+
   for (const row of rows) {
     const kept = row.filter((w) => !isNoise(w.text))
-    let line = ''
+    const segments: string[] = [] // 공백으로 나뉜 논리 토큰들
+    let seg = ''
+    let segMarks: number[] = []
+    const flush = () => {
+      if (seg) {
+        segments.push(seg)
+        if (segMarks.length) flagged.push({ text: seg, marks: segMarks })
+      }
+      seg = ''
+      segMarks = []
+    }
     for (let i = 0; i < kept.length; i++) {
       const w = kept[i]
       const token = isMasked(w.text) ? '[마스킹됨]' : w.text
-      if (i > 0) {
-        const prev = kept[i - 1]
-        const gap = w.bbox.x0 - prev.bbox.x1
-        // 정상 단어 공백은 글자폭의 ~1배(모노스페이스). 반 글자폭 미만이면 한 토큰이 쪼개진 것 → 붙임.
-        // (실측 보정: 고해상도 스크린샷에서 구두점 분리 간격 ≈ 5px, 글자폭 ≈ 13px.)
-        const tight = gap < 0.5 * Math.min(charWidth(prev), charWidth(w))
-        line += tight ? token : ' ' + token
+      if (i === 0) {
+        seg = token
+        continue
+      }
+      const prev = kept[i - 1]
+      const gap = w.bbox.x0 - prev.bbox.x1
+      // 정상 단어 공백은 글자폭의 ~1배(모노스페이스). 반 글자폭 미만이면 한 토큰이 쪼개진 것 → 붙임.
+      // (실측 보정: 고해상도 스크린샷에서 구두점 분리 간격 ≈ 5px, 글자폭 ≈ 13px.)
+      const tight = gap < 0.5 * Math.min(charWidth(prev), charWidth(w))
+      if (tight) {
+        segMarks.push(seg.length) // 이음매 = 다음 토큰이 시작되는 글자 위치
+        seg += token
       } else {
-        line = token
+        flush()
+        seg = token
       }
     }
-    line = line.trim()
+    flush()
+    const line = segments.join(' ').trim()
     if (line) lines.push(line)
   }
-  return lines.join('\n')
+  return { text: lines.join('\n'), flagged }
+}
+
+/** 텍스트만 필요할 때(백엔드 입력·회귀 픽스처). */
+export function reconstructText(words: OcrWord[]): string {
+  return reconstruct(words).text
 }

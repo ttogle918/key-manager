@@ -17,6 +17,12 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
   const cm = CONF_META[confKey]
   const svc = SVC_META[r.service]
   const unresolved = !!r.conflict && !cur
+
+  // OCR 이 이어붙인 이음매 위에 빨간 'v' 표식(사용자 확인용). 값·표식은 모노스페이스로 열 정렬.
+  const marks = new Set(r.ocrUncertain ?? [])
+  const caretRow = marks.size
+    ? Array.from(r.full, (_, i) => (marks.has(i) ? 'v' : ' ')).join('')
+    : ''
   const typeOpts = (unresolved ? [{ v: '', label: '종류 선택…' }] : []).concat(
     tmap.map((t) => ({ v: t.v, label: t.label })),
   )
@@ -60,6 +66,23 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
         </span>
         <span className="flex-none font-mono text-[10.5px] text-dim-2">{r.format}</span>
       </div>
+
+      {/* OCR 이어붙임 확인 — 이음매 위 빨간 v 표식 + 원본 복사 권장 */}
+      {caretRow && (
+        <div className="mx-4 mt-[6px] rounded-lg border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.05)] px-3 py-2">
+          <div className="mb-[5px] flex items-center gap-[7px] text-[11.5px] font-semibold text-amber">
+            <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />
+            OCR가 여기를 이어붙였어요 — 원본을 복사해 확인하세요
+          </div>
+          <div className="overflow-x-auto">
+            <pre className="m-0 font-mono text-[12.5px] leading-[1.25]">
+              <span className="text-[#ff5a5a]">{caretRow}</span>
+              {'\n'}
+              <span className="text-fg-soft">{r.full}</span>
+            </pre>
+          </div>
+        </div>
+      )}
 
       {/* 컨텍스트 노트 */}
       {r.context && (

@@ -49,6 +49,8 @@ export interface AnalysisResult {
   metaOpen: boolean
   meta: Record<string, unknown>
   dupNote?: string | null
+  /** OCR 이 이어붙인 값의 이음매 글자 인덱스(불확실 — 사용자 확인용). 없으면 undefined. */
+  ocrUncertain?: number[]
 }
 
 /** 회전/등록 등 키 이력 한 줄. */

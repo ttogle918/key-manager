@@ -339,12 +339,16 @@ export const useKeylens = create<KeylensState>((set, get) => {
 
       // 실제 스크린샷이면 브라우저 안에서 OCR(CORE-3) → 라벨 보존 텍스트. 이미지는 기기를 떠나지 않는다.
       let ocrText = ''
+      // OCR 이 이어붙인 이음매(불확실 지점) — 값 문자열 → 표식 인덱스. 결과 카드가 "여기 확인" 표시.
+      const ocrMarks = new Map<string, number[]>()
       if (img && img !== 'sample') {
         set({ ocrProgress: 0 })
         try {
-          ocrText = await runOcr(img, (p) => {
+          const rec = await runOcr(img, (p) => {
             if (get().analyzing) set({ ocrProgress: p.progress })
           })
+          ocrText = rec.text
+          for (const f of rec.flagged) ocrMarks.set(f.text, f.marks)
         } catch {
           get().showToast('스크린샷 인식 실패 — 텍스트·URL만 분석합니다')
         }
@@ -372,7 +376,19 @@ export const useKeylens = create<KeylensState>((set, get) => {
         })
         if (!get().analyzing) return
         const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
+        // OCR 이 이어붙인 값에 "여기 확인" 표식을 달고, 있으면 토스트로 알린다(값은 복붙 권장).
+        let flaggedCount = 0
+        for (const r of results) {
+          const marks = ocrMarks.get(r.full)
+          if (marks?.length) {
+            r.ocrUncertain = marks
+            flaggedCount++
+          }
+        }
         set({ analyzing: false, analyzed: true, results, unknowns })
+        if (flaggedCount) {
+          get().showToast('OCR가 값 일부를 이어붙였어요 — 원본을 복사해 확인하세요')
+        }
       } catch (e) {
         if (!get().analyzing) return
         // 백엔드 미연결 → 데모가 끊기지 않게 샘플 목업으로 폴백.

@@ -7,7 +7,7 @@ from app.classify.pipeline import analyze
 from app.knowledge import load_knowledge_base
 from app.models import AnalyzeRequest
 
-# 더미 Ollama 키 포맷: 32 hex + '.' + 24 base62
+# 더미 Ollama 키 포맷: 32 hex + '.' + 24 base62 (명백한 가짜 — 실제 키 아님)
 PASTE = "abcdef0123456789abcdef0123456789.DummyOllamaSuffix1234567"
 # OCR 이 1→i 로 오독해도 문자클래스(영숫자)를 벗어나지 않아 여전히 매치된다.
 OCR = "abcdef0123456789abcdef0123456789.DummyOllamaSuffixi234567"
