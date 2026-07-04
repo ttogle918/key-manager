@@ -13,6 +13,8 @@ export function InputScreen() {
     analyzed,
     analyzing,
     results,
+    unknowns,
+    apiError,
     attachedImage,
     attachedName,
     dragOver,
@@ -26,7 +28,8 @@ export function InputScreen() {
   const firstRun = vault.length === 0 && !analyzed && !analyzing
   const showStage = !analyzing && !analyzed
   const showResults = analyzed && results.length > 0
-  const showDone = analyzed && results.length === 0
+  const showUnknowns = analyzed && unknowns.length > 0
+  const showDone = analyzed && results.length === 0 && unknowns.length === 0
   const hasRealImg = !!(attachedImage && attachedImage !== 'sample')
   const hasSampleImg = attachedImage === 'sample'
   const savableCount = results.filter((r) =>
@@ -196,6 +199,13 @@ export function InputScreen() {
         </div>
       )}
 
+      {analyzed && apiError && (
+        <div className="mb-3 flex items-center gap-[10px] rounded-[10px] border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.05)] px-[14px] py-3 text-[12.5px] text-amber-soft [animation:klFade_.2s]">
+          <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />
+          {apiError} — 아래는 샘플 목업입니다. 백엔드(:8003)를 켜면 실제 분류로 동작해요.
+        </div>
+      )}
+
       {showResults && (
         <div className="[animation:klFadeUp_.3s_ease]">
           <div className="mb-[14px] flex items-center gap-[10px]">
@@ -220,6 +230,29 @@ export function InputScreen() {
           </div>
           {results.map((r) => (
             <ResultCard key={r.id} r={r} />
+          ))}
+        </div>
+      )}
+
+      {showUnknowns && (
+        <div className="mt-3 rounded-[12px] border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.04)] p-[14px] [animation:klFadeUp_.3s_ease]">
+          <div className="flex items-center gap-2 text-[13px] font-bold text-amber">
+            <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />값만으로 판별 불가 — {unknowns.length}건
+          </div>
+          <div className="mb-[10px] mt-[5px] text-[12px] leading-[1.5] text-muted">
+            형식이 같은 종류가 여럿이라 값만으론 못 가립니다. 맥락 기반 분류(Stage2)에서 라벨·URL로 구분할 예정이에요.
+          </div>
+          {unknowns.map((u, i) => (
+            <div
+              key={`${u.keyName}-${i}`}
+              className="mt-[6px] flex items-center gap-[10px] rounded-[8px] border border-line bg-inset px-3 py-[8px]"
+            >
+              <span className="flex-none font-mono text-[11px] text-faint">{u.keyName}</span>
+              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] text-fg-soft">
+                {u.masked}
+              </span>
+              <span className="flex-none font-mono text-[10.5px] text-dim-2">{u.format}</span>
+            </div>
           ))}
         </div>
       )}

@@ -83,6 +83,14 @@ export interface SvcMeta {
   fg: string
 }
 
+/** Stage1에서 값만으로 판별 불가한 항목(서비스 미상). Stage2(맥락)로 넘어갈 후보. */
+export interface UnknownItem {
+  keyName: string
+  masked: string
+  format: string
+  source: string
+}
+
 /** 삭제 확인 대상. */
 export type DeleteTarget = VaultItem | null
 

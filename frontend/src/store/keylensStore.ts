@@ -6,6 +6,8 @@
 // 목업 로직(seed 데이터, 가짜 분석·저장)은 그대로 유지하며,
 // 실제 백엔드(SPEC 5장: OCR·분류·암호화·SQLite)로 교체할 지점은 seed.ts / services.ts로 분리해 둔다.
 import { create } from 'zustand'
+import { analyzeApi, ApiError } from '@/api/client'
+import { toAnalysisResults } from '@/api/map'
 import { TYPE_MAP } from '@/data/services'
 import { freshResults, seedVault } from '@/data/seed'
 import { envText, today } from '@/lib/format'
@@ -15,6 +17,7 @@ import type {
   DupTarget,
   Screen,
   TypeOption,
+  UnknownItem,
   VaultItem,
   View,
 } from '@/types'
@@ -62,6 +65,10 @@ interface KeylensState {
   analyzing: boolean
   analyzed: boolean
   results: AnalysisResult[]
+  /** Stage1에서 값만으로 판별 불가한 항목(맥락 분류 Stage2 대상). */
+  unknowns: UnknownItem[]
+  /** 백엔드 미연결 등으로 목업 폴백했을 때의 사유(없으면 null). */
+  apiError: string | null
   sourceLabel: string
   analyzedImage: string | null
 
@@ -218,6 +225,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     analyzing: false,
     analyzed: false,
     results: [],
+    unknowns: [],
+    apiError: null,
     sourceLabel: '',
     analyzedImage: null,
     vault: seedVault(),
@@ -301,29 +310,59 @@ export const useKeylens = create<KeylensState>((set, get) => {
     handlePasteText: (text) => {
       if (!get().analyzed && !get().analyzing) set({ textVal: text })
     },
-    startAnalyze: () => {
+    startAnalyze: async () => {
       if (get().analyzing) return
       const s = get()
+      const text = s.textVal.trim()
+      const url = s.urlVal.trim()
       const parts: string[] = []
       let img = s.attachedImage
-      if (!img && !s.urlVal.trim() && !s.textVal.trim()) img = 'sample'
+      if (!img && !text && !url) img = 'sample'
       if (img) parts.push(img === 'sample' ? '샘플 스크린샷 1장' : '스크린샷 1장')
-      if (s.urlVal.trim()) parts.push('URL 1건')
-      if (s.textVal.trim()) parts.push('텍스트')
-      set({ analyzing: true, dragOver: false, sourceLabel: parts.join(' · '), analyzedImage: img })
-      const ms = Math.max(200, ANALYZE_SECONDS * 1000)
-      timer(() => {
-        const memo = get().memoVal.trim()
-        const project = get().projVal.trim()
+      if (url) parts.push('URL 1건')
+      if (text) parts.push('텍스트')
+      const memo = s.memoVal.trim()
+      const project = s.projVal.trim()
+      set({
+        analyzing: true,
+        dragOver: false,
+        sourceLabel: parts.join(' · '),
+        analyzedImage: img,
+        apiError: null,
+        unknowns: [],
+      })
+
+      // 텍스트·URL이 없으면(이미지 단독) 백엔드가 분석할 소스가 없다 — OCR 미구현이라 샘플 목업으로 시연.
+      if (!text && !url) {
+        await new Promise((r) => setTimeout(r, Math.max(200, ANALYZE_SECONDS * 1000)))
+        if (!get().analyzing) return // 중간에 리셋됨
         const results = freshResults().map((r) => ({ ...r, memo, project }))
-        set({ analyzing: false, analyzed: true, results })
-      }, ms)
+        set({ analyzing: false, analyzed: true, results, unknowns: [] })
+        return
+      }
+
+      // 백엔드 Stage1 값 기반 분류 호출.
+      try {
+        const resp = await analyzeApi({ text: text || undefined, url: url || undefined })
+        if (!get().analyzing) return
+        const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
+        set({ analyzing: false, analyzed: true, results, unknowns })
+      } catch (e) {
+        if (!get().analyzing) return
+        // 백엔드 미연결 → 데모가 끊기지 않게 샘플 목업으로 폴백.
+        const results = freshResults().map((r) => ({ ...r, memo, project }))
+        const msg = e instanceof ApiError ? e.message : '백엔드 연결 실패'
+        set({ analyzing: false, analyzed: true, results, unknowns: [], apiError: msg })
+        get().showToast(`${msg} — 샘플 결과로 시연합니다`)
+      }
     },
     resetResults: () =>
       set({
         analyzed: false,
         analyzing: false,
         results: [],
+        unknowns: [],
+        apiError: null,
         attachedImage: null,
         attachedName: '',
         analyzedImage: null,
@@ -518,6 +557,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         analyzed: false,
         analyzing: false,
         results: [],
+        unknowns: [],
+        apiError: null,
         locked: false,
         justUnlocked: false,
         remaskLeft: 0,

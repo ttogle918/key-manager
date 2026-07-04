@@ -1,0 +1,82 @@
+// SPDX-FileCopyrightText: 2026 [Your Name]
+// SPDX-License-Identifier: MIT
+/** 백엔드 분류 결과(ClassifiedItem)를 프론트 도메인(AnalysisResult)으로 변환. */
+import { TYPE_MAP } from '@/data/services'
+import type { AnalysisResult, Confidence, Service, UnknownItem } from '@/types'
+import type { ApiConfidence, ClassifiedItem } from './types'
+
+/** 백엔드 service id → 프론트 Service enum (SVC_META·TYPE_MAP 키). */
+const SERVICE_BY_ID: Record<string, Service> = {
+  notion: 'Notion',
+  kakao: 'Kakao',
+  gcp: 'GCP',
+  openai: 'OpenAI',
+}
+
+/** 백엔드 confidence → 프론트 conf. */
+const CONF_BY_API: Record<ApiConfidence, Confidence> = {
+  high: 'high',
+  medium: 'mid',
+  unknown: 'low',
+}
+
+export interface MappedResults {
+  results: AnalysisResult[]
+  unknowns: UnknownItem[]
+}
+
+/** meta에서 사람이 읽을 컨텍스트 한 줄을 뽑는다(있으면). */
+function contextFrom(meta: Record<string, unknown>): string | undefined {
+  for (const key of ['label', 'ocr_title', 'shell_line', 'console_tab', 'workspace']) {
+    const v = meta[key]
+    if (typeof v === 'string' && v) return v
+  }
+  return undefined
+}
+
+/**
+ * 서비스가 확정된 항목은 AnalysisResult 카드로,
+ * 값만으로 판별 불가한 항목(service=null)은 unknowns 로 분리한다.
+ * 조인 키는 official_env_name — 백엔드/프론트가 공유하는 안정적 계약.
+ */
+export function toAnalysisResults(
+  items: ClassifiedItem[],
+  memo: string,
+  project: string,
+): MappedResults {
+  const results: AnalysisResult[] = []
+  const unknowns: UnknownItem[] = []
+
+  items.forEach((it, i) => {
+    const svc = it.service ? SERVICE_BY_ID[it.service] : undefined
+
+    if (svc && it.official_env_name) {
+      const typeDef = TYPE_MAP[svc].find((t) => t.var === it.official_env_name)
+      results.push({
+        id: `api_${i}`,
+        service: svc,
+        typeKey: typeDef ? typeDef.v : '',
+        conf: CONF_BY_API[it.confidence] ?? 'low',
+        masked: it.masked,
+        full: it.value,
+        format: it.format,
+        source: it.source,
+        context: contextFrom(it.meta),
+        memo,
+        project,
+        metaOpen: false,
+        meta: it.meta,
+      })
+    } else {
+      const assigned = it.meta['assigned_name']
+      unknowns.push({
+        keyName: typeof assigned === 'string' && assigned ? assigned : '(변수명 미상)',
+        masked: it.masked,
+        format: it.format,
+        source: it.source,
+      })
+    }
+  })
+
+  return { results, unknowns }
+}

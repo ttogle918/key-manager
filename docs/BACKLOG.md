@@ -139,21 +139,21 @@ SPDX-License-Identifier: MIT
 
 > 백로그 원안은 "UI가 CORE를 직접 호출"로 뭉뚱그렸으나, React↔FastAPI 분리 구조에는 실제 **통합 계층**이 존재한다. 프론트(목업)와 백엔드(Stage1)가 각각 생긴 지금이 이걸 잇고 엔드투엔드를 조기 검증할 시점.
 
-### INTEG-1 🟠 프론트 ↔ 백엔드 연결 (엔드투엔드)
-- **중요도**: 🟠 High | **스프린트**: S1 말 ~ S2 | **의존성**: CORE-1(✅), UI 골격(✅) | **사이즈**: M
+### INTEG-1 🟠 프론트 ↔ 백엔드 연결 (엔드투엔드) — ✅ 대부분 완료
+- **중요도**: 🟠 High | **스프린트**: S1 말 ~ S2 | **의존성**: CORE-1(✅), UI 골격(✅) | **사이즈**: M | **상태**: ✅ text·URL 연결 완료(/knowledge·dev스크립트 잔여)
 - **배경**: 지금 프론트의 분석은 `setTimeout` 목업(`freshResults()`)이고 종류맵(`TYPE_MAP`/`SVC_META`)이 하드코딩돼 있다. 백엔드 `/analyze`·`/knowledge`(포트 8003)로 교체해 실제로 한 번 돌린다.
 - **하위 할일**
   - **[FE] API 클라이언트 (`src/api/`)**
-    - [ ] `POST :8003/analyze` 호출 + 응답→`AnalysisResult` 매핑, 로딩·에러·타임아웃 상태 처리
-    - [ ] 프론트 `startAnalyze` 목업을 실제 호출로 교체(목업은 백엔드 미기동 시 폴백으로 유지 옵션)
-    - [ ] `GET :8003/knowledge`로 종류맵 단일화(하드코딩 `TYPE_MAP` 제거 방향)
+    - [x] `POST :8003/analyze` 호출 + 응답→`AnalysisResult` 매핑, 타임아웃(AbortController)·에러 처리 (`client.ts`/`map.ts`)
+    - [x] `startAnalyze` 목업→실제 호출 교체. 이미지 단독(텍스트/URL 없음)은 OCR 미구현이라 샘플 목업 유지, 백엔드 미연결 시 목업 폴백 + 안내
+    - [ ] `GET :8003/knowledge`로 종류맵 단일화(하드코딩 `TYPE_MAP` 제거 방향) — 후속
   - **[계약] 응답 스키마 정합**
-    - [ ] 백엔드 `ClassifiedItem` ↔ 프론트 `AnalysisResult` 필드 매핑표 확정(신뢰도·마스킹·source·meta)
-    - [ ] 개발용 실행: 백/프론트 동시 기동 스크립트(→ OSS-3와 연계)
+    - [x] 백엔드 `ClassifiedItem` ↔ 프론트 `AnalysisResult` 매핑 확정. 조인 키 = `official_env_name`. conf(high/medium/unknown→high/mid/low), service id→enum, unknown(service=null) 분리 렌더
+    - [ ] 개발용 실행: 백/프론트 동시 기동 스크립트(→ OSS-3와 연계) — 후속
 - **테스트 체크리스트**
-  - [ ] 🧪 `.env` 텍스트 붙여넣기 → 백엔드 분류 결과가 카드로 렌더
-  - [ ] ✅ 백엔드 미기동 시 명확한 에러(크래시 금지)
-  - [ ] ✅ CORS: 프론트(5173/5199) → 백엔드(8003) 정상
+  - [x] 🧪 `.env` 텍스트 붙여넣기 → 백엔드 분류(OpenAI high 카드 + Kakao unknown 배너) — 계약/CORS 검증
+  - [x] ✅ 백엔드 미기동 시 목업 폴백 + 토스트(크래시 없음)
+  - [x] ✅ CORS: 프론트(5173/5199) → 백엔드(8003) preflight·POST 정상
 
 ---
 
