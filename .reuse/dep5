@@ -1,0 +1,14 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: KeyLens
+Source: https://github.com/ttogle918/key-manager
+
+# 헤더를 넣을 수 없는 바이너리·생성물 자산의 라이선스 선언 (REUSE).
+# 데모 스크린샷과 그 골든 OCR 재구성 픽스처는 docs/demo/generate.py 로 생성되며 전부 더미 값이다.
+
+Files: docs/demo/*.png
+Copyright: 2026 [Your Name]
+License: MIT
+
+Files: backend/tests/fixtures/demo/*.recon.txt
+Copyright: 2026 [Your Name]
+License: MIT

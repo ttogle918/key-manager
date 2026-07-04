@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "vendor:ocr": "node scripts/vendor-tesseract.mjs",
+    "fixtures:ocr": "node --experimental-strip-types scripts/ocr-demo-fixtures.mts",
     "predev": "node scripts/vendor-tesseract.mjs",
     "prebuild": "node scripts/vendor-tesseract.mjs",
     "dev": "vite",

@@ -1,0 +1,5 @@
+OpenAl - API keys
+Secret key
+sk-proj-DummyTwoThreeAbcdEfghTwoThree
+Organization ID
+org-DummyTwoThreeAbcdEfghxy

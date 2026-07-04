@@ -1,0 +1,5 @@
+Notion - Integration settings
+Internal Integration Secret
+secret_abcdefghjkmnpgrstuvwxyZABCDEFGHJKMNPQRST
+Database ID
+3e9a2c4e7b4d4e8a9c5e2d5e8a7b4c3e

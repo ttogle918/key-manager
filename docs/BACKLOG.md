@@ -101,13 +101,14 @@ SPDX-License-Identifier: MIT
     - ⚠️ 한계: OCR이 `••••`를 글자로 오독하면 마스킹 감지 불가 — 단, 이 경우도 값 정규식 불일치라 unknown(오분류 없음). 전처리(후속)로 개선 여지.
   - [x] ✅ 한글/영문 라벨 혼재(카카오 다중 키) 각 줄 보존 vitest
 
-### DEMO-1 ⚪ 데모/테스트 스크린샷 세트 (`docs/demo/`) — 신설
-- **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: S
+### DEMO-1 ⚪ 데모/테스트 스크린샷 세트 (`docs/demo/`) — ✅ 완료
+- **중요도**: 🟠 High | **스프린트**: S2 | **의존성**: 없음 | **사이즈**: S | **상태**: ✅ 스크린샷 4장 + 골든 OCR 픽스처, pytest
 - **배경**: CORE-3(OCR 테스트)와 OSS-4(영상 magic moment)가 **실제 콘솔 스크린샷**을 공유한다. 루트 README도 `docs/demo/`를 참조. 만드는 태스크가 없어 신설.
 - **하위 할일**
-  - [ ] Notion 통합 설정 / Kakao 콘솔(4종 키) / GCP API 키 / OpenAI 키 화면을 **더미 값으로** 재현한 스크린샷 4~5장
-  - [ ] ⚠️ 반드시 가짜 값(placeholder) — 실제 키 캡처 금지(CLAUDE.md 시크릿 위생)
-  - [ ] OCR 회귀 테스트 픽스처로 `backend/tests/fixtures/`에도 연결
+  - [x] Notion 통합 설정 / Kakao 콘솔(4종 키) / GCP API 키 / OpenAI 키 화면을 **더미 값으로** 재현 — `docs/demo/*.png` + 재현 스크립트 `generate.py`(Pillow, 개발전용)
+  - [x] ⚠️ 전부 가짜 값(placeholder) — `generate.py`가 지식베이스 정규식에 맞춰 생성하며 실제 키 아님
+  - [x] OCR 회귀 픽스처로 연결: 골든 재구성 `backend/tests/fixtures/demo/*.recon.txt` + `test_demo_fixtures.py`(분류 계약, `⊆`), 재생성 `npm run fixtures:ocr`
+  - [ ] ⏸ 한계: `kakao.png` JS/Native 키는 한글 단일 글자("키"/"앱") OCR 오독으로 미검출(7/9) — CORE-3 전처리 후속에서 개선
 
 ### CORE-4 🟠 서비스 지식베이스 (선언적 정의) — ✅ 완료(GCP 일부)
 - **중요도**: 🟠 High | **스프린트**: S1(앞당김) | **의존성**: 없음 | **사이즈**: M | **상태**: ✅ 커밋 `413f816`

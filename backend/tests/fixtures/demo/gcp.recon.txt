@@ -1,0 +1,3 @@
+Google Cloud - API 및 서비스 ㆍ 사 용자 인증 정보
+API 키
+AIzaSyDummyKeyTwoThreeFourFiveSixSevenA

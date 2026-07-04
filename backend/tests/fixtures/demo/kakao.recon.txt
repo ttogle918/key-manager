@@ -1,0 +1,9 @@
+Kakao Developers - 24 7]
+REST API 키
+a2b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9
+JavaScript 7|
+b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9ea
+Admin 키
+c4d5e6e7a8b9c2d3e4e5a6b7c8d9eaeb
+Native & 키
+d5e6e7a8b9c2d3e4e5a6b7c8d9eaebac

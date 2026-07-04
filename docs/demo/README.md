@@ -1,0 +1,38 @@
+<!--
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+-->
+# 데모/테스트 스크린샷 세트 (DEMO-1)
+
+각 서비스 콘솔 화면을 **더미 값**으로 재현한 스크린샷이다. CORE-3(OCR)·OSS-4(데모 영상)가 공유하고,
+루트 `README.md`와 프론트 입력 화면(“스크린샷을 던져보세요”)에서 참조한다.
+
+> ⚠️ **전부 가짜 값(placeholder)이다.** 실제 발급 키를 캡처하지 않는다(CLAUDE.md 시크릿 위생).
+> 값 형식만 지식베이스 정규식에 맞춰 “진짜처럼” 보이게 했을 뿐, 어떤 서비스에서도 유효하지 않다.
+
+## 이미지와 기대 분류(ground-truth)
+
+| 파일 | 화면 | 담긴 라벨·값 | 기대 official_env_name |
+|---|---|---|---|
+| `notion.png` | Notion 통합 설정 | Internal Integration Secret(값기반) · Database ID(Stage2 라벨) | `NOTION_API_KEY`, `NOTION_DATABASE_ID` |
+| `kakao.png` | Kakao Developers 앱 키 | REST API 키 · JavaScript 키 · Admin 키 · Native 앱 키 (32hex ×4) | `KAKAO_REST_API_KEY`, `KAKAO_JS_KEY`, `KAKAO_ADMIN_KEY`, `KAKAO_NATIVE_APP_KEY` |
+| `gcp.png` | Google Cloud 사용자 인증 정보 | API 키(`AIza…`) | `GOOGLE_API_KEY` |
+| `openai.png` | OpenAI API keys | Secret key(`sk-…`) · Organization ID(`org-…`) | `OPENAI_API_KEY`, `OPENAI_ORG_ID` |
+
+## OCR 회귀 픽스처
+
+브라우저 OCR(tesseract.js)은 결정적이지만 파이썬에서 재현할 수 없어, **OCR 재구성 결과를 골든 텍스트로 커밋**한다:
+`backend/tests/fixtures/demo/*.recon.txt` → `backend/tests/test_demo_fixtures.py`가 분류 계약을 검증한다.
+
+현재 엔진 기준 **7/9** env 를 분류한다. `kakao.png`의 **JavaScript 키·Native 앱 키**는 한글 단일 글자
+(“키”→“7|”, “앱”→“&”) OCR 오독으로 라벨 매칭에 실패한다 — 알려진 한계이며 CORE-3 전처리(대비·확대) 후속에서
+개선한다. REST API 키·Admin 키는 한글 라벨이 정확히 인식되어, 한글 OCR 자체는 동작함을 보인다.
+
+## 재생성
+
+```bash
+pip install Pillow                 # 개발 전용(런타임 의존성 아님)
+python docs/demo/generate.py       # docs/demo/*.png 재생성 (전부 더미)
+# 이어서 프론트에서 OCR 재실행 → backend/tests/fixtures/demo/*.recon.txt 갱신
+# (tesseract.js 버전/언어데이터가 바뀌면 골든 텍스트도 갱신 필요)
+```

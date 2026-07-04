@@ -77,8 +77,8 @@ npm run dev
 
 ### 빠른 체험
 
-1. 노션 통합 설정 화면(또는 저장소의 데모 이미지 `docs/demo/`)을 캡처해 입력 화면에 붙여넣기
-2. 값과 라벨이 자동 분류되어 `NOTION_API_KEY`, `NOTION_DATABASE_ID` 등으로 매핑된 카드 확인
+1. 데모 이미지(`docs/demo/notion.png`·`kakao.png`·`gcp.png`·`openai.png`, 전부 더미 값)를 입력 화면에 드래그·붙여넣기
+2. 브라우저 안에서 OCR(tesseract.js) → 값과 라벨이 자동 분류되어 `NOTION_API_KEY`, `NOTION_DATABASE_ID` 등으로 매핑된 카드 확인 (이미지는 기기를 떠나지 않음)
 3. 확정 후 마스터 비밀번호로 암호화 저장 → 대시보드에서 서비스별로 조회
 
 > ⚠️ 체험 시에도 실제 발급 키 대신 더미 값 사용을 권장합니다. 데모·문서의 모든 예시는 명백한 가짜 값(`sk-xxxxxxxx` 등)입니다.
