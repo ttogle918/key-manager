@@ -122,7 +122,6 @@ interface KeylensState {
   attachSample: () => void
   removeImage: () => void
   handlePasteImage: (dataUrl: string) => void
-  handlePasteText: (text: string) => void
   startAnalyze: () => void
   resetResults: () => void
 
@@ -375,9 +374,6 @@ export const useKeylens = create<KeylensState>((set, get) => {
     removeImage: () => set({ attachedImage: null, attachedName: '' }),
     handlePasteImage: (dataUrl) =>
       set({ attachedImage: dataUrl, attachedName: '붙여넣은 스크린샷.png' }),
-    handlePasteText: (text) => {
-      if (!get().analyzed && !get().analyzing) set({ textVal: text })
-    },
     startAnalyze: async () => {
       if (get().analyzing) return
       const s = get()

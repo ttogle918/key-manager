@@ -20,7 +20,9 @@ export default function App() {
     useKeylens.getState().boot()
   }, [])
 
-  // 전역 붙여넣기: 입력 화면에서 이미지는 첨부, 텍스트는 붙여넣기 영역으로.
+  // 전역 붙여넣기: 입력 화면에서 **이미지(스크린샷)만** 전역으로 첨부한다.
+  // 텍스트는 전역 흡수하지 않는다 — 다른 용도로 복사해 둔 무관한 시크릿이 의도치 않게
+  // 분석 대상으로 잡히는 것을 막기 위함(SECURITY_REVIEW 6-2). 텍스트는 붙여넣기 박스에 직접 붙인다.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const st = useKeylens.getState()
@@ -37,11 +39,6 @@ export default function App() {
           e.preventDefault()
           return
         }
-      }
-      const tag = (e.target as HTMLElement | null)?.tagName
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && !st.analyzed && !st.analyzing) {
-        const txt = e.clipboardData?.getData('text')
-        if (txt) st.handlePasteText(txt)
       }
     }
     window.addEventListener('paste', onPaste)

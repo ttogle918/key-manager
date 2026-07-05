@@ -83,8 +83,9 @@ SPDX-License-Identifier: MIT
 
 ### 4.2 분류 엔진 — Stage 1 (값 기반)
 - **설명**: 접두사가 명확한 키를 정규식으로 즉시 식별.
-- **처리**: `sk-`(OpenAI), `ghp_`(GitHub), `AKIA`(AWS), `AIza`(Google), `xoxb-`(Slack) 등 + 엔트로피 보조 판정. Gitleaks(MIT) 패턴 참고분은 출처 기록.
-- **AC**: 10종 더미 키 정확 매핑, 미상 값은 "unknown"으로 안전 분류(오식별 금지).
+- **처리(현재 구현)**: `sk-`(OpenAI api/org), `AIza`(Google), `secret_`/`ntn_`(Notion), `<32hex>.<24base62>`(Ollama) — 값기반 5종. + 엔트로피 보조로 미상 값은 안전 분류.
+- **처리(확장 예정)**: `ghp_`(GitHub), `AKIA`(AWS), `xoxb-`(Slack) 등은 **검출 전용 value_rules**로 지식베이스에 추가(공식 접두어 문서 기준 직접 작성; Gitleaks(MIT) 참고 시 출처 기록).
+- **AC**: 지식베이스 등록 서비스의 더미 키를 정확 매핑, 미상 값은 "unknown"으로 안전 분류(**오식별 금지가 핵심 — 미등록 서비스 키는 unknown 처리**). 등록 서비스 수는 YAML 추가로 확장(코드 수정 0).
 
 ### 4.3 분류 엔진 — Stage 2 (맥락 기반) ★ 차별점
 - **설명**: 값만으론 모르는 키를 라벨·URL 맥락으로 가려낸다.
