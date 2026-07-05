@@ -45,6 +45,32 @@ export function expiryInfo(iso: string | null): ExpiryInfo | null {
   }
 }
 
+/**
+ * JWT(`header.payload.signature`)의 `exp` 클레임을 만료일(YYYY-MM-DD)로 추출한다.
+ * JWT가 아니거나 exp가 없으면 null — 생짜 API 키엔 만료 정보가 없으므로 사용자 입력으로 대체(TRUST-2).
+ */
+export function jwtExp(value: string): string | null {
+  const parts = value.trim().split('.')
+  if (parts.length !== 3) return null
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : ''
+    const payload = JSON.parse(atob(b64 + pad)) as { exp?: unknown }
+    if (typeof payload.exp !== 'number' || !isFinite(payload.exp)) return null
+    const d = new Date(payload.exp * 1000)
+    if (isNaN(d.getTime())) return null
+    return (
+      d.getFullYear() +
+      '-' +
+      String(d.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(d.getDate()).padStart(2, '0')
+    )
+  } catch {
+    return null
+  }
+}
+
 /** 마스터 비밀번호 강도 (0=빈값 ~ 4=강함). */
 export function strengthLevel(pw: string): number {
   if (!pw.length) return 0

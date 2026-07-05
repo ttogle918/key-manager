@@ -11,7 +11,7 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
-import { envText } from '@/lib/format'
+import { envText, jwtExp } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -501,6 +501,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           return
         }
       }
+      const jwtExpiry = jwtExp(r.full) // JWT면 만료일 자동 추출(TRUST-2)
       try {
         await vaultApi.add({
           service: SERVICE_TO_ID[r.service],
@@ -510,10 +511,15 @@ export const useKeylens = create<KeylensState>((set, get) => {
           label: t.label,
           project: (r.project || '').trim() || null,
           memo: r.memo || null,
+          expires_at: jwtExpiry,
         })
         set((s) => ({ results: s.results.filter((x) => x.id !== id), dupTarget: null }))
         await get().loadVault()
-        get().showToast(t.var + ' 저장됨 — AES-256-GCM으로 암호화되어 이 기기에만 보관')
+        get().showToast(
+          t.var +
+            ' 저장됨 — AES-256-GCM 암호화' +
+            (jwtExpiry ? ` · JWT 만료일 자동 감지(${jwtExpiry})` : ''),
+        )
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
           set({ dupTarget: null })
@@ -558,6 +564,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
             label: t.label,
             project: (r.project || '').trim() || null,
             memo: r.memo || null,
+            expires_at: jwtExp(r.full), // JWT면 만료일 자동(TRUST-2)
           })
           saved++
           savedIds.push(r.id)

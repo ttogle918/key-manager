@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import { SERVICE_ORDER, SVC_META } from '@/data/services'
+import { expiryInfo } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import { useProjectNames } from '@/store/selectors'
 import { VaultRow } from '@/components/vault/VaultRow'
@@ -23,10 +24,17 @@ export function VaultScreen() {
       (it.context || '').toLowerCase().includes(q) ||
       (it.project || '').toLowerCase().includes(q))
 
+  // 만료 임박(≤14일)·만료 항목을 각 그룹 상단으로. 그 외는 기존 순서 유지(TRUST-2).
+  const urgency = (v: VaultItem): number => {
+    const e = expiryInfo(v.expiresAt)
+    return e && (e.expired || e.days <= 14) ? e.days : Infinity
+  }
   const groups = SERVICE_ORDER.map((name) => ({
     name,
     meta: SVC_META[name],
-    items: vault.filter((v) => v.service === name && match(v)),
+    items: vault
+      .filter((v) => v.service === name && match(v))
+      .sort((a, b) => urgency(a) - urgency(b)),
   })).filter((g) => g.items.length > 0)
 
   const vaultEmpty = vault.length === 0
