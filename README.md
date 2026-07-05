@@ -23,19 +23,18 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
   - *Stage 1 (값 기반)*: `sk-`(OpenAI), `ghp_`(GitHub), `AKIA`(AWS) 등 접두사가 명확한 키를 정규식으로 즉시 식별
   - *Stage 2 (맥락 기반)*: 값만으로 애매한 키를 OCR로 읽은 주변 라벨("Database ID", "Internal Integration Secret")과 URL 구조로 판별. 신호가 충돌하면 단정하지 않고 "확인 필요"로 표시
 - **공식 변수명 매핑**: 분류 결과를 `NOTION_DATABASE_ID`, `KAKAO_REST_API_KEY` 같은 표준 환경변수명으로 자동 정리
-- **암호화 보관**: 마스터 비밀번호 기반(Argon2id + AES-256-GCM). 디스크에는 암호문만 저장
+- **암호화 보관 (VAULT-1/2 구현 완료)**: 마스터 비밀번호에서 Argon2id로 유도한 키로 값을 AES-256-GCM 암호화해 SQLite에 **암호문만** 저장. 조회는 인증 후에만, 자동 잠금·연속 실패 지연 포함(브라우저 E2E 검증 완료)
 - **조회 대시보드**: 서비스별 그룹으로 한눈에 보고, 인증 후 복사·편집·삭제. 잠금 상태에서는 값 마스킹
 - **확장 가능한 지식베이스**: 서비스별 키 종류·라벨·URL 패턴·변수명이 YAML로 선언되어 있어, YAML 파일 하나 추가로 새 서비스 지원 (코드 수정 불필요)
 
 ## 아키텍처
 
 ```
-[ React + TypeScript 프론트엔드 ]  ←→  [ FastAPI 로컬 백엔드 ]
-                                          ├─ OCR (Tesseract)
-                                          ├─ 분류 엔진 (Stage1 값 기반 / Stage2 맥락 기반)
-                                          ├─ 지식베이스 로더 (knowledge/*.yaml)
-                                          ├─ 암호화 (Argon2id + AES-256-GCM)
-                                          └─ 저장소 (SQLite — 암호문만 저장)
+[ React + TypeScript 프론트엔드 ]        ←→  [ FastAPI 로컬 백엔드 ]
+  └─ OCR (tesseract.js — 브라우저 WASM,        ├─ 분류 엔진 (Stage1 값 기반 / Stage2 맥락 기반)
+     이미지가 기기를 떠나지 않음)                ├─ 지식베이스 로더 (knowledge/*.yaml)
+                                              └─ 암호화 저장소 (Argon2id + AES-256-GCM,
+                                                                 SQLite 암호문만 · 인증 게이트)
 ```
 
 **로컬 우선(local-first)**: 외부 서버·클라우드가 없습니다. 모든 데이터는 사용자 기기에만 존재하며 네트워크로 전송되지 않습니다.
@@ -46,10 +45,9 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 
 - Python 3.11+
 - Node.js 20+
-- Tesseract OCR (스크린샷 분류 기능 사용 시)
-  - Windows: [UB Mannheim 빌드](https://github.com/UB-Mannheim/tesseract/wiki) 설치 후 PATH 등록
-  - macOS: `brew install tesseract tesseract-lang`
-  - Ubuntu: `sudo apt install tesseract-ocr tesseract-ocr-kor`
+
+> OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 — 별도 설치가 필요 없고,
+> 필요한 로컬 자산은 `npm run dev`/`npm run build` 시 자동으로 벤더링됩니다(`scripts/vendor-tesseract.mjs`).
 
 ### 백엔드
 
@@ -65,6 +63,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --port 8003
 ```
 
+> 백엔드는 로컬 전용입니다. `--host` 옵션으로 외부에 노출하지 마세요(기본 127.0.0.1 유지).
+
 ### 프론트엔드
 
 ```bash
@@ -79,11 +79,14 @@ npm run dev
 
 1. 데모 이미지(`docs/demo/notion.png`·`kakao.png`·`gcp.png`·`openai.png`, 전부 더미 값)를 입력 화면에 드래그·붙여넣기
 2. 브라우저 안에서 OCR(tesseract.js) → 값과 라벨이 자동 분류되어 `NOTION_API_KEY`, `NOTION_DATABASE_ID` 등으로 매핑된 카드 확인 (이미지는 기기를 떠나지 않음)
-3. 확정 후 마스터 비밀번호로 암호화 저장 → 대시보드에서 서비스별로 조회
+3. 최초 실행 시 마스터 비밀번호로 금고 생성 → 확정 후 값이 AES-256-GCM으로 암호화되어 저장, 보관함에서 인증 후 조회·복사(잠금 시 값 마스킹)
 
 > ⚠️ 체험 시에도 실제 발급 키 대신 더미 값 사용을 권장합니다. 데모·문서의 모든 예시는 명백한 가짜 값(`sk-xxxxxxxx` 등)입니다.
 
 ## 보안 설계
+
+> ✅ **구현 상태**: 암호화 저장(VAULT-1)·인증 게이트(VAULT-2)가 구현되어 아래 설계(SPEC 6장)대로 동작합니다
+> (backend `crypto.py`·`vault_repo.py`·`vault_session.py`, pytest 검증 + 브라우저 E2E 검증 완료).
 
 - **키 유도**: 마스터 비밀번호 → Argon2id로 암호화 키 유도. 솔트만 저장하며 유도된 키는 메모리에만 존재, 잠금 시 폐기
 - **암호화**: 항목별 AES-256-GCM(인증 암호화), 매 암호화마다 고유 nonce. 무결성 태그로 변조 탐지
