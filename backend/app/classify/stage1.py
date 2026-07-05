@@ -18,9 +18,10 @@ from ..models import ClassifiedItem
 
 # ── 정규식 ──
 # NAME=VALUE / export NAME=VALUE / name: value  (값은 공백·따옴표·주석 전까지)
+# group1=이름, group2=여는 따옴표(없으면 ''), group3=값. 여는 따옴표를 잡아 값 절단 판정에 쓴다.
 _ASSIGN_RE = re.compile(
     r'^[ \t]*(?:export[ \t]+)?["\']?([A-Za-z_][\w.\-]*)["\']?[ \t]*[:=][ \t]*'
-    r'["\']?([^"\'\s#]+)',
+    r'(["\']?)([^"\'\s#]+)',
     re.MULTILINE,
 )
 _BARE_ASSIGN_RE = re.compile(r"^[A-Za-z_][\w.\-]*[:=](.+)$")
@@ -77,16 +78,27 @@ def _clean(tok: str) -> str:
     return tok.strip().strip(_STRIP_CHARS)
 
 
-def extract_candidates(text: str) -> list[tuple[str, str, str | None]]:
-    """텍스트에서 (값, 출처, 대입변수명) 후보를 뽑는다. 값 기준 중복 제거."""
+def extract_candidates(text: str) -> list[tuple[str, str, str | None, bool]]:
+    """텍스트에서 (값, 출처, 대입변수명, 절단여부) 후보를 뽑는다. 값 기준 중복 제거.
+
+    절단(truncated): NAME=VALUE 에서 값이 `#` 또는 (여는 것과 다른) 따옴표에서 잘렸을 때.
+    잘린 불완전한 키가 그대로 저장되지 않도록 프론트에 경고 신호를 준다(SECURITY_REVIEW 5-3).
+    """
     seen: set[str] = set()
-    out: list[tuple[str, str, str | None]] = []
+    out: list[tuple[str, str, str | None, bool]] = []
 
     for m in _ASSIGN_RE.finditer(text):
-        name, value = m.group(1), _clean(m.group(2))
+        name, opening, value = m.group(1), m.group(2), _clean(m.group(3))
+        stop = text[m.end() : m.end() + 1]  # 값을 멈추게 한 문자
+        if stop == "#":
+            truncated = True  # 주석 문자 앞에서 잘림(값의 일부일 수 있음)
+        elif stop in ('"', "'"):
+            truncated = stop != opening  # 여는 따옴표와 같으면 정상 종료, 다르면 잘림
+        else:
+            truncated = False  # 공백/EOL — 정상 종료
         if value and value not in seen:
             seen.add(value)
-            out.append((value, "assignment", name))
+            out.append((value, "assignment", name, truncated))
 
     for raw in re.split(r"\s+", text):
         tok = _clean(raw)
@@ -97,7 +109,7 @@ def extract_candidates(text: str) -> list[tuple[str, str, str | None]]:
             tok = _clean(bare.group(1))
         if tok and tok not in seen:
             seen.add(tok)
-            out.append((tok, "token", None))
+            out.append((tok, "token", None, False))
 
     return out
 
@@ -106,7 +118,7 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
     """텍스트를 Stage1 로 분류한다."""
     items: list[ClassifiedItem] = []
 
-    for value, origin, name in extract_candidates(text):
+    for value, origin, name, truncated in extract_candidates(text):
         matches = [vm for vm in kb.value_matchers if vm.pattern.match(value)]
         envs = {vm.credential.official_env_name for vm in matches}
         source = f"{source_label} · {'대입' if origin == 'assignment' else '토큰'}"
@@ -116,6 +128,8 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
             meta: dict = {"detected_by": "value_regex"}
             if name:
                 meta["assigned_name"] = name
+            if truncated:
+                meta["truncated"] = True
             items.append(
                 ClassifiedItem(
                     value=value,
@@ -134,6 +148,12 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
             )
         elif len(envs) > 1:
             # 여러 서비스 규칙이 동시에 매치 — 단정 금지
+            multi_meta: dict = {
+                "candidates": sorted(envs),
+                "note": "value_regex 다중 매치 — Stage2 필요",
+            }
+            if truncated:
+                multi_meta["truncated"] = True
             items.append(
                 ClassifiedItem(
                     value=value,
@@ -145,13 +165,15 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
                     format=_format_hint(value),
                     source=source,
                     stage=1,
-                    meta={"candidates": sorted(envs), "note": "value_regex 다중 매치 — Stage2 필요"},
+                    meta=multi_meta,
                 )
             )
         elif origin == "assignment" or _looks_secret(value):
             meta = {"reason": "값 기반 미상 — Stage2(맥락) 필요"}
             if name:
                 meta["assigned_name"] = name
+            if truncated:
+                meta["truncated"] = True
             items.append(
                 ClassifiedItem(
                     value=value,

@@ -67,6 +67,16 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
         <span className="flex-none font-mono text-[10.5px] text-dim-2">{r.format}</span>
       </div>
 
+      {/* 값 절단 경고 — NAME=VALUE 에서 값이 #·따옴표에서 잘렸을 수 있음(Stage1) */}
+      {r.meta?.truncated === true && (
+        <div className="mx-4 mt-[6px] flex items-start gap-[7px] rounded-lg border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.05)] px-3 py-2 text-[11.5px] leading-[1.5] text-amber">
+          <span className="relative top-[3px] inline-block size-[7px] flex-none rotate-45 bg-amber" />
+          <span>
+            값이 <span className="font-mono">#</span> 또는 따옴표에서 잘렸을 수 있어요 — 원본 전체가 맞는지 확인 후 저장하세요.
+          </span>
+        </div>
+      )}
+
       {/* OCR 이어붙임 확인 — 이음매 위 빨간 v 표식 + 원본 복사 권장 */}
       {caretRow && (
         <div className="mx-4 mt-[6px] rounded-lg border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.05)] px-3 py-2">

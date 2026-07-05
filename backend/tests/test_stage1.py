@@ -6,7 +6,7 @@
 """
 import pytest
 
-from app.classify.stage1 import classify_text
+from app.classify.stage1 import classify_text, extract_candidates
 from app.knowledge import load_knowledge_base
 
 # 명백히 가짜인 더미 키들 (형식만 유효, 실제 발급 키 아님)
@@ -85,3 +85,35 @@ def test_env_block_multiple_keys(kb):
 def test_dedupes_same_value(kb):
     items = classify_text(f"{OPENAI_KEY} {OPENAI_KEY}", kb)
     assert len(items) == 1
+
+
+# ── 값 절단 감지 (SECURITY_REVIEW 5-3) ──
+def _trunc(text: str) -> dict[str, bool]:
+    """extract_candidates 결과를 {값: 절단여부} 로."""
+    return {v: t for v, origin, name, t in extract_candidates(text) if origin == "assignment"}
+
+
+def test_truncation_unquoted_hash():
+    """KEY=abc#def → 값이 # 에서 잘림 → truncated."""
+    assert _trunc("KEY=abcdefghijkl#more")["abcdefghijkl"] is True
+
+
+def test_truncation_embedded_quote():
+    """따옴표 없이 값 안에 따옴표 → 잘림."""
+    assert _trunc("KEY=abcdefghijkl\"more")["abcdefghijkl"] is True
+
+
+def test_quoted_value_natural_close_not_truncated():
+    """정상적으로 따옴표로 감싼 값은 절단 아님."""
+    assert _trunc('KEY="abcdefghijkl"')["abcdefghijkl"] is False
+
+
+def test_plain_value_not_truncated():
+    assert _trunc(f"OPENAI_API_KEY={OPENAI_KEY}")[OPENAI_KEY] is False
+
+
+def test_truncated_flag_reaches_meta(kb):
+    """분류 결과 meta 에 truncated 가 전달된다(프론트 경고용)."""
+    items = classify_text("MY_TOKEN=abcdefghijkl#trailing", kb)
+    hit = next(it for it in items if it.value == "abcdefghijkl")
+    assert hit.meta.get("truncated") is True
