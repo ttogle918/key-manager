@@ -118,8 +118,10 @@ SPDX-License-Identifier: MIT
   컴파일된 CSS만 배포되어 산출물에 미포함). dev 트리 라이선스: MIT/Apache-2.0/ISC.
 - **백엔드(dev)**: 위 §1-3 참고.
 - **데스크톱 런처**(`desktop/`, 선택 실행 — 웹 배포물엔 미포함): **pywebview 5.4 (BSD-3-Clause)**.
-  Windows 전이 의존성 pythonnet(MIT)·clr-loader(MIT). WebView2 런타임은 Windows 기본 OS 구성요소.
-  카피레프트 0. (실행 파일 패키징 도입 시 PyInstaller=GPL 회피, cx_Freeze/Nuitka 등 permissive 사용.)
+  Windows 전이 의존성 pythonnet(MIT)·clr-loader(MIT). WebView2 런타임은 Windows 기본 OS 구성요소. 카피레프트 0.
+- **데스크톱 패키저**(빌드 도구, 실행 파일에 도구 코드 미포함): **cx_Freeze**(PSF 계열 permissive) 기본 채택.
+  대안 Nuitka(Apache-2.0). PyInstaller(GPL-2.0+예외)는 생성물이 GPL에 묶이지 않으나, permissive 기조상 기본은
+  cx_Freeze. 어느 쪽이든 산출 실행 파일의 라이선스는 본 프로젝트 MIT + 의존성 라이선스만 따른다.
 - **일회성 스캔 도구**(설치 후 제거): pip-licenses(MIT), license-checker(BSD-3-Clause),
   reuse(Apache-2.0, SPDX 헤더 검사), pip-audit(Apache-2.0, 취약점 스캔). venv/노드모듈에만 설치되며
   `.gitignore` 로 저장소·배포물에서 제외.

@@ -3,6 +3,7 @@
 """지식베이스 로더 — knowledge/*.yaml 을 읽어 검증하고 컴파일한다."""
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -12,6 +13,7 @@ import yaml
 from .models import Credential, Service
 
 # knowledge/ 디렉토리 기본 위치 (backend/knowledge).
+# 패키징된 실행 파일(데스크톱 앱)은 번들 위치가 달라, KEYLENS_KNOWLEDGE_DIR 로 재정의할 수 있게 한다.
 DEFAULT_KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "knowledge"
 
 
@@ -52,13 +54,18 @@ class KnowledgeBase:
         return None
 
 
-def load_knowledge_base(path: Path | str = DEFAULT_KNOWLEDGE_DIR) -> KnowledgeBase:
+def load_knowledge_base(path: Path | str | None = None) -> KnowledgeBase:
     """디렉토리의 모든 *.yaml 을 로드·검증한다.
+
+    경로 우선순위: 명시 인자 > `KEYLENS_KNOWLEDGE_DIR` 환경변수 > 기본(backend/knowledge).
+    (패키징된 데스크톱 앱은 번들 위치를 env 로 지정한다.)
 
     - 스키마 위반은 pydantic ValidationError 로 즉시 실패한다.
     - service·official_env_name 중복은 명시적 에러로 막는다.
     - value_regex 는 컴파일해 잘못된 정규식을 조기에 잡는다.
     """
+    if path is None:
+        path = os.environ.get("KEYLENS_KNOWLEDGE_DIR") or DEFAULT_KNOWLEDGE_DIR
     directory = Path(path)
     if not directory.is_dir():
         raise FileNotFoundError(f"지식베이스 디렉토리를 찾을 수 없습니다: {directory}")

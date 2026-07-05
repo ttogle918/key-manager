@@ -30,19 +30,42 @@ python desktop/app.py
 
 네이티브 창이 뜨고, 최초 실행 시 마스터 비밀번호로 금고를 생성합니다.
 
-## 배포용 실행 파일(.exe/.app)로 패키징 — 선택
+## 배포용 실행 파일(.exe/.app)로 패키징
 
-`python desktop/app.py`로도 충분히 쓰지만, **비개발자에게 더블클릭 설치**를 주려면 단일 실행 파일로 묶습니다.
-그 결과물을 [GitHub Releases](https://github.com/ttogle918/key-manager/releases)에 올리고 랜딩·블로그에서 링크하면 됩니다.
+`python desktop/app.py`로도 충분하지만, **비개발자에게 더블클릭 설치**를 주려면 단일 실행 파일로 묶습니다.
+패키저는 **cx_Freeze**(permissive 라이선스, 아래 참고)를 사용합니다.
 
-> ⚠️ **패키저 라이선스 주의(이 프로젝트는 permissive-only)**
-> - 가장 흔한 **PyInstaller는 GPL-2.0**(빌드 도구). 생성물엔 예외 조항이 있으나, 본 프로젝트 규칙상
->   카피레프트 도구 도입은 **먼저 결정**이 필요하다(`CLAUDE.md`). 그래서 기본 채택하지 않았다.
-> - **permissive 대안**: `cx_Freeze`(PSF/permissive) 또는 `Nuitka`(Apache-2.0). 이 중 하나로 패키징 권장.
-> - 패키징 시 데이터 파일로 `frontend/dist/`, `backend/knowledge/*.yaml` 을 **함께 포함**해야 한다.
+```bash
+# 1) 프론트 빌드(실행 파일에 동봉될 SPA)
+cd frontend && npm ci && npm run build && cd ..
 
-패키징은 실행 파일이 커서(수십 MB) 저장소에 커밋하지 않고 Releases 아티팩트로만 배포한다.
-구체 스텝은 패키저 선택 후 이 문서에 추가한다(현재는 소스 실행까지 제공).
+# 2) 데스크톱 + 패키저 설치
+cd backend && .venv\Scripts\activate && cd ..
+pip install -r desktop/requirements.txt cx_Freeze
+
+# 3) 빌드
+cd desktop && python setup.py build
+#   → desktop/build/exe.<플랫폼>/KeyLens(.exe) + 옆에 frontend/dist·backend/knowledge 동봉
+```
+
+`setup.py` 가 실행 파일 옆에 `frontend/dist`·`backend/knowledge` 를 동봉하고, `app.py` 는 **패키징 모드
+(`sys.frozen`)를 감지**해 그 경로에서 SPA·지식베이스를 읽습니다. 금고(`vault.db`)는 실행 파일 옆에 생성됩니다.
+
+빌드 산출물(`build/`·`dist/`)은 용량이 커(수십 MB) 저장소에 커밋하지 않고
+[GitHub Releases](https://github.com/ttogle918/key-manager/releases) 아티팩트로만 배포합니다.
+
+### 패키저 라이선스 (이 프로젝트는 permissive-only)
+
+| 패키저 | 라이선스 | 채택 |
+|---|---|---|
+| **cx_Freeze** | **PSF 계열 permissive**(카피레프트 없음, 상용·독점 사용 허용) | ✅ **기본** |
+| PyInstaller | GPL-2.0 **+ 예외 조항** — 생성 실행 파일은 자유 라이선스(MIT) 가능, 부트로더 미수정 시 GPL 전파 없음 | 대안(예외 조항 확인 후 사용 가능) |
+| Nuitka | Apache-2.0 (permissive) | 대안 |
+
+- cx_Freeze·PyInstaller·Nuitka **모두 빌드 도구**라 배포물(실행 파일)에 **도구 코드가 실리지 않는다.**
+  cx_Freeze 는 애초에 permissive라 가장 깔끔하고, PyInstaller 는 예외 조항 덕에 생성물이 GPL에 묶이지 않는다.
+- 자세한 라이선스 근거: [PyInstaller 라이선스 FAQ](https://pyinstaller.org/en/stable/license.html) ·
+  [cx_Freeze 라이선스](https://cx-freeze.readthedocs.io/en/latest/license.html).
 
 ## 라이선스
 

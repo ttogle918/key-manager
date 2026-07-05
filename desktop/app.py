@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import os
 import sys
 import threading
 import time
@@ -27,13 +28,22 @@ from starlette.staticfiles import StaticFiles
 HOST = "127.0.0.1"
 # 데스크톱 전용 포트(dev 8003 과 분리해 동시 실행 충돌 회피). 고정이지만 same-origin이라 무관.
 PORT = 8765
-_ROOT = Path(__file__).resolve().parent.parent
-DIST = _ROOT / "frontend" / "dist"
 
-# 어느 위치에서 실행하든 backend/ 의 `app` 패키지를 찾도록 경로를 잡는다(더블클릭 실행 대비).
-sys.path.insert(0, str(_ROOT / "backend"))
+# 소스 실행이면 레포 루트, 패키징된 실행 파일(cx_Freeze/PyInstaller)이면 exe 위치를 기준으로 잡는다.
+FROZEN = getattr(sys, "frozen", False)
+_BASE = Path(sys.executable).resolve().parent if FROZEN else Path(__file__).resolve().parent.parent
+DIST = _BASE / "frontend" / "dist"
 
-from app.main import app  # noqa: E402 — sys.path 설정 후 임포트
+# ⚠️ app.main 은 임포트 시점에 KB·금고를 env 로 구성하므로, 반드시 그 전에 환경을 잡는다.
+os.environ.setdefault("KEYLENS_KNOWLEDGE_DIR", str(_BASE / "backend" / "knowledge"))
+if FROZEN:
+    # 실행 파일 옆에 금고를 둔다(쓰기 가능 위치). 소스 모드는 backend/vault.db 기본값 유지.
+    os.environ.setdefault("KEYLENS_VAULT_PATH", str(_BASE / "vault.db"))
+    # 소스 모드에서만 backend/ 를 경로에 추가(패키징 시 app 패키지는 번들에 포함됨).
+else:
+    sys.path.insert(0, str(_BASE / "backend"))
+
+from app.main import app  # noqa: E402 — 경로·환경 설정 후 임포트
 
 
 def mount_spa() -> None:

@@ -3,7 +3,7 @@
 """지식베이스 로더 테스트."""
 import pytest
 
-from app.knowledge import load_knowledge_base
+from app.knowledge import DEFAULT_KNOWLEDGE_DIR, load_knowledge_base
 
 
 def test_loads_all_services():
@@ -30,6 +30,25 @@ def test_find():
     c = kb.find("notion", "database_id")
     assert c is not None and c.official_env_name == "NOTION_DATABASE_ID"
     assert kb.find("notion", "does_not_exist") is None
+
+
+def test_knowledge_dir_env_override(tmp_path, monkeypatch):
+    """KEYLENS_KNOWLEDGE_DIR 로 지식베이스 위치를 재정의(패키징된 데스크톱 앱 대비)."""
+    (tmp_path / "only.yaml").write_text(
+        "service: only\n"
+        "display_name: Only\n"
+        "credentials:\n"
+        "  - kind: api_key\n"
+        "    label: API Key\n"
+        "    official_env_name: ONLY_API_KEY\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("KEYLENS_KNOWLEDGE_DIR", str(tmp_path))
+    kb = load_knowledge_base()  # 인자 없음 → env 경로 사용
+    assert {s.service for s in kb.services} == {"only"}
+    # 명시 인자는 env 보다 우선한다
+    kb2 = load_knowledge_base(DEFAULT_KNOWLEDGE_DIR)
+    assert "notion" in {s.service for s in kb2.services}
 
 
 def test_value_matchers_only_prefix_clear_kinds():

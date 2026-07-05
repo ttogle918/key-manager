@@ -65,6 +65,18 @@ SPDX-License-Identifier: MIT
 
 > 전체 의존성(전이 포함)·SBOM 6컬럼 표는 [docs/SBOM.md](./docs/SBOM.md) 참고. 런타임 트리 카피레프트 0건(2026-07-05 스캔).
 
+## 데스크톱 앱 (`desktop/`, 선택 — 웹 배포물엔 미포함)
+
+| 구성요소 | 버전 | 라이선스 | 출처·비고 |
+|---|---|---|---|
+| pywebview | 5.4 | BSD-3-Clause | https://github.com/r0x0r/pywebview — 네이티브 창. 전이 pythonnet/clr-loader(MIT) |
+| cx_Freeze | (빌드 시) | PSF 계열 permissive | https://cx-freeze.readthedocs.io/en/latest/license.html — **빌드 도구**(실행 파일에 도구 코드 미포함) |
+
+- 실행 파일 패키징 기본 패키저는 **cx_Freeze(permissive)**. 대안 Nuitka(Apache-2.0).
+- **PyInstaller(GPL-2.0 + 예외)** 도 사용 가능하다 — 예외 조항상 **생성된 실행 파일은 GPL에 묶이지 않으며**
+  원하는 라이선스(본 프로젝트 MIT)로 배포할 수 있다(부트로더 미수정 시). 근거: https://pyinstaller.org/en/stable/license.html
+- WebView2 런타임은 Windows 기본 포함 OS 구성요소로 파이썬 의존성이 아니다.
+
 ## 키 포맷 정규식 (지식베이스 `backend/knowledge/*.yaml`)
 
 - 각 서비스 키의 `value_regex`(접두어·길이·문자셋)는 **해당 서비스의 공식 문서/변경로그를 근거로 직접 작성**했다.
