@@ -8,13 +8,15 @@ from app.knowledge import load_knowledge_base
 
 def test_loads_all_services():
     kb = load_knowledge_base()
-    assert {s.service for s in kb.services} == {"notion", "kakao", "gcp", "openai", "ollama"}
+    # 새 YAML 추가에 덜 취약하도록 최소 보장 집합으로 검증(초과는 허용).
+    expected = {"notion", "kakao", "gcp", "openai", "ollama", "github", "aws", "slack", "stripe"}
+    assert expected <= {s.service for s in kb.services}
 
 
 def test_credential_counts():
     kb = load_knowledge_base()
-    # notion 4 + kakao 4 + gcp 1 + openai 2 + ollama 1 = 12
-    assert kb.credential_count == 12
+    # notion 4 + kakao 4 + gcp 1 + openai 2 + ollama 1 + github 1 + aws 2 + slack 2 + stripe 2 = 19
+    assert kb.credential_count == 19
 
 
 def test_official_env_names_unique():

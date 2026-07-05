@@ -65,5 +65,11 @@ SPDX-License-Identifier: MIT
 
 > 전체 의존성(전이 포함)·SBOM 6컬럼 표는 [docs/SBOM.md](./docs/SBOM.md) 참고. 런타임 트리 카피레프트 0건(2026-07-05 스캔).
 
-> Apache-2.0 구성요소가 다수이므로, Apache-2.0 §4의 고지 의무를 위해 각 저장소의 NOTICE/LICENSE 원문을 함께 참고하라.
+## 키 포맷 정규식 (지식베이스 `backend/knowledge/*.yaml`)
+
+- 각 서비스 키의 `value_regex`(접두어·길이·문자셋)는 **해당 서비스의 공식 문서/변경로그를 근거로 직접 작성**했다.
+  코드·패턴을 그대로 복사하지 않았으며, 특히 **TruffleHog(AGPL-3.0)의 탐지 패턴은 참조하지 않았다**(CLAUDE.md 규칙).
+- 근거로 삼은 공식 문서: GitHub 인증 토큰 포맷 변경로그(2021), AWS Access Key ID 포맷 문서, Slack Tokens 문서,
+  Stripe API keys 문서. 포맷은 공개적으로 널리 문서화된 사실(접두어 등)이다.
+- 참고로 Gitleaks(MIT), 각 벤더의 secret-scanning 문서 등 permissive/공개 출처와 교차 확인했으며, 도입한 코드는 없다.
 > 전문: https://www.apache.org/licenses/LICENSE-2.0

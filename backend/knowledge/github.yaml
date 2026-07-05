@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# GitHub. 2021년 포맷 개편으로 토큰이 접두어(ghp_ 등)로 식별 가능해졌다(값 기반).
+# 포맷 출처: GitHub 공식 문서/변경로그(접두어 + 36자 base62, fine-grained 는 github_pat_).
+service: github
+display_name: GitHub
+credentials:
+  - kind: personal_access_token
+    label: "Personal Access Token"
+    label_patterns:
+      - "Personal access token"
+      - "Personal access tokens"
+      - "Token (classic)"
+    url_patterns:
+      - "github\\.com/settings/tokens"
+    # 클래식 PAT(ghp_+36) 또는 fine-grained(github_pat_+가변). 둘 다 값만으로 식별 가능.
+    value_regex: "^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,})$"
+    official_env_name: GITHUB_TOKEN
+    expiry_known: false
+    # 유효성 검증(TRUST-1): 현재 사용자 조회는 read-only. GitHub API 는 User-Agent 필수.
+    verify:
+      method: GET
+      url: "https://api.github.com/user"
+      auth: bearer
+      extra_headers:
+        User-Agent: "KeyLens"

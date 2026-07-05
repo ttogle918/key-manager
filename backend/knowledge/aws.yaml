@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# AWS. Access Key ID 는 접두어(AKIA 장기 / ASIA 임시) + 16 대문자·숫자로 값 식별 가능.
+# Secret Access Key 는 접두어 없는 40자 base64 라 값만으론 구분 불가 → 라벨 맥락(Stage2).
+# 포맷 출처: AWS 공식 문서(Access Key ID 20자, 앞 4자가 종류).
+service: aws
+display_name: AWS
+credentials:
+  - kind: access_key_id
+    label: "Access Key ID"
+    label_patterns:
+      - "Access key ID"
+      - "Access key"
+    url_patterns: []
+    value_regex: "^(AKIA|ASIA)[0-9A-Z]{16}$"
+    official_env_name: AWS_ACCESS_KEY_ID
+    expiry_known: false
+
+  - kind: secret_access_key
+    label: "Secret Access Key"
+    label_patterns:
+      - "Secret access key"
+      - "Secret key"
+    url_patterns: []
+    # 접두어 없는 40자 base64 — 값만으로 단정 불가. 라벨 맥락으로만 식별(오탐 방지).
+    value_regex: null
+    official_env_name: AWS_SECRET_ACCESS_KEY
+    expiry_known: false

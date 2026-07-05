@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Stripe. 키는 접두어로 식별: sk_/rk_(시크릿·제한) · pk_(공개), live/test 모드 포함.
+# 포맷 출처: Stripe 공식 문서(keys). OpenAI 의 "sk-"(하이픈)와 달리 "sk_"(언더스코어)라 충돌 없음.
+service: stripe
+display_name: Stripe
+credentials:
+  - kind: secret_key
+    label: "Secret Key"
+    label_patterns:
+      - "Secret key"
+      - "Restricted key"
+    url_patterns:
+      - "dashboard\\.stripe\\.com/apikeys"
+    value_regex: "^(sk|rk)_(live|test)_[A-Za-z0-9]{16,}$"
+    official_env_name: STRIPE_SECRET_KEY
+    expiry_known: false
+    # 유효성 검증(TRUST-1): 잔액 조회는 read-only. 유효=200, 폐기/오타=401.
+    verify:
+      method: GET
+      url: "https://api.stripe.com/v1/balance"
+      auth: bearer
+
+  - kind: publishable_key
+    label: "Publishable Key"
+    label_patterns:
+      - "Publishable key"
+    url_patterns: []
+    value_regex: "^pk_(live|test)_[A-Za-z0-9]{16,}$"
+    official_env_name: STRIPE_PUBLISHABLE_KEY
+    expiry_known: false

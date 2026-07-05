@@ -33,7 +33,8 @@ SPDX-License-Identifier: MIT
 
 ### 진행 현황 (2026-07-05 기준 — 일정 대비 크게 앞섬: S3까지 완료)
 
-- ✅ **분류 엔진(차별점)**: CORE-1(값 기반)·**CORE-2(맥락 기반, 프로젝트 심장)**·CORE-3(브라우저 OCR + 값 정밀 재인식)·CORE-4(지식베이스 5종: Notion/Kakao/GCP/OpenAI/Ollama)·DEMO-1(더미 스크린샷+골든 픽스처) 완료.
+- ✅ **분류 엔진(차별점)**: CORE-1(값 기반)·**CORE-2(맥락 기반, 프로젝트 심장)**·CORE-3(브라우저 OCR + 값 정밀 재인식)·CORE-4(지식베이스 **9종**: Notion/Kakao/GCP/OpenAI/Ollama/GitHub/AWS/Slack/Stripe)·DEMO-1(더미 스크린샷+골든 픽스처) 완료.
+- ✅ **확장성 실체화**: 프론트가 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 **동적 구성** → 새 서비스는 YAML 하나로 백엔드·프론트 양쪽 자동 반영(코드 수정 0). GitHub/AWS/Slack/Stripe 4종을 프론트 코드 0줄로 추가해 증명.
 - ✅ **금고(보안 실체)**: VAULT-1(Argon2id + AES-256-GCM + SQLite 암호문만)·VAULT-2(세션 인증·자동잠금·실패지연·감사이력·값 교체) 완료 — **브라우저 E2E 검증 통과**.
 - ✅ **연결·UI**: INTEG-1(프론트↔백엔드 실연결)·UI-1/UI-2(실 금고·인증 연결)·CORE-5(.env 내보내기) 완료.
 - ✅ **제출 준비**: OSS-2(라이선스 카피레프트 0·reuse lint 통과·SBOM)·OSS-3(dev 스크립트·README, 새VM 검증만 잔여) 대부분 완료.
@@ -58,13 +59,13 @@ SPDX-License-Identifier: MIT
     - [x] 엔트로피 보조 판정(`_looks_secret`)으로 unknown 후보 필터
   - **[Engine] 분류 결과 스키마 확정**
     - [x] 출력 `ClassifiedItem`: `{value, masked, service, kind, official_env_name, confidence, format, source, stage, meta}`
-  - **[결정] 검출 전용 값 규칙 확장 범위** *(미결)*
-    - [ ] GitHub `ghp_`/AWS `AKIA`/Slack `xoxb-`/Stripe `sk_live_` 등 흔한 접두어를 **KB 없이 서비스만 플래그**하는 `value_rules`를 추가할지, 아니면 CORE-1의 "10종"을 KB 4종으로 좁힐지 결정. 추가 시 Gitleaks(MIT) 참고분은 `THIRD-PARTY-NOTICES.md`에 출처 기록.
+  - **[결정] 검출 전용 값 규칙 확장 범위** — ✅ **결정: 별도 `value_rules` 대신 KB YAML로 추가**(아키텍처 일관성 + 확장성 증명)
+    - [x] GitHub `ghp_`/`github_pat_`·AWS `AKIA`/`ASIA`·Slack `xoxb-`/`xoxp-`·Stripe `sk_`/`rk_`/`pk_` 를 `knowledge/{github,aws,slack,stripe}.yaml` 로 추가(총 9종). 정규식은 공식 문서 기준 직접 작성, 출처는 `THIRD-PARTY-NOTICES.md` 기록. AWS 시크릿(접두어 없음)은 Stage2 라벨 맥락으로만.
 - **테스트 체크리스트**
   - [x] 🧪 `sk-...` 입력 → `openai/api_key/OPENAI_API_KEY` 반환
   - [x] 🧪 무작위 문자열/평문 → 결과 없음, 애매값은 `unknown`(오식별 금지)
   - [x] ✅ 값 기반 4종(OpenAI api/org·GCP·Notion) 더미 키 → 올바른 official_env_name 매핑
-  - [ ] ⏸ (확장 시) GitHub/AWS/Slack 등 추가 접두어 매핑 — 위 결정 후
+  - [x] ✅ GitHub/AWS/Slack/Stripe 추가 접두어 매핑 — `test_new_services.py` 13케이스(값 매칭·오탐 방지·sk_/sk- 구분)
 
 ### CORE-2 🔴 맥락 기반 분류 (Stage 2, 차별점) — ✅ text·URL 완료(OCR 입력경로 대기)
 - **중요도**: 🔴 Critical | **스프린트**: S2 | **의존성**: CORE-1, CORE-4(지식베이스) *(CORE-3/OCR과 분리)* | **사이즈**: L *(text·URL 부분은 M)* | **상태**: ✅ `stage2.py`, pytest 28개

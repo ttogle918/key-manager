@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# Slack. 토큰은 접두어로 종류가 갈린다: xoxb-(봇), xoxp-(유저). 값 기반 식별 가능.
+# 포맷 출처: Slack 공식 문서(Tokens). 검증은 auth.test 가 200+본문 ok 필드라 HTTP 상태만으론
+# 판단 불가 → verify 미선언(unsupported).
+service: slack
+display_name: Slack
+credentials:
+  - kind: bot_token
+    label: "Bot Token"
+    label_patterns:
+      - "Bot User OAuth Token"
+      - "Bot token"
+    url_patterns: []
+    value_regex: "^xoxb-[0-9A-Za-z-]{10,}$"
+    official_env_name: SLACK_BOT_TOKEN
+    expiry_known: false
+
+  - kind: user_token
+    label: "User Token"
+    label_patterns:
+      - "User OAuth Token"
+      - "User token"
+    url_patterns: []
+    value_regex: "^xoxp-[0-9A-Za-z-]{10,}$"
+    official_env_name: SLACK_USER_TOKEN
+    expiry_known: false
