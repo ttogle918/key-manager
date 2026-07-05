@@ -96,6 +96,8 @@ interface KeylensState {
   loadVault: () => void
   /** 항목 값을 복호화해 클립보드에 복사(잠금 시 인증 유도). prefix 지정 시 `prefix+값`(.env 한 줄). */
   copyValue: (id: string, label: string, prefix?: string) => void
+  /** 항목의 감사 이력(등록·열람·복사·내보내기)을 불러와 해당 항목에 채운다. */
+  loadHistory: (id: string) => void
 
   goInput: () => void
   goVault: () => void
@@ -169,7 +171,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     const out: VaultItem[] = []
     for (const it of items) {
       try {
-        const { value } = await vaultApi.value(Number(it.id))
+        const { value } = await vaultApi.value(Number(it.id), 'export')
         out.push({ ...it, full: value })
       } catch {
         /* 잠금/네트워크 실패 항목은 건너뜀 */
@@ -263,7 +265,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     copyValue: async (id, label, prefix) => {
       try {
-        const { value } = await vaultApi.value(Number(id))
+        const { value } = await vaultApi.value(Number(id), 'copy')
         get().copy((prefix ?? '') + value, label)
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
@@ -272,6 +274,14 @@ export const useKeylens = create<KeylensState>((set, get) => {
         } else {
           get().showToast('값을 불러오지 못했어요')
         }
+      }
+    },
+    loadHistory: async (id) => {
+      try {
+        const hist = await vaultApi.history(Number(id))
+        set((s) => ({ vault: s.vault.map((it) => (it.id === id ? { ...it, history: hist } : it)) }))
+      } catch {
+        /* 잠금/네트워크 실패는 무시(이력만 비어 보임) */
       }
     },
 
@@ -694,7 +704,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
         }
       }
     },
-    toggleExpanded: (id) => set((s) => ({ expandedId: s.expandedId === id ? null : id })),
+    toggleExpanded: (id) => {
+      const willExpand = get().expandedId !== id
+      set({ expandedId: willExpand ? id : null })
+      if (willExpand && !get().locked) get().loadHistory(id) // 펼칠 때 감사 이력 로드
+    },
 
     // ── .env 내보내기 ──
     openEnv: () => {

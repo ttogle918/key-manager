@@ -141,3 +141,10 @@ class VaultEntryMeta(BaseModel):
 
 class VaultValue(BaseModel):
     value: str
+
+
+class VaultHistoryEntry(BaseModel):
+    """감사 이력 한 줄(값 없음) — 등록·열람·복사·내보내기."""
+
+    date: str
+    event: str

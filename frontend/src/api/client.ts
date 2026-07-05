@@ -7,6 +7,7 @@ import type {
   VaultEntryCreate,
   VaultEntryMeta,
   VaultEntryUpdate,
+  VaultHistoryEntry,
   VaultStatus,
 } from './types'
 
@@ -95,7 +96,9 @@ export const vaultApi = {
   list: () => vreq<VaultEntryMeta[]>('/vault/entries'),
   add: (entry: VaultEntryCreate) =>
     vreq<VaultEntryMeta>('/vault/entries', { method: 'POST', body: JSON.stringify(entry) }),
-  value: (id: number) => vreq<{ value: string }>(`/vault/entries/${id}/value`),
+  value: (id: number, event: 'reveal' | 'copy' | 'export' = 'reveal') =>
+    vreq<{ value: string }>(`/vault/entries/${id}/value?event=${event}`),
+  history: (id: number) => vreq<VaultHistoryEntry[]>(`/vault/entries/${id}/history`),
   update: (id: number, patch: VaultEntryUpdate) =>
     vreq<VaultEntryMeta>(`/vault/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   remove: (id: number) =>

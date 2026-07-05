@@ -194,12 +194,23 @@ class VaultService:
         finally:
             conn.close()
 
-    def get_value(self, entry_id: int) -> str:
-        """평문 값 복호화 — 잠금 상태면 VaultLocked."""
+    def get_value(self, entry_id: int, event: str = "reveal") -> str:
+        """평문 값 복호화 — 잠금 상태면 VaultLocked. 접근을 감사 이력에 기록(event: reveal/copy/export)."""
         key = self._require_key()
         conn = self._conn()
         try:
-            return vault_repo.get_value(conn, key, entry_id)
+            value = vault_repo.get_value(conn, key, entry_id)
+            vault_repo.log_access(conn, entry_id, event)  # 복호화 성공 시에만 기록
+            return value
+        finally:
+            conn.close()
+
+    def history(self, entry_id: int) -> list[dict]:
+        """항목의 감사 이력(등록·열람·복사·내보내기). 인증 상태에서만 조회 가능."""
+        self._require_key()
+        conn = self._conn()
+        try:
+            return vault_repo.access_history(conn, entry_id)
         finally:
             conn.close()
 

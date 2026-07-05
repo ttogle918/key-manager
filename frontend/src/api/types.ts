@@ -65,6 +65,12 @@ export interface VaultEntryUpdate {
   expires_at?: string | null
 }
 
+/** 감사 이력 한 줄(값 없음) — 등록·열람·복사·내보내기. */
+export interface VaultHistoryEntry {
+  date: string
+  event: string
+}
+
 /** 값 없는 항목 메타데이터 — 잠금 상태에서도 노출 가능. */
 export interface VaultEntryMeta {
   id: number

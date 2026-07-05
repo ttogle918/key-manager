@@ -43,7 +43,22 @@ CREATE TABLE IF NOT EXISTS entries (
     created_at     TEXT NOT NULL,
     expires_at     TEXT
 );
+CREATE TABLE IF NOT EXISTS access_log (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER,
+    event    TEXT NOT NULL,
+    at       TEXT NOT NULL,
+    FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
+);
 """
+
+# 감사 이력 이벤트 코드 → 표시 라벨(누가/언제/무엇을 열람·복사·내보냈는지 — SECURITY_REVIEW 3-4).
+EVENT_LABELS = {
+    "register": "등록",
+    "reveal": "열람",
+    "copy": "복사",
+    "export": ".env 내보내기",
+}
 
 # 값 복호화 없이 노출 가능한 메타데이터 컬럼(평문). 잠금 상태에서도 안전.
 _META_COLS = "id, service, kind, official_name, label, project, memo, created_at, expires_at"
@@ -132,8 +147,31 @@ def add_entry(
         " nonce, ciphertext, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
         (service, kind, official_name, label, project, memo, nonce, ct, _now(), expires_at),
     )
+    entry_id = int(cur.lastrowid)
+    log_access(conn, entry_id, "register")  # 등록 이력
     conn.commit()
-    return int(cur.lastrowid)
+    return entry_id
+
+
+def log_access(conn: sqlite3.Connection, entry_id: int, event: str) -> None:
+    """감사 이력 한 줄 기록(값 없음). event 는 EVENT_LABELS 의 코드."""
+    conn.execute(
+        "INSERT INTO access_log (entry_id, event, at) VALUES (?,?,?)",
+        (entry_id, event, _now()),
+    )
+    conn.commit()
+
+
+def access_history(conn: sqlite3.Connection, entry_id: int) -> list[dict]:
+    """항목의 감사 이력을 최신순으로 반환(값 노출 없음). 표시용 라벨로 변환."""
+    rows = conn.execute(
+        "SELECT event, at FROM access_log WHERE entry_id = ? ORDER BY id DESC",
+        (entry_id,),
+    ).fetchall()
+    return [
+        {"date": r["at"][:16].replace("T", " "), "event": EVENT_LABELS.get(r["event"], r["event"])}
+        for r in rows
+    ]
 
 
 def list_entries(conn: sqlite3.Connection) -> list[dict]:

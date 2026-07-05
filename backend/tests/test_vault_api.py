@@ -124,3 +124,35 @@ def test_delete_when_locked_401(vault):
     with pytest.raises(HTTPException) as e:
         main.vault_delete(meta.id)
     assert e.value.status_code == 401
+
+
+def test_history_records_register_and_access(vault):
+    """등록·열람·복사·내보내기가 감사 이력에 남는다(값 없음)."""
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_get_value(meta.id, event="reveal")
+    main.vault_get_value(meta.id, event="copy")
+    main.vault_get_value(meta.id, event="export")
+    hist = main.vault_history(meta.id)
+    events = [h.event for h in hist]  # 최신순
+    assert events == [".env 내보내기", "복사", "열람", "등록"]
+    # 이력에 실제 값이 들어가지 않는다
+    assert all(DUMMY not in h.date and DUMMY not in h.event for h in hist)
+
+
+def test_history_when_locked_401(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_lock()
+    with pytest.raises(HTTPException) as e:
+        main.vault_history(meta.id)
+    assert e.value.status_code == 401
+
+
+def test_delete_cascades_access_log(vault):
+    """항목 삭제 시 그 감사 이력도 함께 삭제된다(FK CASCADE)."""
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_get_value(meta.id, event="reveal")
+    main.vault_delete(meta.id)
+    assert main.vault_history(meta.id) == []

@@ -24,6 +24,7 @@ from .models import (
     VaultEntryCreate,
     VaultEntryMeta,
     VaultEntryUpdate,
+    VaultHistoryEntry,
     VaultPassword,
     VaultStatus,
     VaultValue,
@@ -172,16 +173,29 @@ def vault_delete(entry_id: int) -> VaultStatus:
     return VaultStatus(**VAULT.status())
 
 
+_ACCESS_EVENTS = {"reveal", "copy", "export"}
+
+
 @app.get("/vault/entries/{entry_id}/value", response_model=VaultValue)
-def vault_get_value(entry_id: int) -> VaultValue:
+def vault_get_value(entry_id: int, event: str = "reveal") -> VaultValue:
+    if event not in _ACCESS_EVENTS:
+        event = "reveal"  # 알 수 없는 이벤트는 열람으로 기록
     try:
-        return VaultValue(value=VAULT.get_value(entry_id))
+        return VaultValue(value=VAULT.get_value(entry_id, event))
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     except KeyError:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
     except crypto.DecryptError:
         raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+
+
+@app.get("/vault/entries/{entry_id}/history", response_model=list[VaultHistoryEntry])
+def vault_history(entry_id: int) -> list[VaultHistoryEntry]:
+    try:
+        return [VaultHistoryEntry(**h) for h in VAULT.history(entry_id)]
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
 
 
 @app.post("/vault/change-password", response_model=VaultStatus)
