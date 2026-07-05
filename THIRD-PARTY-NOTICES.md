@@ -69,8 +69,8 @@ SPDX-License-Identifier: MIT
 
 | 구성요소 | 버전 | 라이선스 | 출처·비고 |
 |---|---|---|---|
-| pywebview | 5.4 | BSD-3-Clause | https://github.com/r0x0r/pywebview — 네이티브 창. 전이 pythonnet/clr-loader(MIT) |
-| cx_Freeze | (빌드 시) | PSF 계열 permissive | https://cx-freeze.readthedocs.io/en/latest/license.html — **빌드 도구**(실행 파일에 도구 코드 미포함) |
+| pywebview | 6.2.1 | BSD-3-Clause | https://github.com/r0x0r/pywebview — 네이티브 창. 전이 pythonnet·clr-loader·bottle·proxy_tools(전부 MIT) |
+| cx_Freeze | 8.x | PSF 계열 permissive | https://cx-freeze.readthedocs.io/en/latest/license.html — **빌드 도구**(실행 파일에 도구 코드 미포함) |
 
 - 실행 파일 패키징 기본 패키저는 **cx_Freeze(permissive)**. 대안 Nuitka(Apache-2.0).
 - **PyInstaller(GPL-2.0 + 예외)** 도 사용 가능하다 — 예외 조항상 **생성된 실행 파일은 GPL에 묶이지 않으며**

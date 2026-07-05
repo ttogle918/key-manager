@@ -38,8 +38,8 @@ build_exe_options = {
     "excludes": ["tkinter", "unittest", "pytest", "test"],
 }
 
-# Windows 는 콘솔 창 없는 GUI 실행 파일로.
-base = "Win32GUI" if sys.platform == "win32" else None
+# Windows 는 콘솔 창 없는 GUI 실행 파일로 (cx_Freeze 8.x 의 base 이름은 "gui").
+base = "gui" if sys.platform == "win32" else None
 
 setup(
     name="KeyLens",

@@ -54,6 +54,9 @@ cd desktop && python setup.py build
 빌드 산출물(`build/`·`dist/`)은 용량이 커(수십 MB) 저장소에 커밋하지 않고
 [GitHub Releases](https://github.com/ttogle918/key-manager/releases) 아티팩트로만 배포합니다.
 
+> ✅ **빌드 실증**: cx_Freeze 8.6.4 로 `KeyLens.exe` 생성 확인. 실행 시 번들된 지식베이스(9종)·SPA를
+> 로드하고 백엔드가 정상 서빙됨(`/health`·`/knowledge`·`/analyze` 응답, 더미 GitHub 키 분류까지 확인).
+
 ### 패키저 라이선스 (이 프로젝트는 permissive-only)
 
 | 패키저 | 라이선스 | 채택 |
@@ -69,6 +72,6 @@ cd desktop && python setup.py build
 
 ## 라이선스
 
-- `pywebview` — BSD-3-Clause (permissive). Windows 전이 의존성 `pythonnet`/`clr-loader` = MIT.
+- `pywebview` 6.2.1 — BSD-3-Clause (permissive). 전이 `pythonnet`·`clr-loader`·`bottle`·`proxy_tools` = MIT.
 - WebView2 런타임은 Windows 11 기본 포함 OS 구성요소(파이썬 의존성 아님).
 - 전부 카피레프트 없음. 상세는 루트 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)·[docs/SBOM.md](../docs/SBOM.md).
