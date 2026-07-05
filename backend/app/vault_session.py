@@ -214,6 +214,23 @@ class VaultService:
         finally:
             conn.close()
 
+    def verify_entry(self, entry_id: int, spec, fetch=None) -> tuple[str, str]:
+        """키를 복호화해 서비스로 1회 검증 호출하고 상태만 반환(TRUST-1).
+
+        평문 키는 이 메서드 안에서만 존재하고 밖으로 반환하지 않는다.
+        검증 시도는 감사 이력에 'verify' 로 기록한다. 잠금 시 VaultLocked.
+        """
+        from .verify import check_key  # 지연 임포트(검증 로직 격리)
+
+        key = self._require_key()
+        conn = self._conn()
+        try:
+            value = vault_repo.get_value(conn, key, entry_id)
+            vault_repo.log_access(conn, entry_id, "verify")
+        finally:
+            conn.close()
+        return check_key(spec, value, fetch)
+
     def history(self, entry_id: int) -> list[dict]:
         """항목의 감사 이력(등록·열람·복사·내보내기). 인증 상태에서만 조회 가능."""
         self._require_key()

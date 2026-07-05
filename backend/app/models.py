@@ -10,6 +10,24 @@ from pydantic import BaseModel, Field
 # ── 지식베이스 (knowledge/*.yaml) ──
 
 
+class VerifySpec(BaseModel):
+    """키 유효성 검증용 read-only 호출 정의 (TRUST-1).
+
+    서비스가 제공하는 '조회만 하는' 엔드포인트를 지식베이스에 선언해 두고,
+    사용자가 명시적으로 요청할 때 1회 호출해 키가 살아있는지 확인한다.
+    부수효과가 없는(read-only) GET/HEAD 만 허용한다.
+    """
+
+    method: Literal["GET", "HEAD"] = "GET"
+    url: str
+    # 키를 요청에 싣는 방식: Authorization: Bearer <키> / 커스텀 헤더 / 쿼리 파라미터.
+    auth: Literal["bearer", "header", "query"] = "bearer"
+    header_name: Optional[str] = None  # auth=header 일 때 헤더 이름(예: Authorization)
+    prefix: str = ""  # auth=header 값 접두어(예: "KakaoAK ")
+    query_name: Optional[str] = None  # auth=query 일 때 파라미터 이름
+    extra_headers: dict[str, str] = Field(default_factory=dict)  # 예: Notion-Version
+
+
 class Credential(BaseModel):
     """서비스가 발급하는 자격증명 한 종류."""
 
@@ -20,6 +38,7 @@ class Credential(BaseModel):
     value_regex: Optional[str] = None
     official_env_name: str
     expiry_known: bool = False
+    verify: Optional[VerifySpec] = None
 
 
 class Service(BaseModel):
@@ -161,3 +180,19 @@ class VaultHistoryEntry(BaseModel):
 
     date: str
     event: str
+
+
+VerifyStatus = Literal["active", "invalid", "unknown", "unsupported"]
+
+
+class VaultVerifyResult(BaseModel):
+    """키 유효성 검증 결과(값 없음) — 상태만 노출(TRUST-1).
+
+    - active: 서비스가 키를 인정(2xx)
+    - invalid: 인증 거부(401/403) — 폐기·오타 키
+    - unknown: 판단 불가(네트워크 오류·타임아웃·429 등)
+    - unsupported: 지식베이스에 검증 엔드포인트가 없는 서비스
+    """
+
+    status: VerifyStatus
+    detail: str

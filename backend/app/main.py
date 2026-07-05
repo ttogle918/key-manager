@@ -30,6 +30,7 @@ from .models import (
     VaultRotate,
     VaultStatus,
     VaultValue,
+    VaultVerifyResult,
 )
 from .vault_session import VaultLocked, VaultRateLimited, VaultService
 
@@ -81,6 +82,7 @@ def knowledge() -> dict:
                         "official_env_name": c.official_env_name,
                         "value_based": c.value_regex is not None,
                         "expiry_known": c.expiry_known,
+                        "verifiable": c.verify is not None,
                     }
                     for c in s.credentials
                 ],
@@ -201,6 +203,38 @@ def vault_get_value(entry_id: int, event: str = "reveal") -> VaultValue:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
     except crypto.DecryptError:
         raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+
+
+@app.post("/vault/entries/{entry_id}/verify", response_model=VaultVerifyResult)
+def vault_verify(entry_id: int) -> VaultVerifyResult:
+    """항목의 키를 서비스로 1회 검증 호출 → active/invalid/unknown(값 비노출).
+
+    지식베이스에 검증 엔드포인트가 없는 서비스는 unsupported 로 응답(호출 자체 안 함).
+    명시적 사용자 요청(POST)일 때만 실행된다 — 자동 주기 호출 없음.
+    """
+    meta = next((m for m in VAULT.list_entries() if m["id"] == entry_id), None)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
+
+    cred = (
+        KB.find(meta["service"], meta["kind"])
+        if meta.get("service") and meta.get("kind")
+        else None
+    )
+    if cred is None or cred.verify is None:
+        return VaultVerifyResult(
+            status="unsupported", detail="이 서비스는 아직 유효성 검증을 지원하지 않습니다"
+        )
+
+    try:
+        status, detail = VAULT.verify_entry(entry_id, cred.verify)
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    except KeyError:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
+    except crypto.DecryptError:
+        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+    return VaultVerifyResult(status=status, detail=detail)
 
 
 @app.get("/vault/entries/{entry_id}/history", response_model=list[VaultHistoryEntry])

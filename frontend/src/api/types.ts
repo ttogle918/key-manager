@@ -71,6 +71,12 @@ export interface VaultHistoryEntry {
   event: string
 }
 
+/** 키 유효성 검증 결과(TRUST-1) — 값 없이 상태만. */
+export interface VaultVerifyResult {
+  status: 'active' | 'invalid' | 'unknown' | 'unsupported'
+  detail: string
+}
+
 /** 값 없는 항목 메타데이터 — 잠금 상태에서도 노출 가능. */
 export interface VaultEntryMeta {
   id: number

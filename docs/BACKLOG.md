@@ -26,7 +26,7 @@ SPDX-License-Identifier: MIT
 | **S1** | 6/23–7/6 | 뼈대 + 쉬운 분류 + 연결 | ✅CORE-1, ✅CORE-4, ✅VAULT-0, ✅UI 골격, ✅INTEG-1 | 0 |
 | **S2** | 7/7–7/20 | **맥락 기반 분류(차별점)** | ✅CORE-2, ✅CORE-3(OCR), ✅DEMO-1 | 1 (CORE-2) |
 | **S3** | 7/21–8/3 | 금고 + 인증 + 조회 | ✅VAULT-1, ✅VAULT-2, ✅UI-2 | 1 (VAULT-1) |
-| **S4** | 8/4–8/17 | 신뢰 기능 + 안정화 | ✅CORE-5, TRUST-1, TRUST-2, SYNC-0, OSS-1 | 0 |
+| **S4** | 8/4–8/17 | 신뢰 기능 + 안정화 | ✅CORE-5, ✅TRUST-1, ✅TRUST-2, SYNC-0, ✅OSS-1 | 0 |
 | **제출** | 8/18–8/27 | 제출물 + 재현성 | ✅OSS-2, 🔄OSS-3, OSS-4 | 0 |
 
 > **⚠️ 용량 점검(솔로)**: 배치 원칙 상 L은 스프린트당 최대 1개로 잡았다(S2·S3 각 1개). S4 이후는 신규 L 없이 **안정화·신뢰 기능·제출물**로만 채워, 막판 과적을 방지한다. TRUST 계열(validity/expiry)과 SYNC-0은 **stretch**로 표시 — S4에서 시간이 부족하면 가장 먼저 잘라낼 후보다(잘라도 MVP는 성립).
@@ -38,7 +38,8 @@ SPDX-License-Identifier: MIT
 - ✅ **연결·UI**: INTEG-1(프론트↔백엔드 실연결)·UI-1/UI-2(실 금고·인증 연결)·CORE-5(.env 내보내기) 완료.
 - ✅ **제출 준비**: OSS-2(라이선스 카피레프트 0·reuse lint 통과·SBOM)·OSS-3(dev 스크립트·README, 새VM 검증만 잔여) 대부분 완료.
 - ✅ **보안 감사**(SECURITY_REVIEW.md): 상·중·하 실행 가능 항목 전부 해소(허위 보안표시·마스킹·감사이력·회전 등). ⏳ 남은 건 제출주간 성격(새 VM·포털 도구)뿐.
-- **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서) · stretch(TRUST-1/2, SYNC-0).
+- ✅ **신뢰 기능(stretch 선반영)**: TRUST-1(키 유효성 검증 — read-only 1회 호출 → active/invalid/unknown, KB `verify:` 확장형)·TRUST-2(만료일 수동 입력 + JWT exp 자동 추출 + 임박 상단 정렬) 완료.
+- **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서) · stretch(SYNC-0).
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 
 ---
@@ -248,16 +249,17 @@ SPDX-License-Identifier: MIT
 
 ## EPIC-TRUST — 신뢰 기능 (⚠️ stretch — S4 시간 부족 시 1순위 컷)
 
-### TRUST-1 🟡 키 유효성 체크 (살아있나?)
+### TRUST-1 ✅ 키 유효성 체크 (살아있나?)
 - **중요도**: 🟡 Medium(stretch) | **스프린트**: S4 | **의존성**: VAULT-1, CORE-4 | **사이즈**: M
 - **배경**: 단순 보관을 넘어서는 한 끗. 만료일을 몰라도 "이 키 죽었어요"는 실제 호출로 알 수 있다(TruffleHog의 verification 발상, 단 코드는 직접 구현).
 - **하위 할일**
-  - [ ] 지식베이스에 서비스별 "검증용 read-only 엔드포인트" 정의(예: OpenAI `/v1/models`)
-  - [ ] 사용자 트리거 시 1회 호출 → `active/invalid/unknown` 표시
-  - [ ] 검증은 **명시적 실행만**(자동 주기 호출로 사용자 키를 함부로 쓰지 않음)
+  - [x] 지식베이스에 서비스별 "검증용 read-only 엔드포인트" 정의 (`verify:` 블록 — OpenAI `/v1/models`, Notion `/v1/users/me`; KB 확장만으로 추가)
+  - [x] 사용자 트리거 시 1회 호출 → `active/invalid/unknown/unsupported` 표시 (`POST /vault/entries/{id}/verify`)
+  - [x] 검증은 **명시적 실행만**(POST, 자동 주기 호출 없음) · read-only(GET/HEAD)만 허용
+  - [x] 새 의존성 0 — httpx(certifi/MPL) 대신 표준 `urllib` 사용으로 permissive-only 유지
 - **테스트 체크리스트**
-  - [ ] 🧪 유효 더미 키(모킹) → active, 폐기 키 → invalid
-  - [ ] ✅ 검증 실패 시 키 값 노출 없이 상태만 갱신
+  - [x] 🧪 유효 더미 키(모킹 200) → active, 폐기 키(401) → invalid, 네트워크 오류 → unknown
+  - [x] ✅ 값 노출 없이 상태만 갱신(반환 튜플·이력에 키 원문 없음) · 검증도 감사 이력('유효성 검증')에 기록
 
 ### TRUST-2 ✅ 만료일 입력 & 임박 알림
 - **중요도**: 🟡 Medium(stretch) | **스프린트**: S4 | **의존성**: VAULT-1 | **사이즈**: S

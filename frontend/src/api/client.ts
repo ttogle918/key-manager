@@ -9,6 +9,7 @@ import type {
   VaultEntryUpdate,
   VaultHistoryEntry,
   VaultStatus,
+  VaultVerifyResult,
 } from './types'
 
 /** 백엔드 주소. 기본 로컬 8003, 필요 시 VITE_API_BASE 로 재정의. */
@@ -105,6 +106,8 @@ export const vaultApi = {
   value: (id: number, event: 'reveal' | 'copy' | 'export' = 'reveal') =>
     vreq<{ value: string }>(`/vault/entries/${id}/value?event=${event}`),
   history: (id: number) => vreq<VaultHistoryEntry[]>(`/vault/entries/${id}/history`),
+  verify: (id: number) =>
+    vreq<VaultVerifyResult>(`/vault/entries/${id}/verify`, { method: 'POST' }),
   update: (id: number, patch: VaultEntryUpdate) =>
     vreq<VaultEntryMeta>(`/vault/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   rotate: (id: number, value: string) =>

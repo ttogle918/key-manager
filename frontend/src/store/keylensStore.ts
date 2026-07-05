@@ -146,6 +146,8 @@ interface KeylensState {
   cancelDelete: () => void
   confirmDelete: () => void
   toggleExpanded: (id: string) => void
+  /** 키 유효성 검증(TRUST-1) — 서비스로 1회 호출해 active/invalid/unknown 표시. */
+  verifyEntry: (id: string) => void
 
   openEnv: () => void
   closeEnv: () => void
@@ -731,6 +733,36 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const willExpand = get().expandedId !== id
       set({ expandedId: willExpand ? id : null })
       if (willExpand && !get().locked) get().loadHistory(id) // 펼칠 때 감사 이력 로드
+    },
+    verifyEntry: async (id) => {
+      if (get().locked) {
+        get().showToast('잠금 상태에서는 검증할 수 없어요 — 먼저 잠금을 해제하세요')
+        return
+      }
+      const patch = (v: VaultItem['verify']) =>
+        set((s) => ({ vault: s.vault.map((it) => (it.id === id ? { ...it, verify: v } : it)) }))
+      patch({ status: 'unknown', detail: '검증 중…', checking: true })
+      try {
+        const res = await vaultApi.verify(Number(id))
+        patch({ status: res.status, detail: res.detail })
+        const msg: Record<string, string> = {
+          active: '유효한 키입니다 — 서비스가 인정했어요',
+          invalid: '거부된 키입니다 — 폐기되었거나 잘못된 값이에요',
+          unknown: '판단 불가 — ' + res.detail,
+          unsupported: res.detail,
+        }
+        get().showToast(msg[res.status] ?? res.detail)
+        if (get().expandedId === id) get().loadHistory(id) // 검증도 감사 이력에 남음
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          patch(undefined)
+          get().showToast('금고가 잠겨 검증할 수 없어요 — 잠금을 해제하세요')
+        } else {
+          patch({ status: 'unknown', detail: '검증 요청 실패' })
+          get().showToast('검증 실패 — 백엔드 연결을 확인하세요')
+        }
+      }
     },
 
     // ── .env 내보내기 ──

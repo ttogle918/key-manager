@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { expiryInfo, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
-import type { VaultItem } from '@/types'
+import type { VaultItem, VerifyStatus } from '@/types'
 
 /** 복사 아이콘. */
 function CopyIcon() {
@@ -23,6 +23,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const reveal = useKeylens((s) => s.reveal)
   const copyValue = useKeylens((s) => s.copyValue)
   const openRotate = useKeylens((s) => s.openRotate)
+  const verifyEntry = useKeylens((s) => s.verifyEntry)
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
@@ -176,6 +177,20 @@ export function VaultRow({ it }: { it: VaultItem }) {
                 </span>
               )}
             </Row>
+            <Row label="검증">
+              <button
+                type="button"
+                onClick={() => verifyEntry(it.id)}
+                disabled={locked || it.verify?.checking}
+                title="서비스로 read-only 호출 1회 — 키가 살아있는지 확인(값은 노출되지 않아요)"
+                className="flex-none cursor-pointer rounded-[7px] border border-border bg-chip px-[10px] py-[5px] text-[11px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {it.verify?.checking ? '검증 중…' : '유효성 검증'}
+              </button>
+              {it.verify && !it.verify.checking && (
+                <VerifyBadge status={it.verify.status} detail={it.verify.detail} />
+              )}
+            </Row>
             <Row label="이력">
               <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted-2">
                 {(it.history || []).map((h) => h.date + ' ' + h.event).join(' · ') || '기록 없음'}
@@ -210,6 +225,27 @@ export function VaultRow({ it }: { it: VaultItem }) {
         </div>
       )}
     </div>
+  )
+}
+
+/** 검증 결과 뱃지 — 값은 담지 않고 상태만 색으로 표시. */
+const VERIFY_UI: Record<VerifyStatus, { text: string; fg: string; bg: string; bd: string }> = {
+  active: { text: '유효 ✓', fg: '#3ECF8E', bg: 'rgba(62,207,142,.1)', bd: 'rgba(62,207,142,.3)' },
+  invalid: { text: '거부됨 ✕', fg: '#E5675C', bg: 'rgba(229,103,92,.1)', bd: 'rgba(229,103,92,.3)' },
+  unknown: { text: '판단 불가', fg: '#E3B341', bg: 'rgba(227,179,65,.1)', bd: 'rgba(227,179,65,.25)' },
+  unsupported: { text: '미지원', fg: '#727C89', bg: 'rgba(114,124,137,.1)', bd: 'rgba(114,124,137,.28)' },
+}
+
+function VerifyBadge({ status, detail }: { status: VerifyStatus; detail: string }) {
+  const u = VERIFY_UI[status]
+  return (
+    <span
+      title={detail}
+      className="whitespace-nowrap rounded-[5px] border px-[8px] py-[2.5px] text-[10.5px] font-bold"
+      style={{ color: u.fg, background: u.bg, borderColor: u.bd }}
+    >
+      {u.text}
+    </span>
   )
 }
 

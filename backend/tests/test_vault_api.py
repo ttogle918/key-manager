@@ -193,3 +193,82 @@ def test_delete_cascades_access_log(vault):
     main.vault_get_value(meta.id, event="reveal")
     main.vault_delete(meta.id)
     assert main.vault_history(meta.id) == []
+
+
+# ── TRUST-1: 키 유효성 검증 엔드포인트 ──
+
+
+def _openai_entry():
+    return VaultEntryCreate(
+        service="openai", kind="api_key", official_name="OPENAI_API_KEY", value=DUMMY
+    )
+
+
+def test_verify_active(vault, monkeypatch):
+    """유효 키(모킹 200) → active, 감사 이력에 '유효성 검증' 기록(값 없음)."""
+    from app import verify as verify_mod
+
+    monkeypatch.setattr(verify_mod, "_http_fetch", lambda *_: 200)
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(_openai_entry())
+    res = main.vault_verify(meta.id)
+    assert res.status == "active"
+    events = [h.event for h in main.vault_history(meta.id)]
+    assert "유효성 검증" in events
+    assert all(DUMMY not in h.event for h in main.vault_history(meta.id))
+
+
+def test_verify_invalid(vault, monkeypatch):
+    """폐기·오타 키(모킹 401) → invalid."""
+    from app import verify as verify_mod
+
+    monkeypatch.setattr(verify_mod, "_http_fetch", lambda *_: 401)
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(_openai_entry())
+    assert main.vault_verify(meta.id).status == "invalid"
+
+
+def test_verify_network_error_unknown(vault, monkeypatch):
+    """네트워크 오류 → unknown(키 문제로 단정하지 않음)."""
+    from app import verify as verify_mod
+
+    def boom(*_):
+        raise OSError("연결 실패")
+
+    monkeypatch.setattr(verify_mod, "_http_fetch", boom)
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(_openai_entry())
+    assert main.vault_verify(meta.id).status == "unknown"
+
+
+def test_verify_unsupported_service_no_network(vault, monkeypatch):
+    """검증 엔드포인트가 없는 서비스(kakao)는 호출 없이 unsupported."""
+    from app import verify as verify_mod
+
+    def must_not_call(*_):
+        raise AssertionError("검증 엔드포인트 없는 서비스에서 네트워크 호출 발생")
+
+    monkeypatch.setattr(verify_mod, "_http_fetch", must_not_call)
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(
+        VaultEntryCreate(
+            service="kakao", kind="rest_api_key", official_name="KAKAO_REST_API_KEY", value=DUMMY
+        )
+    )
+    assert main.vault_verify(meta.id).status == "unsupported"
+
+
+def test_verify_when_locked_401(vault):
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(_openai_entry())
+    main.vault_lock()
+    with pytest.raises(HTTPException) as e:
+        main.vault_verify(meta.id)
+    assert e.value.status_code == 401
+
+
+def test_verify_missing_404(vault):
+    main.vault_init(VaultInit(password=MASTER))
+    with pytest.raises(HTTPException) as e:
+        main.vault_verify(999)
+    assert e.value.status_code == 404

@@ -14,6 +14,11 @@ credentials:
     value_regex: "^sk-(proj-)?[A-Za-z0-9_\\-]{20,}$"
     official_env_name: OPENAI_API_KEY
     expiry_known: false
+    # 유효성 검증(TRUST-1): 모델 목록 조회는 read-only. 유효 키=200, 폐기/오타=401.
+    verify:
+      method: GET
+      url: "https://api.openai.com/v1/models"
+      auth: bearer
 
   - kind: org_id
     label: "Organization ID"

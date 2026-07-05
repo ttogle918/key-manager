@@ -59,6 +59,16 @@ export interface HistoryEntry {
   event: string
 }
 
+/** 키 유효성 검증 상태(TRUST-1) — 값은 담지 않고 상태만. */
+export type VerifyStatus = 'active' | 'invalid' | 'unknown' | 'unsupported'
+
+/** 검증 결과 + 진행 표시(프론트 전용, 저장 안 됨). */
+export interface VerifyState {
+  status: VerifyStatus
+  detail: string
+  checking?: boolean
+}
+
 /** 보관함에 암호화되어 저장된 자격증명 한 건. */
 export interface VaultItem {
   id: string
@@ -76,6 +86,8 @@ export interface VaultItem {
   expiresAt: string | null
   history: HistoryEntry[]
   meta: Record<string, unknown>
+  /** 키 유효성 검증 결과(TRUST-1) — 명시적 검증 전엔 undefined. */
+  verify?: VerifyState
 }
 
 /** 서비스 타일 표시용 메타(약자 + 색). */
