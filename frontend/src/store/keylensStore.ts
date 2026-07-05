@@ -11,7 +11,7 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
-import { envText, today } from '@/lib/format'
+import { envText } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -84,6 +84,8 @@ interface KeylensState {
   // 다이얼로그 / 토스트
   deleteTarget: DeleteTarget
   dupTarget: DupTarget | null
+  /** 값 교체(회전) 대상 항목. 모달이 열려 있으면 non-null. */
+  rotateTarget: VaultItem | null
   envOpen: boolean
   toast: string | null
 
@@ -137,7 +139,10 @@ interface KeylensState {
   reveal: (id: string) => void
   copy: (text: string, label: string) => void
   setVaultField: (id: string, key: keyof VaultItem, v: unknown) => void
-  rotate: (id: string) => void
+  /** 값 교체 모달 열기/닫기/확정(새 값으로 재암호화). */
+  openRotate: (it: VaultItem) => void
+  cancelRotate: () => void
+  confirmRotate: (newValue: string) => void
   setDeleteTarget: (it: VaultItem) => void
   cancelDelete: () => void
   confirmDelete: () => void
@@ -218,6 +223,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     expandedId: null,
     deleteTarget: null,
     dupTarget: null,
+    rotateTarget: null,
     envOpen: false,
     toast: null,
 
@@ -672,17 +678,31 @@ export const useKeylens = create<KeylensState>((set, get) => {
           .catch(() => get().showToast('메모 저장 실패 — 백엔드 연결을 확인하세요'))
       }, 600)
     },
-    rotate: (id) => {
-      // 회전 이력 저장은 백엔드 스키마 미지원 — 이 세션 표시용(재시작 시 사라짐).
-      const d = today()
-      set((s) => ({
-        vault: s.vault.map((it) =>
-          it.id === id
-            ? { ...it, history: [...(it.history || []), { date: d, event: '키 회전' }] }
-            : it,
-        ),
-      }))
-      get().showToast('회전 기록 추가(이 세션에만 표시 — 이력 저장은 후속)')
+    openRotate: (it) => set({ rotateTarget: it }),
+    cancelRotate: () => set({ rotateTarget: null }),
+    confirmRotate: async (newValue) => {
+      const t = get().rotateTarget
+      if (!t) return
+      const v = newValue.trim()
+      if (!v) {
+        get().showToast('새 값을 입력해 주세요')
+        return
+      }
+      try {
+        await vaultApi.rotate(Number(t.id), v)
+        set({ rotateTarget: null })
+        await get().loadVault()
+        if (get().expandedId === t.id) get().loadHistory(t.id) // 이력 갱신(키 교체 기록)
+        get().showToast(t.varName + ' 값을 교체했어요 — 옛 값은 폐기됨')
+      } catch (e) {
+        set({ rotateTarget: null })
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().showToast('금고가 잠겨 교체할 수 없어요 — 잠금을 해제하세요')
+        } else {
+          get().showToast('값 교체 실패 — 백엔드 연결을 확인하세요')
+        }
+      }
     },
     setDeleteTarget: (it) => set({ deleteTarget: it }),
     cancelDelete: () => set({ deleteTarget: null }),
@@ -776,6 +796,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         lockErr: '',
         deleteTarget: null,
         dupTarget: null,
+        rotateTarget: null,
         envOpen: false,
       })
     },

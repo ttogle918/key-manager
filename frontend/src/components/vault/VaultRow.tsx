@@ -22,7 +22,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const expanded = useKeylens((s) => s.expandedId === it.id)
   const reveal = useKeylens((s) => s.reveal)
   const copyValue = useKeylens((s) => s.copyValue)
-  const rotate = useKeylens((s) => s.rotate)
+  const openRotate = useKeylens((s) => s.openRotate)
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
@@ -182,11 +182,12 @@ export function VaultRow({ it }: { it: VaultItem }) {
               </span>
               <button
                 type="button"
-                onClick={() => rotate(it.id)}
-                title="키를 새로 발급받아 교체했다면 회전 기록을 남기세요"
-                className="flex-none cursor-pointer rounded-[7px] border border-border bg-chip px-[10px] py-[5px] text-[11px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+                onClick={() => openRotate(it)}
+                disabled={locked}
+                title="키를 새로 발급받았다면 값을 교체하세요(옛 값 폐기)"
+                className="flex-none cursor-pointer rounded-[7px] border border-border bg-chip px-[10px] py-[5px] text-[11px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft disabled:cursor-not-allowed disabled:opacity-50"
               >
-                회전 기록
+                값 교체
               </button>
             </Row>
             <div className="flex items-start gap-2 text-[12px]">

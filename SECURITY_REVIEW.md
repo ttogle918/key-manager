@@ -215,7 +215,7 @@ SPDX-License-Identifier: MIT
 | 1-3 | 중 | `.env.example` 유령 설정 (`VITE_API_BASE_URL` 등) | ✅ 적용 — 실제 읽히는 `VITE_API_BASE`만 남기고 미래 설정은 주석 처리 |
 | 1-2 | 중 | README 네이티브 Tesseract 오안내 | ✅ 적용 — tesseract.js(브라우저) 기준으로 요구사항·아키텍처 수정 |
 | 1-4 | 중 | Kakao Native 키 프론트 매핑 누락 | ✅ 적용 — TYPE_MAP에 KAKAO_NATIVE_APP_KEY 추가 (근본 해법인 /knowledge 동적화는 INTEG-1 후속) |
-| 2-3 | 중 | "회전 기록"이 값 교체가 아님 | ⏳ 미적용 — 값 교체 플로우 UX 재설계 필요 (S4) |
+| 2-3 | 중 | "회전 기록"이 값 교체가 아님 | ✅ 적용 — 실제 값 교체(재암호화, 옛 값 폐기) 모달 + "키 교체" 이력 |
 | 3-2 | 중 | 자동 잠금·실패 지연 부재 | ✅ 적용 — VAULT-2: 무활동 자동 잠금 + 연속 실패 백오프(429) |
 | 4-3 | 중 | 마스킹이 앞 8자 일괄 노출 | ✅ 적용 — 비접두어 값(unknown·ambiguous·Stage2)은 keep_front=4로 축소 |
 | 4-4 | 하 | 짧은 값(7~11자) 마스킹 누출 | ✅ 적용 — 12자 미만 전체 마스킹 |

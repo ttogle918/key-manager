@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
+import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { envText, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
@@ -32,6 +33,61 @@ export function DeleteModal() {
           className="cursor-pointer rounded-lg border-none bg-danger px-[14px] py-2 text-[12.5px] font-bold text-[#2A0B08] hover:brightness-[1.08]"
         >
           삭제
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+/** 값 교체(회전) 다이얼로그 — 새로 발급받은 값으로 교체(재암호화). */
+export function RotateModal() {
+  const target = useKeylens((s) => s.rotateTarget)
+  const cancel = useKeylens((s) => s.cancelRotate)
+  const confirm = useKeylens((s) => s.confirmRotate)
+  const [value, setValue] = useState('')
+
+  useEffect(() => {
+    if (target) setValue('') // 열릴 때마다 입력 초기화
+  }, [target])
+
+  return (
+    <Modal open={!!target} onClose={cancel} title="값 교체" className="w-[420px]">
+      <div className="text-[15px] font-bold">값 교체 (회전)</div>
+      <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
+        <span className="font-mono text-fg-soft">{target?.varName}</span> 의 값을 새로 발급받은 값으로 교체합니다.
+        <br />
+        옛 값은 즉시 폐기되어 복구할 수 없고, 교체는 이력에 기록됩니다.
+      </p>
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && value.trim()) confirm(value)
+        }}
+        placeholder="새 값 붙여넣기"
+        autoFocus
+        className="mt-3 w-full rounded-lg border border-border bg-surface px-3 py-[10px] font-mono text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+      />
+      <div className="mt-[18px] flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={cancel}
+          className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => confirm(value)}
+          disabled={!value.trim()}
+          className="rounded-lg border-none px-[14px] py-2 text-[12.5px] font-bold hover:brightness-[1.07]"
+          style={{
+            background: value.trim() ? '#3ECF8E' : '#1B2128',
+            color: value.trim() ? '#05231A' : '#525B67',
+            cursor: value.trim() ? 'pointer' : 'not-allowed',
+          }}
+        >
+          교체
         </button>
       </div>
     </Modal>

@@ -101,6 +101,11 @@ export const vaultApi = {
   history: (id: number) => vreq<VaultHistoryEntry[]>(`/vault/entries/${id}/history`),
   update: (id: number, patch: VaultEntryUpdate) =>
     vreq<VaultEntryMeta>(`/vault/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  rotate: (id: number, value: string) =>
+    vreq<VaultEntryMeta>(`/vault/entries/${id}/rotate`, {
+      method: 'POST',
+      body: JSON.stringify({ value }),
+    }),
   remove: (id: number) =>
     vreq<VaultStatus>(`/vault/entries/${id}`, { method: 'DELETE' }),
   changePassword: (oldPassword: string, newPassword: string) =>

@@ -7,7 +7,7 @@ import { SetupScreen } from '@/components/screens/SetupScreen'
 import { LockScreen } from '@/components/screens/LockScreen'
 import { InputScreen } from '@/components/screens/InputScreen'
 import { VaultScreen } from '@/components/screens/VaultScreen'
-import { DeleteModal, DupModal, EnvModal } from '@/components/modals/Modals'
+import { DeleteModal, DupModal, EnvModal, RotateModal } from '@/components/modals/Modals'
 import { Toast } from '@/components/ui/Toast'
 import { ProjectsDatalist } from '@/components/ProjectsDatalist'
 
@@ -68,6 +68,7 @@ export default function App() {
       {/* 전역 다이얼로그 · 토스트 */}
       <DeleteModal />
       <DupModal />
+      <RotateModal />
       <EnvModal />
       <Toast />
     </>
