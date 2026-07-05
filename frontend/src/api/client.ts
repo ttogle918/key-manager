@@ -15,12 +15,17 @@ import type {
   VaultVerifyResult,
 } from './types'
 
-/** 백엔드 주소. 기본 로컬 8003, 필요 시 VITE_API_BASE 로 재정의. */
-const API_BASE =
-  ((import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8003').replace(
-    /\/$/,
-    '',
-  )
+/**
+ * 백엔드 주소.
+ * - dev(`vite`): `http://localhost:8003` (프론트 5173 ↔ 백엔드 8003, 별도 오리진 → CORS)
+ * - prod 빌드(데스크톱 앱): 상대 경로('') — SPA와 API를 백엔드가 같은 오리진에서 서빙하므로
+ *   포트에 상관없이 same-origin 요청이 되어 CORS가 필요 없다.
+ * - 언제든 `VITE_API_BASE` 로 명시 재정의 가능.
+ */
+const API_BASE = (
+  (import.meta.env.VITE_API_BASE as string | undefined) ??
+  (import.meta.env.PROD ? '' : 'http://localhost:8003')
+).replace(/\/$/, '')
 
 /** 백엔드가 응답하지 않거나 오류일 때 던지는 에러. */
 export class ApiError extends Error {}

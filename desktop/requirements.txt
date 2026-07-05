@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# 데스크톱 런처 의존성. 백엔드 런타임(fastapi/uvicorn 등)에 pywebview 만 얹는다.
+-r ../backend/requirements.txt
+pywebview==5.4        # BSD-3-Clause; OS 내장 웹뷰(Windows=WebView2, macOS=WebKit, Linux=GTK/Qt)
+# Windows 백엔드는 pythonnet(MIT)/clr-loader(MIT)를 전이로 사용한다(전부 permissive).
+# WebView2 런타임은 Windows 11 기본 포함 시스템 구성요소(파이썬 의존성 아님).

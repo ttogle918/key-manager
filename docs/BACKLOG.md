@@ -41,6 +41,7 @@ SPDX-License-Identifier: MIT
 - ✅ **보안 감사**(SECURITY_REVIEW.md): 상·중·하 실행 가능 항목 전부 해소(허위 보안표시·마스킹·감사이력·회전 등). ⏳ 남은 건 제출주간 성격(새 VM·포털 도구)뿐.
 - ✅ **신뢰 기능(stretch 선반영)**: TRUST-1(키 유효성 검증 — read-only 1회 호출 → active/invalid/unknown, KB `verify:` 확장형)·TRUST-2(만료일 수동 입력 + JWT exp 자동 추출 + 임박 상단 정렬) 완료.
 - ✅ **멀티 기기(stretch 선반영)**: SYNC-0(암호화 금고 번들 내보내기/가져오기 — 교체·병합, 제로 널리지 유지) 완료. 서버리스 멀티 기기의 최소 단위 확보.
+- ✅ **배포·데스크톱**: 배포/설치 온보딩 문서 강화(git clone·요구사항·트러블슈팅)·CONTRIBUTING.md, **데스크톱 앱**(PyWebView `desktop/app.py` — 네이티브 창, API+SPA same-origin 서빙, 100% 로컬) 완료. 남은 건 단일 실행 파일 패키징(permissive 패키저)뿐 — 로드맵.
 - **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서). stretch 3종(TRUST-1/2, SYNC-0) 전부 소진.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 
