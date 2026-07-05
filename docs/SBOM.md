@@ -56,7 +56,7 @@ SPDX-License-Identifier: MIT
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 사용 목적 |
 |---|---|---|---|---|---|
-| 19 | pytest | 8.3.4 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
+| 19 | pytest | 9.0.3 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
 | 20 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging | ← pytest |
 | 21 | iniconfig | 2.3.0 | MIT | https://github.com/pytest-dev/iniconfig | ← pytest |
 | 22 | pluggy | 1.6.0 | MIT | https://github.com/pytest-dev/pluggy | ← pytest |
@@ -126,10 +126,10 @@ SPDX-License-Identifier: MIT
 ## 5. 알려진 취약점 점검 (SCA)
 
 > 점검(2026-07-05): 프론트 `npm audit --omit=dev`, 백엔드 `pip-audit`.
-> **프론트 production 트리: 0건.** 백엔드 런타임(starlette)은 **패치본으로 업그레이드해 해소**했다.
-> 남은 1건(pytest)은 스캐너에 표시되나 **테스트 전용·UNIX 전용**이라 본 도구(Windows 개발·배포물 미포함)에
-> 적용되지 않는다. 도구 전제: 서버를 `127.0.0.1` 에만 바인딩하는 **단일 사용자 로컬 도구**이며 엔드포인트는
-> **작은 JSON 바디만 수신**한다(파일 업로드·멀티파트/폼·정적파일 서빙·`HTTPEndpoint`·인증 프록시 없음).
+> **프론트 production 트리 0건 · 백엔드 0건 — 전체 SCA 클리어.** starlette(런타임)와 pytest(테스트)를
+> 모두 패치본으로 업그레이드해 알려진 CVE를 전부 해소했다. 도구 전제: 서버를 `127.0.0.1` 에만 바인딩하는
+> **단일 사용자 로컬 도구**이며 엔드포인트는 **작은 JSON 바디만 수신**한다(파일 업로드·멀티파트/폼·정적파일
+> 서빙·`HTTPEndpoint`·인증 프록시 없음).
 
 ### 5-1. 프론트엔드 (npm, production)
 
@@ -154,14 +154,18 @@ X41/OSTIF "BadHost" 감사 등으로 보고된 7건. `fastapi 0.115.6` 의 `star
 > 업그레이드로 딸려온 신규 전이 의존성 `annotated-doc`(MIT)·`typing-inspection`(MIT)은 permissive 라이선스로
 > 카피레프트 정책에 부합(§1-2 반영).
 
-### 5-3. 백엔드 테스트 전용 — `pytest 8.3.4` (배포물 아님, 잔여 1건)
+### 5-3. 백엔드 테스트 전용 — `pytest` ✅ 해소 (8.3.4 → **9.0.3**)
 
-| ID | 요약 | 최초 수정본 | 본 도구 적용 |
+| ID | 요약 | 최초 수정본 | 현재(9.0.3) |
 |---|---|---|---|
-| CVE-2025-71176 | `/tmp/pytest-of-{user}` 예측가능 경로 TOCTOU 레이스(로컬 권한상승/DoS) | 9.0.3 | ✗ **UNIX 전용**(개발 환경 Windows) · 배포물 미포함 |
+| CVE-2025-71176 | `/tmp/pytest-of-{user}` 예측가능 경로 TOCTOU 레이스(로컬 권한상승/DoS) | 9.0.3 | ✅ 패치됨 |
 
-> pytest 9.x 는 major 업그레이드라 별도 회귀 검증이 필요해 보류. 배포물·런타임과 무관하며 위 사유로
-> 실질 위험이 없다. 필요 시 `pytest>=9.0.3` 으로 올려 스캐너를 완전 0건으로 만들 수 있다.
+> `pytest==9.0.3` 로 상향(테스트 129개 회귀 통과). major 업그레이드지만 사용 API(parametrize·fixture·
+> raises)에 브레이킹 영향 없음. 배포물과 무관한 테스트 러너다.
+
+### 5-4. 최종 판정
+
+`pip-audit`(백엔드)·`npm audit --omit=dev`(프론트) 모두 **0건**. 런타임·테스트·프론트 전 영역 SCA 클리어.
 
 ---
 

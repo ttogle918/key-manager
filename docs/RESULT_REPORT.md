@@ -111,7 +111,7 @@ KeyLens는 값 자체가 아니라 **값이 있던 자리의 맥락**(스크린�
 - **검출 범위**: 값 기반 자동 검출은 지식베이스 등록 서비스 기준(현재 5종). GitHub/AWS/Slack 등 추가 접두어는 검출 전용 규칙으로 확장 가능(설계됨). 미등록 서비스 키는 오식별 없이 `unknown` 처리.
 - **키 유효성 검증(TRUST-1) 범위**: 현재 검증 엔드포인트를 선언한 서비스는 OpenAI·Notion 2종(read-only 호출, active/invalid/unknown). 카카오·GCP 등은 인증 스킴이 상이해 미선언(unsupported)이며, 지식베이스 `verify:` 블록만 추가하면 확장된다.
 - **서버리스 멀티 기기(SYNC-0)**: 암호화 번들 내보내기/가져오기(교체·병합)까지 구현. 파일 이동은 수동(USB·개인 클라우드)이며, 자동 동기화(SYNC-1, Google Drive `drive.appdata`)는 로드맵.
-- **의존성 취약점(SCA)**: 프론트 production 트리 0건. 백엔드 런타임은 `starlette` 를 패치본(**1.3.1**, `fastapi 0.139.0`)으로 업그레이드해 BadHost 계열 7건 전부 해소(테스트 129개 회귀 통과). 잔여 1건 `pytest 8.3.4`(CVE-2025-71176)는 **테스트 전용·UNIX 전용**이라 본 도구(Windows 개발·배포물 미포함)와 무관. 상세는 [SBOM §5](./SBOM.md).
+- **의존성 취약점(SCA)**: 프론트·백엔드 **전 영역 0건**(`npm audit --omit=dev` · `pip-audit`). starlette 를 패치본(**1.3.1**, `fastapi 0.139.0`)으로, pytest 를 **9.0.3** 으로 업그레이드해 알려진 CVE 전부 해소(테스트 129개 회귀 통과). 상세는 [SBOM §5](./SBOM.md).
 - **미구현(의도적 로드맵)**: Google Drive 제로널리지 자동 동기화(SYNC-1)는 대회 이후 로드맵.
 
 ---
