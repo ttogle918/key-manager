@@ -52,7 +52,8 @@ KB = load_knowledge_base()
 _VAULT_PATH = os.environ.get(
     "KEYLENS_VAULT_PATH", str(Path(__file__).resolve().parent.parent / "vault.db")
 )
-VAULT = VaultService(_VAULT_PATH)
+# 잠금 정책(자동잠금·실패지연)은 KEYLENS_* 환경변수로 조정 가능(.env.example 참고).
+VAULT = VaultService.from_env(_VAULT_PATH)
 
 
 @app.get("/health", response_model=HealthResponse)

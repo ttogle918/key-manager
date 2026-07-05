@@ -15,9 +15,9 @@ from typing import Callable
 
 from . import crypto, vault_repo
 
-AUTO_LOCK_SECONDS = 300  # 5분 무활동 시 자동 잠금
-_FAIL_FREE = 2  # 처음 2회 실패까지는 지연 없음
-_MAX_DELAY = 30  # 실패 지연 상한(초)
+AUTO_LOCK_SECONDS = 300  # 5분 무활동 시 자동 잠금 (기본값)
+FAIL_FREE = 2  # 이 횟수까지의 연속 실패는 지연 없음 (기본값)
+MAX_DELAY = 30  # 실패 지연 상한(초) (기본값)
 
 
 class VaultLocked(Exception):
@@ -37,15 +37,40 @@ class VaultService:
         self,
         db_path: str,
         auto_lock_seconds: int = AUTO_LOCK_SECONDS,
+        fail_free: int = FAIL_FREE,
+        max_delay: int = MAX_DELAY,
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.db_path = db_path
         self.auto_lock_seconds = auto_lock_seconds
+        self.fail_free = fail_free
+        self.max_delay = max_delay
         self._clock = clock
         self._key: bytes | None = None
         self._last_activity = 0.0
         self._fail_count = 0
         self._locked_until = 0.0
+
+    @classmethod
+    def from_env(cls, db_path: str, env: dict[str, str] | None = None) -> "VaultService":
+        """환경변수로 잠금 정책을 구성한다(미설정 시 기본값). 로컬 개인 도구라 각자 튜닝 가능."""
+        import os
+
+        e = env if env is not None else os.environ
+
+        def _int(key: str, default: int) -> int:
+            try:
+                v = int(e[key])
+                return v if v > 0 else default
+            except (KeyError, ValueError):
+                return default
+
+        return cls(
+            db_path,
+            auto_lock_seconds=_int("KEYLENS_AUTOLOCK_SECONDS", AUTO_LOCK_SECONDS),
+            fail_free=_int("KEYLENS_AUTH_FREE_ATTEMPTS", FAIL_FREE),
+            max_delay=_int("KEYLENS_AUTH_MAX_DELAY_SECONDS", MAX_DELAY),
+        )
 
     # ── 상태 ──
     def _conn(self):
@@ -87,9 +112,9 @@ class VaultService:
             key = vault_repo.unlock(conn, password)  # 오답이면 crypto.DecryptError
         except crypto.DecryptError:
             self._fail_count += 1
-            over = self._fail_count - _FAIL_FREE
+            over = self._fail_count - self.fail_free
             if over > 0:
-                self._locked_until = now + min(2 ** (over - 1), _MAX_DELAY)
+                self._locked_until = now + min(2 ** (over - 1), self.max_delay)
             raise
         finally:
             conn.close()

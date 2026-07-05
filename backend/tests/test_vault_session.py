@@ -102,6 +102,38 @@ def test_successful_unlock_resets_failcount(svc):
     assert s.status()["unlocked"] is True
 
 
+def test_from_env_reads_lock_policy(tmp_path):
+    """KEYLENS_* 환경변수로 잠금 정책이 구성되고, 잘못된 값은 기본값으로 폴백한다."""
+    env = {
+        "KEYLENS_AUTOLOCK_SECONDS": "45",
+        "KEYLENS_AUTH_FREE_ATTEMPTS": "0",  # 잘못된 값(0) → 기본값 폴백
+        "KEYLENS_AUTH_MAX_DELAY_SECONDS": "abc",  # 파싱 실패 → 기본값 폴백
+    }
+    s = VaultService.from_env(str(tmp_path / "v.db"), env=env)
+    assert s.auto_lock_seconds == 45
+    assert s.fail_free == 2  # 0 은 무시 → 기본
+    assert s.max_delay == 30  # 파싱 실패 → 기본
+
+
+def test_from_env_defaults_when_unset(tmp_path):
+    s = VaultService.from_env(str(tmp_path / "v.db"), env={})
+    assert (s.auto_lock_seconds, s.fail_free, s.max_delay) == (300, 2, 30)
+
+
+def test_configured_backoff_applies(tmp_path):
+    """fail_free=1 로 구성하면 2번째 실패부터 지연이 걸린다."""
+    clock = Clock()
+    s = VaultService(str(tmp_path / "v.db"), fail_free=1, max_delay=10, clock=clock)
+    s.init(MASTER)
+    s.lock()
+    with pytest.raises(crypto.DecryptError):
+        s.unlock("wrong")  # 1번째 실패 — fail_free=1 이라 아직 지연 없음
+    with pytest.raises(crypto.DecryptError):
+        s.unlock("wrong")  # 2번째 실패 — 지연 발생
+    with pytest.raises(VaultRateLimited):
+        s.unlock(MASTER)
+
+
 def test_change_password_locks_and_reencrypts(svc):
     s, _ = svc
     eid = s.add_entry(service="openai", kind="api_key", official_name="OPENAI_API_KEY", value=DUMMY)
