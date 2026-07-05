@@ -115,16 +115,70 @@ SPDX-License-Identifier: MIT
   **tailwindcss·@tailwindcss/vite**(빌드타임 CSS — 이들이 끌어오는 `lightningcss`는 MPL-2.0이나
   컴파일된 CSS만 배포되어 산출물에 미포함). dev 트리 라이선스: MIT/Apache-2.0/ISC.
 - **백엔드(dev)**: 위 §1-3 참고.
-- **일회성 스캔 도구**(설치 후 제거): pip-licenses(MIT), license-checker(BSD-3-Clause).
+- **일회성 스캔 도구**(설치 후 제거): pip-licenses(MIT), license-checker(BSD-3-Clause),
+  reuse(Apache-2.0, SPDX 헤더 검사), pip-audit(Apache-2.0, 취약점 스캔). venv/노드모듈에만 설치되며
+  `.gitignore` 로 저장소·배포물에서 제외.
+
+---
+
+## 5. 알려진 취약점 점검 (SCA)
+
+> 점검(2026-07-05): 프론트 `npm audit --omit=dev`, 백엔드 `pip-audit`.
+> **프론트 production 트리: 0건.** 백엔드는 아래 항목이 스캐너에 표시되나, **본 도구의 구조상 실제
+> 공격 경로가 성립하지 않는다.** 전제: 서버를 `127.0.0.1` 에만 바인딩하는 **단일 사용자 로컬 도구**이며,
+> 엔드포인트는 **작은 JSON 바디만 수신**한다 — 파일 업로드·멀티파트/폼 파싱·정적파일 서빙(StaticFiles/
+> FileResponse)·`HTTPEndpoint` 클래스 라우트·인증 프록시를 **일절 사용하지 않는다.** 참고용으로 고지하며,
+> 위생(scanner 클리어) 차원의 업그레이드 경로를 함께 적는다.
+
+### 5-1. 프론트엔드 (npm, production)
+
+`npm audit --omit=dev` → **0 vulnerabilities**.
+
+### 5-2. 백엔드 런타임 — `starlette 0.41.3` (← fastapi)
+
+X41/OSTIF "BadHost" 감사 등으로 보고된 7건. 전부 **우리가 노출하지 않는 기능**에서만 발현한다.
+
+| ID | 요약 | 최초 수정본 | 본 도구 적용 |
+|---|---|---|---|
+| CVE-2025-54121 | 멀티파트 대용량 업로드가 이벤트 루프 블로킹(DoS) | 0.47.2 | ✗ 멀티파트/업로드 미사용 |
+| CVE-2025-62727 | `Range` 헤더로 FileResponse/StaticFiles O(n²) CPU DoS | 0.49.1 | ✗ FileResponse/StaticFiles 미사용 |
+| CVE-2026-48817 | `HTTPEndpoint` 에 임의 HTTP 메서드 디스패치(인증 우회) | 1.1.0 | ✗ HTTPEndpoint 클래스 미사용 |
+| CVE-2026-48818 | StaticFiles UNC 경로 SSRF/NTLM 유출(Windows) | 1.1.0 | ✗ StaticFiles 미사용 |
+| CVE-2026-48710 (PYSEC-2026-161) | Host 헤더 미검증 → `request.url.path` 오염(경로 인증 우회) | 1.0.1 | ✗ request.url 기반 인증 없음 |
+| CVE-2026-54282 (PYSEC-2026-248) | `request.url.hostname`/`netloc` 공격자 제어 | 1.3.0 | ✗ 해당 값으로 보안 판단 안 함 |
+| CVE-2026-54283 (PYSEC-2026-249) | urlencoded 폼에서 `max_fields`/`max_part_size` 미적용(메모리 DoS) | 1.3.1 | ✗ `request.form()` 미사용(JSON 전용) |
+
+- 네트워크 공격자는 `127.0.0.1` 소켓에 도달할 수 없고, DoS 류는 단일 로컬 사용자에게 무의미하다.
+- **전제 유지 조건**: 향후 정적파일 서빙·멀티파트/폼 파싱·`HTTPEndpoint` 클래스·`request.url` 기반
+  보안 판단을 추가하지 않는 한 위 비적용 판정은 유효하다.
+
+### 5-3. 백엔드 테스트 전용 — `pytest 8.3.4` (배포물 아님)
+
+| ID | 요약 | 최초 수정본 | 본 도구 적용 |
+|---|---|---|---|
+| CVE-2025-71176 | `/tmp/pytest-of-{user}` 예측가능 경로 TOCTOU 레이스(로컬 권한상승/DoS) | 9.0.3 | ✗ **UNIX 전용**(개발 환경 Windows) · 배포물 미포함 |
+
+### 5-4. 위생 업그레이드 경로 (후속 검토)
+
+현재 `fastapi 0.115.6` 은 `starlette>=0.40,<0.42` 로 고정되어 패치본(≥0.47)에 도달할 수 없다. 스캐너를
+0건으로 만들려면 다음을 후속 적용한다(기능 영향은 없으나 회귀 검증 필요):
+
+- `fastapi==0.139.0` + `starlette==1.3.1` (상한이 제거된 라인). JSON 전용 앱이라 starlette 1.x
+  브레이킹 체인지 영향은 미미하며, 백엔드 테스트 129개로 회귀 검증한다.
+- `pytest>=9.0.3` (테스트 러너 — 배포물과 무관).
 
 ---
 
 ## 재생성 방법
 
 ```bash
-# 백엔드
+# 라이선스 (백엔드)
 cd backend && ./.venv/Scripts/python.exe -m pip install -q pip-licenses
 ./.venv/Scripts/python.exe -m piplicenses --format=markdown --with-urls --order=license
-# 프론트 (배포물 판정 기준)
+# 라이선스 (프론트, 배포물 판정 기준)
 cd frontend && npx --yes license-checker --production --summary
+
+# 취약점 SCA (§5)
+cd frontend && npm audit --omit=dev
+cd backend && ./.venv/Scripts/python.exe -m pip install -q pip-audit && PYTHONUTF8=1 ./.venv/Scripts/python.exe -m pip_audit
 ```
