@@ -25,6 +25,7 @@ from .models import (
     VaultEntryMeta,
     VaultEntryUpdate,
     VaultHistoryEntry,
+    VaultInit,
     VaultPassword,
     VaultRotate,
     VaultStatus,
@@ -104,7 +105,7 @@ def vault_status() -> VaultStatus:
 
 
 @app.post("/vault/init", response_model=VaultStatus)
-def vault_init(body: VaultPassword) -> VaultStatus:
+def vault_init(body: VaultInit) -> VaultStatus:
     if VAULT.is_initialized():
         raise HTTPException(status_code=409, detail="이미 금고가 있습니다 — 잠금 해제하세요")
     VAULT.init(body.password)

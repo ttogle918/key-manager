@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """지식베이스 로더 테스트."""
+import pytest
+
 from app.knowledge import load_knowledge_base
 
 
@@ -37,3 +39,44 @@ def test_value_matchers_only_prefix_clear_kinds():
     assert "NOTION_DATABASE_ID" not in envs
     assert "NOTION_PAGE_ID" not in envs
     assert "KAKAO_REST_API_KEY" not in envs
+
+
+# ── 잘못된 YAML 방어 (기동 실패 진단성 — CORE-4 / OSS-1) ──
+def test_missing_directory_clear_error(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        load_knowledge_base(tmp_path / "does_not_exist")
+
+
+def test_malformed_yaml_names_file(tmp_path):
+    (tmp_path / "broken.yaml").write_text("service: x\n  bad: : indent", encoding="utf-8")
+    with pytest.raises(ValueError, match="broken.yaml"):
+        load_knowledge_base(tmp_path)
+
+
+def test_schema_violation_names_file(tmp_path):
+    # credentials 누락 → 스키마 위반, 에러에 파일명 포함
+    (tmp_path / "noservice.yaml").write_text("display_name: X\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="noservice.yaml"):
+        load_knowledge_base(tmp_path)
+
+
+def test_bad_regex_names_file_and_kind(tmp_path):
+    (tmp_path / "badre.yaml").write_text(
+        "service: s\ndisplay_name: S\ncredentials:\n"
+        "  - kind: api_key\n    label: K\n    value_regex: '([unclosed'\n"
+        "    official_env_name: S_KEY\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="badre.yaml"):
+        load_knowledge_base(tmp_path)
+
+
+def test_duplicate_env_name_across_files(tmp_path):
+    for n in ("a.yaml", "b.yaml"):
+        (tmp_path / n).write_text(
+            f"service: {n[0]}\ndisplay_name: {n[0]}\ncredentials:\n"
+            "  - kind: api_key\n    label: K\n    official_env_name: DUP_KEY\n",
+            encoding="utf-8",
+        )
+    with pytest.raises(ValueError, match="중복 official_env_name"):
+        load_knowledge_base(tmp_path)

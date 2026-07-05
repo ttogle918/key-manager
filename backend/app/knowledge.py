@@ -68,8 +68,15 @@ def load_knowledge_base(path: Path | str = DEFAULT_KNOWLEDGE_DIR) -> KnowledgeBa
     seen_env_names: set[str] = set()
 
     for f in sorted(directory.glob("*.yaml")):
-        data = yaml.safe_load(f.read_text(encoding="utf-8"))
-        service = Service.model_validate(data)
+        # 어떤 파일이 왜 깨졌는지 바로 알 수 있게 파일명을 에러에 붙인다(기동 실패 진단성).
+        try:
+            data = yaml.safe_load(f.read_text(encoding="utf-8"))
+        except yaml.YAMLError as e:
+            raise ValueError(f"YAML 파싱 실패 ({f.name}): {e}") from e
+        try:
+            service = Service.model_validate(data)
+        except Exception as e:  # pydantic ValidationError 등
+            raise ValueError(f"지식베이스 스키마 위반 ({f.name}): {e}") from e
 
         if service.service in seen_services:
             raise ValueError(f"중복 service id: {service.service!r} ({f.name})")
@@ -82,7 +89,12 @@ def load_knowledge_base(path: Path | str = DEFAULT_KNOWLEDGE_DIR) -> KnowledgeBa
                 )
             seen_env_names.add(c.official_env_name)
             if c.value_regex:
-                re.compile(c.value_regex)  # 잘못된 정규식 조기 검출
+                try:
+                    re.compile(c.value_regex)  # 잘못된 정규식 조기 검출
+                except re.error as e:
+                    raise ValueError(
+                        f"잘못된 value_regex ({f.name}, {c.kind}): {e}"
+                    ) from e
 
         services.append(service)
 

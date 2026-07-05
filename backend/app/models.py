@@ -96,7 +96,14 @@ class VaultStatus(BaseModel):
 
 
 class VaultPassword(BaseModel):
+    # 잠금 해제용 — 입력 비밀번호는 길이를 강제하지 않는다(이미 만든 금고를 여는 것).
     password: str = Field(min_length=1, max_length=1024)
+
+
+class VaultInit(BaseModel):
+    """새 금고 생성 — 마스터 비밀번호 최소 길이를 백엔드에서도 강제(방어 심화)."""
+
+    password: str = Field(min_length=8, max_length=1024)
 
 
 class VaultChangePassword(BaseModel):

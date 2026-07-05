@@ -9,6 +9,7 @@ from app.models import (
     VaultChangePassword,
     VaultEntryCreate,
     VaultEntryUpdate,
+    VaultInit,
     VaultPassword,
     VaultRotate,
 )
@@ -32,27 +33,35 @@ def test_status_uninitialized(vault):
 
 
 def test_init_then_status(vault):
-    st = main.vault_init(VaultPassword(password=MASTER))
+    st = main.vault_init(VaultInit(password=MASTER))
     assert st.initialized is True and st.unlocked is True
 
 
 def test_init_twice_conflict(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     with pytest.raises(HTTPException) as e:
-        main.vault_init(VaultPassword(password=MASTER))
+        main.vault_init(VaultInit(password=MASTER))
     assert e.value.status_code == 409
 
 
 def test_unlock_wrong_password_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     main.vault_lock()
     with pytest.raises(HTTPException) as e:
         main.vault_unlock(VaultPassword(password="nope"))
     assert e.value.status_code == 401
 
 
+def test_init_weak_password_rejected(vault):
+    """새 금고 생성 시 8자 미만 마스터 비밀번호는 백엔드에서도 거부(방어 심화)."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        VaultInit(password="short")  # 5자 < 8
+
+
 def test_add_and_get_value_flow(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(
         VaultEntryCreate(service="openai", kind="api_key", official_name="OPENAI_API_KEY", value=DUMMY)
     )
@@ -62,7 +71,7 @@ def test_add_and_get_value_flow(vault):
 
 
 def test_add_when_locked_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     main.vault_lock()
     with pytest.raises(HTTPException) as e:
         main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
@@ -70,7 +79,7 @@ def test_add_when_locked_401(vault):
 
 
 def test_get_value_when_locked_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_lock()
     # 잠금 상태: 목록(메타)은 되지만 값은 401
@@ -81,7 +90,7 @@ def test_get_value_when_locked_401(vault):
 
 
 def test_change_password_wrong_old_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     with pytest.raises(HTTPException) as e:
         main.vault_change_password(
             VaultChangePassword(old_password="wrong", new_password="new long password")
@@ -90,7 +99,7 @@ def test_change_password_wrong_old_401(vault):
 
 
 def test_add_stores_project_memo(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(
         VaultEntryCreate(
             official_name="OPENAI_API_KEY", value=DUMMY, project="블로그", memo="6월 발급"
@@ -100,7 +109,7 @@ def test_add_stores_project_memo(vault):
 
 
 def test_update_meta(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     updated = main.vault_update(meta.id, VaultEntryUpdate(project="새프로젝트", memo="메모"))
     assert updated.project == "새프로젝트" and updated.memo == "메모"
@@ -109,7 +118,7 @@ def test_update_meta(vault):
 
 
 def test_delete_entry(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_delete(meta.id)
     assert main.vault_list() == []
@@ -119,7 +128,7 @@ def test_delete_entry(vault):
 
 
 def test_delete_when_locked_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_lock()
     with pytest.raises(HTTPException) as e:
@@ -129,7 +138,7 @@ def test_delete_when_locked_401(vault):
 
 def test_history_records_register_and_access(vault):
     """등록·열람·복사·내보내기가 감사 이력에 남는다(값 없음)."""
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_get_value(meta.id, event="reveal")
     main.vault_get_value(meta.id, event="copy")
@@ -142,7 +151,7 @@ def test_history_records_register_and_access(vault):
 
 
 def test_history_when_locked_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_lock()
     with pytest.raises(HTTPException) as e:
@@ -152,7 +161,7 @@ def test_history_when_locked_401(vault):
 
 def test_rotate_replaces_value_and_logs(vault):
     """값 교체 → 새 값으로 복호화되고, 이력에 '키 교체'가 남는다."""
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     new_value = "sk-proj-RotatedNineEightSevenSix"
     main.vault_rotate(meta.id, VaultRotate(value=new_value))
@@ -162,7 +171,7 @@ def test_rotate_replaces_value_and_logs(vault):
 
 
 def test_rotate_when_locked_401(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_lock()
     with pytest.raises(HTTPException) as e:
@@ -171,7 +180,7 @@ def test_rotate_when_locked_401(vault):
 
 
 def test_rotate_missing_404(vault):
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     with pytest.raises(HTTPException) as e:
         main.vault_rotate(999, VaultRotate(value="sk-proj-whatever12345678"))
     assert e.value.status_code == 404
@@ -179,7 +188,7 @@ def test_rotate_missing_404(vault):
 
 def test_delete_cascades_access_log(vault):
     """항목 삭제 시 그 감사 이력도 함께 삭제된다(FK CASCADE)."""
-    main.vault_init(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
     main.vault_get_value(meta.id, event="reveal")
     main.vault_delete(meta.id)
