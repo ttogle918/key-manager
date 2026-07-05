@@ -27,16 +27,16 @@ export function seedVault(): VaultItem[] {
  */
 export function freshResults(): AnalysisResult[] {
   return [
-    { id: 'r1', service: 'Notion', typeKey: 'api', conf: 'high', masked: 'secret_ntn_••••••••••••i9j0', full: 'secret_ntn_a1b2c3d4e5f6g7h8i9j0', format: 'secret_ 접두어', source: '스크린샷 · .env 미리보기 3행', context: '라벨 "Internal Integration Token" 감지 — 워크스페이스 "사이드프로젝트"', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', label: 'Internal Integration Token', workspace: '사이드프로젝트', detected_by: 'secret_ prefix', line: 3 } },
-    { id: 'r2', service: 'Notion', typeKey: 'db', conf: 'high', masked: '3f9a1c2e-••••-••••-••••-2d5e8a7b4c3f', full: '3f9a1c2e-7b4d-4e8a-9c1f-2d5e8a7b4c3f', format: 'UUID v4', source: '스크린샷 · notion.so URL의 ?v= 앞 세그먼트', context: '페이지 제목 "제품 로드맵" — 이 UUID는 그 데이터베이스를 가리킵니다', memo: '', project: '', metaOpen: false, meta: { source: 'url', ocr_title: '제품 로드맵', url_hint: 'notion.so/team/…?v=', detected_by: 'segment before ?v=' } },
+    { id: 'r1', service: 'Notion', typeKey: 'api_key', conf: 'high', masked: 'secret_ntn_••••••••••••i9j0', full: 'secret_ntn_a1b2c3d4e5f6g7h8i9j0', format: 'secret_ 접두어', source: '스크린샷 · .env 미리보기 3행', context: '라벨 "Internal Integration Token" 감지 — 워크스페이스 "사이드프로젝트"', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', label: 'Internal Integration Token', workspace: '사이드프로젝트', detected_by: 'secret_ prefix', line: 3 } },
+    { id: 'r2', service: 'Notion', typeKey: 'database_id', conf: 'high', masked: '3f9a1c2e-••••-••••-••••-2d5e8a7b4c3f', full: '3f9a1c2e-7b4d-4e8a-9c1f-2d5e8a7b4c3f', format: 'UUID v4', source: '스크린샷 · notion.so URL의 ?v= 앞 세그먼트', context: '페이지 제목 "제품 로드맵" — 이 UUID는 그 데이터베이스를 가리킵니다', memo: '', project: '', metaOpen: false, meta: { source: 'url', ocr_title: '제품 로드맵', url_hint: 'notion.so/team/…?v=', detected_by: 'segment before ?v=' } },
     {
       id: 'r3', service: 'Notion', typeKey: '', conflict: true, conf: 'low', masked: '8c2d4f6a-••••-••••-••••-9f0a1b2c3d4e', full: '8c2d4f6a-1e3b-4a5c-8d7e-9f0a1b2c3d4e', format: 'UUID v4', source: '스크린샷 · 설정 패널 캡처', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', nearby_label: 'Data sources', url_position: 'last path segment', conflict: true },
       options: [
-        { k: 'ds', label: 'Data Source ID', varName: 'NOTION_DATA_SOURCE_ID', evidence: "값 바로 위에 'Data sources' 라벨이 보임 — 텍스트 신호", signal: '신호 강함', strong: true },
-        { k: 'page', label: 'Page ID', varName: 'NOTION_PAGE_ID', evidence: 'notion.so/… URL의 마지막 세그먼트 위치 — 위치 신호', signal: '신호 약함', strong: false },
+        { k: 'data_source_id', label: 'Data Source ID', varName: 'NOTION_DATA_SOURCE_ID', evidence: "값 바로 위에 'Data sources' 라벨이 보임 — 텍스트 신호", signal: '신호 강함', strong: true },
+        { k: 'page_id', label: 'Page ID', varName: 'NOTION_PAGE_ID', evidence: 'notion.so/… URL의 마지막 세그먼트 위치 — 위치 신호', signal: '신호 약함', strong: false },
       ],
     },
-    { id: 'r4', service: 'OpenAI', typeKey: 'api', conf: 'high', masked: 'sk-proj-aAbB••••••••••hIi4', full: 'sk-proj-aAbBcC1dDeE2fFgG3hIi4', format: 'sk- 접두어', source: '스크린샷 · 터미널 출력', context: 'export OPENAI_API_KEY=… 라인에서 발견', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', shell_line: 'export OPENAI_API_KEY=…', detected_by: 'sk- prefix' } },
-    { id: 'r5', service: 'Kakao', typeKey: 'rest', conf: 'mid', masked: '4f8e2a1b••••••••••••••••3a7b', full: '4f8e2a1b9c3d7e6f5a4b8c2d1e9f3a7b', format: '32자리 hex', source: '스크린샷 · Kakao Developers 콘솔', context: '앱 이름 "사이드프로젝트-로그인" 헤더 감지', midNote: 'REST·Admin 키는 형식이 같아요 — 콘솔 탭 이름 "REST API 키"로 추정했습니다.', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', console_tab: 'REST API 키', app_name: '사이드프로젝트-로그인' } },
+    { id: 'r4', service: 'OpenAI', typeKey: 'api_key', conf: 'high', masked: 'sk-proj-aAbB••••••••••hIi4', full: 'sk-proj-aAbBcC1dDeE2fFgG3hIi4', format: 'sk- 접두어', source: '스크린샷 · 터미널 출력', context: 'export OPENAI_API_KEY=… 라인에서 발견', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', shell_line: 'export OPENAI_API_KEY=…', detected_by: 'sk- prefix' } },
+    { id: 'r5', service: 'Kakao', typeKey: 'rest_api_key', conf: 'mid', masked: '4f8e2a1b••••••••••••••••3a7b', full: '4f8e2a1b9c3d7e6f5a4b8c2d1e9f3a7b', format: '32자리 hex', source: '스크린샷 · Kakao Developers 콘솔', context: '앱 이름 "사이드프로젝트-로그인" 헤더 감지', midNote: 'REST·Admin 키는 형식이 같아요 — 콘솔 탭 이름 "REST API 키"로 추정했습니다.', memo: '', project: '', metaOpen: false, meta: { source: 'screenshot', console_tab: 'REST API 키', app_name: '사이드프로젝트-로그인' } },
   ]
 }

@@ -1,27 +1,12 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 /** 백엔드 분류 결과(ClassifiedItem)를 프론트 도메인(AnalysisResult)으로 변환. */
-import { TYPE_MAP } from '@/data/services'
-import type { AnalysisResult, Confidence, Service, UnknownItem, VaultItem } from '@/types'
+import { SERVICE_BY_ID, TYPE_MAP } from '@/data/services'
+import type { AnalysisResult, Confidence, UnknownItem, VaultItem } from '@/types'
 import type { ApiConfidence, ClassifiedItem, VaultEntryMeta } from './types'
 
-/** 백엔드 service id → 프론트 Service enum (SVC_META·TYPE_MAP 키). */
-const SERVICE_BY_ID: Record<string, Service> = {
-  notion: 'Notion',
-  kakao: 'Kakao',
-  gcp: 'GCP',
-  openai: 'OpenAI',
-  ollama: 'Ollama',
-}
-
-/** 프론트 Service → 백엔드 service id (금고 저장 시). */
-export const SERVICE_TO_ID: Record<Service, string> = {
-  Notion: 'notion',
-  Kakao: 'kakao',
-  GCP: 'gcp',
-  OpenAI: 'openai',
-  Ollama: 'ollama',
-}
+// 레지스트리(지식베이스 기반)에서 온 id↔표시명 맵을 재노출 — 저장 경로가 그대로 쓴다.
+export { SERVICE_TO_ID } from '@/data/services'
 
 /** 잠금 상태에서 값을 모르므로 표시용 자리표시 마스크. 값 공개 시 실제 값으로 대체된다. */
 const MASK_PLACEHOLDER = '••••••••••••'

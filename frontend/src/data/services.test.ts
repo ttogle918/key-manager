@@ -1,0 +1,66 @@
+// SPDX-FileCopyrightText: 2026 [Your Name]
+// SPDX-License-Identifier: MIT
+/**
+ * 서비스 레지스트리 테스트 — `/knowledge` 응답으로 종류맵이 동적 구성되는지 검증.
+ * 핵심: 새 서비스는 YAML(→ /knowledge) 하나로 프론트에 자동 반영된다(코드 수정 0).
+ */
+import { describe, expect, it } from 'vitest'
+import type { KnowledgeResponse } from '@/api/types'
+import * as reg from './services'
+
+function cred(kind: string, label: string, env: string) {
+  return { kind, label, official_env_name: env, value_based: false, expiry_known: false, verifiable: false }
+}
+
+const PAYLOAD: KnowledgeResponse = {
+  services: [
+    // 일부러 알파벳 역순으로 넣어 정렬 로직을 검증
+    { service: 'openai', display_name: 'OpenAI', credentials: [cred('api_key', 'API Key', 'OPENAI_API_KEY')] },
+    { service: 'notion', display_name: 'Notion', credentials: [
+      cred('api_key', 'API Key', 'NOTION_API_KEY'),
+      cred('database_id', 'Database ID', 'NOTION_DATABASE_ID'),
+    ] },
+    // 큐레이션에 없는 새 서비스 2종(자동 외양·알파벳 정렬 대상)
+    { service: 'stripe', display_name: 'Stripe', credentials: [cred('secret_key', 'Secret Key', 'STRIPE_SECRET_KEY')] },
+    { service: 'github', display_name: 'GitHub', credentials: [cred('pat', 'Personal Access Token', 'GITHUB_TOKEN')] },
+  ],
+}
+
+describe('applyKnowledge', () => {
+  it('TYPE_MAP을 kind=typeKey, official_env_name=var로 구성한다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.TYPE_MAP['Notion']).toEqual([
+      { v: 'api_key', label: 'API Key', var: 'NOTION_API_KEY' },
+      { v: 'database_id', label: 'Database ID', var: 'NOTION_DATABASE_ID' },
+    ])
+  })
+
+  it('id ↔ 표시명 맵을 양방향으로 만든다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.SERVICE_TO_ID['GitHub']).toBe('github')
+    expect(reg.SERVICE_BY_ID['github']).toBe('GitHub')
+  })
+
+  it('큐레이션 서비스를 앞에(정해진 순서), 새 서비스는 뒤에 알파벳순으로 정렬한다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    // notion·openai(큐레이션 순서) 먼저, 그 뒤 GitHub·Stripe(알파벳)
+    expect(reg.SERVICE_ORDER).toEqual(['Notion', 'OpenAI', 'GitHub', 'Stripe'])
+  })
+
+  it('알려진 서비스는 큐레이션 외양을 유지한다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.SVC_META['Notion']).toEqual({ tile: 'N', bg: '#E7EAEE', fg: '#15181D' })
+  })
+
+  it('새 서비스는 코드 수정 없이 자동으로 타일·색을 부여받는다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    const gh = reg.SVC_META['GitHub']
+    expect(gh.tile).toBe('Gi') // 표시명 앞 2글자
+    expect(gh.bg).toMatch(/^#[0-9A-F]{6}$/i) // 팔레트에서 결정적으로 배정
+    expect(gh.fg).toBe('#FFFFFF')
+    // 새 서비스의 종류도 그대로 노출된다(프론트 하드코딩 없이)
+    expect(reg.TYPE_MAP['GitHub']).toEqual([
+      { v: 'pat', label: 'Personal Access Token', var: 'GITHUB_TOKEN' },
+    ])
+  })
+})

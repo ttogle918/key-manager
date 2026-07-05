@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 
-/** 앱이 다루는 서비스 종류. 지식베이스(SPEC 4.4)가 커지면 확장된다. */
-export type Service = 'Notion' | 'Kakao' | 'GCP' | 'OpenAI' | 'Ollama'
+/**
+ * 앱이 다루는 서비스의 표시명. 백엔드 `/knowledge`(지식베이스)에서 동적으로 채워지므로
+ * 하드코딩 유니온이 아니라 문자열이다 — YAML 한 개만 추가하면 새 서비스가 프론트에도 뜬다.
+ */
+export type Service = string
 
 /** 최상위 화면 상태. */
 export type Screen = 'setup' | 'lock' | 'app'

@@ -6,10 +6,10 @@
 // 목업 로직(seed 데이터, 가짜 분석·저장)은 그대로 유지하며,
 // 실제 백엔드(SPEC 5장: OCR·분류·암호화·SQLite)로 교체할 지점은 seed.ts / services.ts로 분리해 둔다.
 import { create } from 'zustand'
-import { analyzeApi, ApiError, vaultApi, VaultApiError } from '@/api/client'
+import { analyzeApi, ApiError, fetchKnowledge, vaultApi, VaultApiError } from '@/api/client'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
-import { TYPE_MAP } from '@/data/services'
+import { applyKnowledge, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { envText, jwtExp, today } from '@/lib/format'
 import type {
@@ -89,6 +89,8 @@ interface KeylensState {
   envOpen: boolean
   /** 금고 가져오기(SYNC-0) 모달 열림 여부. */
   syncOpen: boolean
+  /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
+  knowledgeReady: boolean
   toast: string | null
 
   // ── 액션 ──
@@ -96,6 +98,8 @@ interface KeylensState {
   cleanup: () => void
   /** 앱 시작 시 백엔드 금고 상태로 화면(설정/잠금/앱)을 결정. */
   boot: () => void
+  /** `/knowledge`로 서비스·종류맵을 동적 구성(실패 시 기본 5종 유지). */
+  loadKnowledge: () => Promise<void>
   /** 백엔드에서 금고 항목 메타데이터를 다시 불러온다. */
   loadVault: () => void
   /** 항목 값을 복호화해 클립보드에 복사(잠금 시 인증 유도). prefix 지정 시 `prefix+값`(.env 한 줄). */
@@ -235,6 +239,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     rotateTarget: null,
     envOpen: false,
     syncOpen: false,
+    knowledgeReady: false,
     toast: null,
 
     showToast: (msg) => {
@@ -254,7 +259,16 @@ export const useKeylens = create<KeylensState>((set, get) => {
     goVault: () => set({ view: 'vault' }),
 
     // ── 부팅 / 금고 로딩 ──
+    loadKnowledge: async () => {
+      try {
+        applyKnowledge(await fetchKnowledge())
+        set({ knowledgeReady: true }) // 서비스맵 갱신 → 구독 컴포넌트 리렌더
+      } catch {
+        /* 백엔드 미연결 — 기본 5종 맵 유지 */
+      }
+    },
     boot: async () => {
+      await get().loadKnowledge() // 지식베이스로 서비스·종류맵 구성(화면 렌더 전)
       try {
         const st = await vaultApi.status()
         if (!st.initialized) {

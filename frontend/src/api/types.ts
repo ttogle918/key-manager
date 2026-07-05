@@ -4,6 +4,24 @@
 
 export type ApiConfidence = 'high' | 'medium' | 'low' | 'unknown'
 
+/** `GET /knowledge` — 지식베이스(서비스·종류맵)를 프론트가 동적으로 구성한다. */
+export interface KnowledgeCredential {
+  kind: string
+  label: string
+  official_env_name: string
+  value_based: boolean
+  expiry_known: boolean
+  verifiable: boolean
+}
+export interface KnowledgeService {
+  service: string
+  display_name: string
+  credentials: KnowledgeCredential[]
+}
+export interface KnowledgeResponse {
+  services: KnowledgeService[]
+}
+
 /** Stage2 신호 충돌 시 사용자 선택지. */
 export interface ApiConflictOption {
   kind: string

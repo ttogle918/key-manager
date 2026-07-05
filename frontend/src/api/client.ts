@@ -4,6 +4,7 @@
 import type {
   AnalyzeApiRequest,
   AnalyzeApiResponse,
+  KnowledgeResponse,
   VaultEntryCreate,
   VaultEntryMeta,
   VaultEntryUpdate,
@@ -52,6 +53,22 @@ export async function analyzeApi(
       throw new ApiError('백엔드 응답 시간 초과')
     }
     throw new ApiError('백엔드에 연결할 수 없습니다')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** GET /knowledge — 지식베이스(서비스·종류맵). 실패 시 ApiError(프론트는 기본 맵 유지). */
+export async function fetchKnowledge(timeoutMs = 5000): Promise<KnowledgeResponse> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API_BASE}/knowledge`, { signal: ctrl.signal })
+    if (!res.ok) throw new ApiError(`지식베이스 로드 실패 (${res.status})`)
+    return (await res.json()) as KnowledgeResponse
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+    throw new ApiError('지식베이스에 연결할 수 없습니다')
   } finally {
     clearTimeout(timer)
   }

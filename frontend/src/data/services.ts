@@ -1,34 +1,39 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import type { Confidence, Service, SvcMeta, TypeOption } from '@/types'
+import type { KnowledgeResponse } from '@/api/types'
+import type { Confidence, SvcMeta, TypeOption } from '@/types'
 
 /**
- * 서비스별 키 종류 → 공식 환경변수명 매핑 (SPEC 4.4 지식베이스의 프론트 표현).
- * 실제 구현에선 백엔드가 YAML에서 로드하지만, 현재는 목업으로 여기에 둔다.
+ * 서비스 레지스트리 — 백엔드 `GET /knowledge`(지식베이스)에서 **런타임에** 채워진다.
+ * 아래 값들은 백엔드 미연결 시의 폴백(기본 5종)이며, `applyKnowledge()`가 실제 KB로 교체한다.
+ * ES 모듈 라이브 바인딩이라, 교체 후 이 심볼들을 import 한 모든 곳이 갱신된 맵을 읽는다.
+ *
+ * `TypeOption.v`(typeKey)는 백엔드 `kind`와 동일하게 맞춘다 — 프론트 내부 매칭 키로만 쓰고
+ * 새 서비스가 와도 `/knowledge`가 주는 kind 그대로 사용하므로 하드코딩이 필요 없다.
  */
-export const TYPE_MAP: Record<Service, TypeOption[]> = {
+export let TYPE_MAP: Record<string, TypeOption[]> = {
   Notion: [
-    { v: 'api', label: 'API Key', var: 'NOTION_API_KEY' },
-    { v: 'db', label: 'Database ID', var: 'NOTION_DATABASE_ID' },
-    { v: 'ds', label: 'Data Source ID', var: 'NOTION_DATA_SOURCE_ID' },
-    { v: 'page', label: 'Page ID', var: 'NOTION_PAGE_ID' },
+    { v: 'api_key', label: 'API Key', var: 'NOTION_API_KEY' },
+    { v: 'database_id', label: 'Database ID', var: 'NOTION_DATABASE_ID' },
+    { v: 'data_source_id', label: 'Data Source ID', var: 'NOTION_DATA_SOURCE_ID' },
+    { v: 'page_id', label: 'Page ID', var: 'NOTION_PAGE_ID' },
   ],
   OpenAI: [
-    { v: 'api', label: 'API Key', var: 'OPENAI_API_KEY' },
-    { v: 'org', label: 'Organization ID', var: 'OPENAI_ORG_ID' },
+    { v: 'api_key', label: 'API Key', var: 'OPENAI_API_KEY' },
+    { v: 'org_id', label: 'Organization ID', var: 'OPENAI_ORG_ID' },
   ],
   Kakao: [
-    { v: 'rest', label: 'REST API 키', var: 'KAKAO_REST_API_KEY' },
-    { v: 'js', label: 'JavaScript 키', var: 'KAKAO_JS_KEY' },
-    { v: 'admin', label: 'Admin 키', var: 'KAKAO_ADMIN_KEY' },
-    { v: 'native', label: 'Native 앱 키', var: 'KAKAO_NATIVE_APP_KEY' },
+    { v: 'rest_api_key', label: 'REST API 키', var: 'KAKAO_REST_API_KEY' },
+    { v: 'javascript_key', label: 'JavaScript 키', var: 'KAKAO_JS_KEY' },
+    { v: 'admin_key', label: 'Admin 키', var: 'KAKAO_ADMIN_KEY' },
+    { v: 'native_app_key', label: 'Native 앱 키', var: 'KAKAO_NATIVE_APP_KEY' },
   ],
-  GCP: [{ v: 'api', label: 'API Key', var: 'GOOGLE_API_KEY' }],
-  Ollama: [{ v: 'api', label: 'API Key', var: 'OLLAMA_API_KEY' }],
+  GCP: [{ v: 'api_key', label: 'API Key', var: 'GOOGLE_API_KEY' }],
+  Ollama: [{ v: 'api_key', label: 'API Key', var: 'OLLAMA_API_KEY' }],
 }
 
-/** 서비스 타일(약자 + 색). */
-export const SVC_META: Record<Service, SvcMeta> = {
+/** 서비스 타일(약자 + 색). 알려진 서비스는 큐레이션 값을, 새 서비스는 자동 생성한다. */
+export let SVC_META: Record<string, SvcMeta> = {
   Notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
   Kakao: { tile: 'K', bg: '#F2D14B', fg: '#241D00' },
   GCP: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
@@ -37,7 +42,88 @@ export const SVC_META: Record<Service, SvcMeta> = {
 }
 
 /** 보관함/내보내기에서 사용하는 서비스 표시 순서. */
-export const SERVICE_ORDER: Service[] = ['Notion', 'Kakao', 'GCP', 'OpenAI', 'Ollama']
+export let SERVICE_ORDER: string[] = ['Notion', 'Kakao', 'GCP', 'OpenAI', 'Ollama']
+
+/** 프론트 표시명 → 백엔드 service id (금고 저장 시). */
+export let SERVICE_TO_ID: Record<string, string> = {
+  Notion: 'notion',
+  Kakao: 'kakao',
+  GCP: 'gcp',
+  OpenAI: 'openai',
+  Ollama: 'ollama',
+}
+
+/** 백엔드 service id → 프론트 표시명 (SVC_META·TYPE_MAP 키). */
+export let SERVICE_BY_ID: Record<string, string> = {
+  notion: 'Notion',
+  kakao: 'Kakao',
+  gcp: 'GCP',
+  openai: 'OpenAI',
+  ollama: 'Ollama',
+}
+
+// 알려진 서비스의 큐레이션된 외양(id 기준). 없으면 autoMeta 로 자동 생성.
+const CURATED_META: Record<string, SvcMeta> = {
+  notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
+  kakao: { tile: 'K', bg: '#F2D14B', fg: '#241D00' },
+  gcp: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
+  openai: { tile: 'O', bg: '#17B597', fg: '#03211B' },
+  ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
+}
+// 큐레이션 서비스의 표시 순서(id). 나머지는 뒤에 알파벳순으로 붙는다.
+const CURATED_ORDER = ['notion', 'kakao', 'gcp', 'openai', 'ollama']
+// 새 서비스 타일 자동 색(어두운 배경 + 흰 글자로 가독성 확보).
+const AUTO_PALETTE: Array<{ bg: string; fg: string }> = [
+  { bg: '#3B5BDB', fg: '#FFFFFF' },
+  { bg: '#2F9E44', fg: '#FFFFFF' },
+  { bg: '#E8590C', fg: '#FFFFFF' },
+  { bg: '#9C36B5', fg: '#FFFFFF' },
+  { bg: '#0C8599', fg: '#FFFFFF' },
+  { bg: '#C2255C', fg: '#FFFFFF' },
+]
+function autoMeta(name: string): SvcMeta {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  const p = AUTO_PALETTE[h % AUTO_PALETTE.length]
+  return { tile: name.slice(0, 2), bg: p.bg, fg: p.fg }
+}
+
+/**
+ * `/knowledge` 응답으로 레지스트리 전체를 교체한다. 새 서비스는 YAML 하나만 추가하면
+ * 여기서 자동 반영된다(프론트 코드 수정 0). 큐레이션 외양이 없는 서비스는 색·타일을 자동 부여.
+ */
+export function applyKnowledge(payload: KnowledgeResponse): void {
+  const typeMap: Record<string, TypeOption[]> = {}
+  const svcMeta: Record<string, SvcMeta> = {}
+  const toId: Record<string, string> = {}
+  const byId: Record<string, string> = {}
+  for (const s of payload.services) {
+    const name = s.display_name
+    typeMap[name] = s.credentials.map((c) => ({
+      v: c.kind,
+      label: c.label,
+      var: c.official_env_name,
+    }))
+    svcMeta[name] = CURATED_META[s.service] ?? autoMeta(name)
+    toId[name] = s.service
+    byId[s.service] = name
+  }
+  const rank = (id: string) => {
+    const i = CURATED_ORDER.indexOf(id)
+    return i < 0 ? CURATED_ORDER.length : i
+  }
+  SERVICE_ORDER = payload.services
+    .slice()
+    .sort(
+      (a, b) =>
+        rank(a.service) - rank(b.service) || a.display_name.localeCompare(b.display_name),
+    )
+    .map((s) => s.display_name)
+  TYPE_MAP = typeMap
+  SVC_META = svcMeta
+  SERVICE_TO_ID = toId
+  SERVICE_BY_ID = byId
+}
 
 export interface ConfStyle {
   label: string
