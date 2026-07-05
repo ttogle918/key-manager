@@ -78,6 +78,22 @@ export function VaultScreen() {
         </button>
         <button
           type="button"
+          onClick={s.exportVault}
+          title="암호화된 금고 전체를 파일로 내보내기(다른 기기로 이동·백업)"
+          className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          금고 내보내기
+        </button>
+        <button
+          type="button"
+          onClick={s.openSync}
+          title="다른 기기에서 내보낸 금고 파일 가져오기"
+          className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          가져오기
+        </button>
+        <button
+          type="button"
           onClick={locked ? s.gotoLockScreen : s.lockNow}
           className="flex items-center gap-2 rounded-lg px-[14px] py-[9px] text-[12.5px] font-bold hover:brightness-110"
           style={{

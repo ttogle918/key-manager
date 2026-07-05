@@ -11,6 +11,8 @@ DB에서 라벨을 바꿔치기하면 복호화가 깨지도록 한다.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import sqlite3
 from datetime import datetime, timezone
 
@@ -234,6 +236,178 @@ def get_value(conn: sqlite3.Connection, key: bytes, entry_id: int) -> str:
     if row is None:
         raise KeyError(f"항목 {entry_id} 없음")
     return crypto.decrypt(key, row["nonce"], row["ciphertext"], _aad(row["official_name"]))
+
+
+# ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
+# 번들은 전부 암호문·KDF 파라미터·검증기뿐이다(평문·키 없음). 여는 열쇠는 마스터 비밀번호.
+BUNDLE_FORMAT = "keylens-vault"
+BUNDLE_VERSION = 1
+
+# 항목 삽입 컬럼(id·AUTOINCREMENT 제외 — 가져올 때 id 재부여).
+_ENTRY_INSERT = (
+    "INSERT INTO entries (service, kind, official_name, label, project, memo,"
+    " nonce, ciphertext, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
+)
+
+
+def _b64(b: bytes) -> str:
+    return base64.b64encode(b).decode("ascii")
+
+
+def export_bundle(conn: sqlite3.Connection) -> dict:
+    """금고 전체를 이식 가능한 암호문 번들(dict)로 직렬화.
+
+    평문 값·유도 키는 절대 포함하지 않는다. 다른 기기의 KeyLens 가 같은 마스터
+    비밀번호로 열 수 있도록 KDF 파라미터와 검증기를 함께 담는다(제로 널리지 유지).
+    """
+    meta = conn.execute("SELECT * FROM meta WHERE id = 1").fetchone()
+    if meta is None:
+        raise ValueError("초기화되지 않은 금고입니다")
+    rows = conn.execute(
+        "SELECT service, kind, official_name, label, project, memo,"
+        " nonce, ciphertext, created_at, expires_at FROM entries ORDER BY id"
+    ).fetchall()
+    return {
+        "format": BUNDLE_FORMAT,
+        "version": BUNDLE_VERSION,
+        "exported_at": _now(),
+        "kdf": {
+            "salt": _b64(meta["kdf_salt"]),
+            "time": meta["kdf_time"],
+            "memory": meta["kdf_memory"],
+            "lanes": meta["kdf_lanes"],
+        },
+        "verifier": {
+            "nonce": _b64(meta["verifier_nonce"]),
+            "ct": _b64(meta["verifier_ct"]),
+        },
+        "entries": [
+            {
+                "service": r["service"],
+                "kind": r["kind"],
+                "official_name": r["official_name"],
+                "label": r["label"],
+                "project": r["project"],
+                "memo": r["memo"],
+                "nonce": _b64(r["nonce"]),
+                "ciphertext": _b64(r["ciphertext"]),
+                "created_at": r["created_at"],
+                "expires_at": r["expires_at"],
+            }
+            for r in rows
+        ],
+    }
+
+
+def parse_bundle(bundle: dict) -> tuple[crypto.KdfParams, bytes, bytes, list[dict]]:
+    """번들을 검증·파싱해 (KDF params, 검증기 nonce, 검증기 ct, 항목 리스트) 반환.
+
+    형식/버전 불일치·손상은 ValueError 로 명확히 실패한다(크래시 금지).
+    """
+    if not isinstance(bundle, dict):
+        raise ValueError("잘못된 금고 파일 형식입니다")
+    if bundle.get("format") != BUNDLE_FORMAT:
+        raise ValueError("KeyLens 금고 파일이 아닙니다")
+    ver = bundle.get("version")
+    if ver != BUNDLE_VERSION:
+        raise ValueError(
+            f"지원하지 않는 금고 파일 버전입니다(파일 v{ver}, 지원 v{BUNDLE_VERSION})"
+        )
+    try:
+        kdf = bundle["kdf"]
+        verifier = bundle["verifier"]
+        entries = bundle["entries"]
+        if not isinstance(entries, list):
+            raise ValueError("entries 필드가 손상되었습니다")
+        params = crypto.KdfParams(
+            salt=base64.b64decode(kdf["salt"]),
+            time_cost=int(kdf["time"]),
+            memory_cost=int(kdf["memory"]),
+            lanes=int(kdf["lanes"]),
+        )
+        v_nonce = base64.b64decode(verifier["nonce"])
+        v_ct = base64.b64decode(verifier["ct"])
+    except (KeyError, TypeError, ValueError, binascii.Error) as e:
+        raise ValueError("금고 파일이 손상되었습니다") from e
+    return params, v_nonce, v_ct, entries
+
+
+def replace_with_bundle(
+    conn: sqlite3.Connection,
+    params: crypto.KdfParams,
+    v_nonce: bytes,
+    v_ct: bytes,
+    entries: list[dict],
+) -> int:
+    """기존 금고를 번들로 통째 교체(원자적). 암호문은 그대로 이식(재암호화 없음)."""
+    conn.executescript(_SCHEMA)  # 대상이 빈 기기여도 스키마부터 보장(복원 시나리오)
+    try:
+        conn.execute("DELETE FROM access_log")
+        conn.execute("DELETE FROM entries")
+        conn.execute("DELETE FROM meta")
+        conn.execute(
+            "INSERT INTO meta (id, kdf_salt, kdf_time, kdf_memory, kdf_lanes,"
+            " verifier_nonce, verifier_ct, created_at) VALUES (1,?,?,?,?,?,?,?)",
+            (params.salt, params.time_cost, params.memory_cost, params.lanes,
+             v_nonce, v_ct, _now()),
+        )
+        n = 0
+        for e in entries:
+            conn.execute(
+                _ENTRY_INSERT,
+                (e.get("service"), e.get("kind"), e.get("official_name"), e.get("label"),
+                 e.get("project"), e.get("memo"), base64.b64decode(e["nonce"]),
+                 base64.b64decode(e["ciphertext"]), e.get("created_at") or _now(),
+                 e.get("expires_at")),
+            )
+            n += 1
+        conn.commit()
+        return n
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def merge_bundle(
+    conn: sqlite3.Connection,
+    existing_key: bytes,
+    bundle_key: bytes,
+    entries: list[dict],
+) -> tuple[int, int]:
+    """번들 항목을 기존 금고 키로 재암호화해 병합(원자적). 반환: (가져옴, 건너뜀).
+
+    중복 `official_name` 은 안전하게 건너뛴다(기존 항목 무손상). 번들 항목 하나라도
+    복호화에 실패하면(손상) 전체 롤백 — 기존 금고를 절대 훼손하지 않는다.
+    """
+    existing = {
+        r["official_name"]
+        for r in conn.execute("SELECT official_name FROM entries").fetchall()
+    }
+    imported = skipped = 0
+    try:
+        for e in entries:
+            name = e.get("official_name")
+            if name in existing:
+                skipped += 1
+                continue
+            plaintext = crypto.decrypt(
+                bundle_key, base64.b64decode(e["nonce"]),
+                base64.b64decode(e["ciphertext"]), _aad(name),
+            )
+            nonce, ct = crypto.encrypt(existing_key, plaintext, _aad(name))
+            cur = conn.execute(
+                _ENTRY_INSERT,
+                (e.get("service"), e.get("kind"), name, e.get("label"), e.get("project"),
+                 e.get("memo"), nonce, ct, e.get("created_at") or _now(), e.get("expires_at")),
+            )
+            log_access(conn, int(cur.lastrowid), "register")
+            existing.add(name)
+            imported += 1
+        conn.commit()
+        return imported, skipped
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def change_password(conn: sqlite3.Connection, old_password: str, new_password: str) -> None:

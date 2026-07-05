@@ -25,6 +25,8 @@ from .models import (
     VaultEntryMeta,
     VaultEntryUpdate,
     VaultHistoryEntry,
+    VaultImportRequest,
+    VaultImportResult,
     VaultInit,
     VaultPassword,
     VaultRotate,
@@ -243,6 +245,36 @@ def vault_history(entry_id: int) -> list[VaultHistoryEntry]:
         return [VaultHistoryEntry(**h) for h in VAULT.history(entry_id)]
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+
+
+@app.post("/vault/export")
+def vault_export() -> dict:
+    """암호화 금고 번들 내보내기(인증 상태에서만) — 전부 암호문. 마스터 비밀번호 없이는 못 연다."""
+    try:
+        return VAULT.export_bundle()
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    except ValueError as e:  # 초기화되지 않은 금고
+        raise HTTPException(status_code=409, detail=str(e)) from e
+
+
+@app.post("/vault/import", response_model=VaultImportResult)
+def vault_import(body: VaultImportRequest) -> VaultImportResult:
+    """금고 번들 가져오기 — 마스터 비밀번호로 복호화 성공 시에만 교체/병합.
+
+    비밀번호가 틀리거나 파일이 손상되면 기존 금고는 무손상으로 남는다.
+    """
+    try:
+        result = VAULT.import_bundle(body.bundle, body.password, body.mode)
+    except crypto.DecryptError:
+        raise HTTPException(status_code=401, detail="마스터 비밀번호가 올바르지 않습니다") from None
+    except VaultLocked:
+        raise HTTPException(
+            status_code=401, detail="병합하려면 먼저 현재 금고를 잠금 해제하세요"
+        ) from None
+    except ValueError as e:  # 형식·버전·손상
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return VaultImportResult(**result)
 
 
 @app.post("/vault/change-password", response_model=VaultStatus)

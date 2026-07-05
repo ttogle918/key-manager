@@ -16,6 +16,9 @@ service-account*.json
 *.db
 vault.db
 
+# 금고 내보내기 번들(SYNC-0) — 암호문이지만 사용자 백업이라 커밋 금지.
+*.klvault.json
+
 # --- Python (FastAPI 백엔드) ---
 __pycache__/
 *.py[cod]

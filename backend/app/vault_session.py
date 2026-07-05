@@ -240,6 +240,42 @@ class VaultService:
         finally:
             conn.close()
 
+    # ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
+    def export_bundle(self) -> dict:
+        """인증 상태에서만 암호문 번들을 반환(평문·키 없음)."""
+        self._require_key()
+        conn = self._conn()
+        try:
+            return vault_repo.export_bundle(conn)
+        finally:
+            conn.close()
+
+    def import_bundle(self, bundle: dict, password: str, mode: str = "merge") -> dict:
+        """번들을 마스터 비밀번호로 열어 교체(replace) 또는 병합(merge)한다.
+
+        - 형식/버전 오류·손상: ValueError
+        - 마스터 비밀번호 불일치: crypto.DecryptError (기존 금고 무손상)
+        - merge 는 기존 금고가 열려 있어야 함(VaultLocked)
+        """
+        params, v_nonce, v_ct, entries = vault_repo.parse_bundle(bundle)
+        bundle_key = crypto.derive_key(password, params)
+        crypto.decrypt(bundle_key, v_nonce, v_ct)  # 오답 비밀번호면 DecryptError → 이후 미실행
+
+        conn = self._conn()
+        try:
+            if mode == "replace":
+                n = vault_repo.replace_with_bundle(conn, params, v_nonce, v_ct, entries)
+                self._set_unlocked(bundle_key)  # 교체된 금고로 인증 유지
+                return {"imported": n, "skipped": 0, "mode": "replace"}
+            # merge: 기존 금고 키로 재암호화(기존이 잠겨 있으면 VaultLocked)
+            existing_key = self._require_key()
+            imported, skipped = vault_repo.merge_bundle(
+                conn, existing_key, bundle_key, entries
+            )
+            return {"imported": imported, "skipped": skipped, "mode": "merge"}
+        finally:
+            conn.close()
+
     def change_password(self, old_password: str, new_password: str) -> None:
         conn = self._conn()
         try:

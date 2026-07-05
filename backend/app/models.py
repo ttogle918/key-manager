@@ -196,3 +196,22 @@ class VaultVerifyResult(BaseModel):
 
     status: VerifyStatus
     detail: str
+
+
+# ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
+
+
+class VaultImportRequest(BaseModel):
+    """암호화 금고 번들 가져오기 요청 — 번들 + 마스터 비밀번호 + 병합 방식."""
+
+    bundle: dict
+    password: str = Field(min_length=1, max_length=1024)
+    mode: Literal["replace", "merge"] = "merge"
+
+
+class VaultImportResult(BaseModel):
+    """가져오기 결과 — 값 없음(가져온/건너뛴 항목 수만)."""
+
+    imported: int
+    skipped: int
+    mode: str

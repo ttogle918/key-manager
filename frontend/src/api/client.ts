@@ -8,6 +8,8 @@ import type {
   VaultEntryMeta,
   VaultEntryUpdate,
   VaultHistoryEntry,
+  VaultBundle,
+  VaultImportResult,
   VaultStatus,
   VaultVerifyResult,
 } from './types'
@@ -108,6 +110,12 @@ export const vaultApi = {
   history: (id: number) => vreq<VaultHistoryEntry[]>(`/vault/entries/${id}/history`),
   verify: (id: number) =>
     vreq<VaultVerifyResult>(`/vault/entries/${id}/verify`, { method: 'POST' }),
+  exportBundle: () => vreq<VaultBundle>('/vault/export', { method: 'POST' }),
+  importBundle: (bundle: VaultBundle, password: string, mode: 'replace' | 'merge') =>
+    vreq<VaultImportResult>('/vault/import', {
+      method: 'POST',
+      body: JSON.stringify({ bundle, password, mode }),
+    }),
   update: (id: number, patch: VaultEntryUpdate) =>
     vreq<VaultEntryMeta>(`/vault/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
   rotate: (id: number, value: string) =>

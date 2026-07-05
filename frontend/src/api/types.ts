@@ -77,6 +77,23 @@ export interface VaultVerifyResult {
   detail: string
 }
 
+/** 암호화 금고 번들(SYNC-0) — 전부 암호문·KDF 파라미터. 평문/키 없음. */
+export interface VaultBundle {
+  format: string
+  version: number
+  exported_at?: string
+  kdf: Record<string, unknown>
+  verifier: Record<string, unknown>
+  entries: unknown[]
+}
+
+/** 가져오기 결과(SYNC-0) — 값 없이 개수만. */
+export interface VaultImportResult {
+  imported: number
+  skipped: number
+  mode: string
+}
+
 /** 값 없는 항목 메타데이터 — 잠금 상태에서도 노출 가능. */
 export interface VaultEntryMeta {
   id: number

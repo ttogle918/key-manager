@@ -144,6 +144,122 @@ export function DupModal() {
   )
 }
 
+/** 암호화 금고 가져오기 다이얼로그(SYNC-0) — 파일 선택 + 마스터 비밀번호 + 방식. */
+export function SyncModal() {
+  const open = useKeylens((s) => s.syncOpen)
+  const close = useKeylens((s) => s.closeSync)
+  const importVault = useKeylens((s) => s.importVault)
+  const [file, setFile] = useState<File | null>(null)
+  const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<'merge' | 'replace'>('merge')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setFile(null)
+      setPassword('')
+      setMode('merge')
+      setBusy(false)
+    }
+  }, [open])
+
+  const canRun = !!file && !!password && !busy
+  const run = async () => {
+    if (!file || !password) return
+    setBusy(true)
+    const ok = await importVault(file, password, mode)
+    setBusy(false)
+    if (!ok) setPassword('') // 실패 시 비밀번호만 비우고 모달 유지(재시도)
+  }
+
+  return (
+    <Modal open={open} onClose={close} title="금고 가져오기" className="w-[460px] max-w-[92vw]">
+      <div className="text-[15px] font-bold">금고 가져오기</div>
+      <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
+        다른 기기에서 내보낸 <span className="font-mono text-fg-soft">.klvault.json</span> 파일을
+        마스터 비밀번호로 엽니다. 파일은 전부 암호문이라, 비밀번호가 없으면 아무도 열 수 없어요.
+      </p>
+
+      <label className="mt-[14px] block cursor-pointer rounded-lg border border-dashed border-border bg-inset px-[14px] py-3 text-[12px] text-muted hover:border-border-strong">
+        <input
+          type="file"
+          accept=".json,application/json"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="hidden"
+        />
+        {file ? (
+          <span className="font-mono text-fg-soft">{file.name}</span>
+        ) : (
+          '금고 파일 선택 (.klvault.json)'
+        )}
+      </label>
+
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && canRun) void run()
+        }}
+        placeholder="이 금고의 마스터 비밀번호"
+        className="mt-[10px] w-full rounded-lg border border-border bg-surface px-3 py-[10px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+      />
+
+      <div className="mt-3 flex flex-col gap-[6px] text-[12px] text-muted">
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="radio"
+            name="kl-sync-mode"
+            checked={mode === 'merge'}
+            onChange={() => setMode('merge')}
+            className="mt-[3px]"
+          />
+          <span>
+            <span className="font-semibold text-fg-soft">병합</span> — 현재 금고에 새 항목만
+            추가(같은 변수명은 건너뜀). <span className="text-dim">현재 금고를 잠금 해제한 상태여야 해요.</span>
+          </span>
+        </label>
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="radio"
+            name="kl-sync-mode"
+            checked={mode === 'replace'}
+            onChange={() => setMode('replace')}
+            className="mt-[3px]"
+          />
+          <span>
+            <span className="font-semibold text-[#E3B341]">교체</span> — 현재 금고를 이 파일로
+            완전히 대체(기존 항목 삭제). 빈 기기에 복원할 때 사용.
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-[18px] flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={close}
+          className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => void run()}
+          disabled={!canRun}
+          className="rounded-lg border-none px-[14px] py-2 text-[12.5px] font-bold hover:brightness-[1.07]"
+          style={{
+            background: canRun ? '#3ECF8E' : '#1B2128',
+            color: canRun ? '#05231A' : '#525B67',
+            cursor: canRun ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {busy ? '가져오는 중…' : '가져오기'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 /** .env 내보내기 다이얼로그. */
 export function EnvModal() {
   const envOpen = useKeylens((s) => s.envOpen)

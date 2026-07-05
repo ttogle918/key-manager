@@ -11,7 +11,7 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
-import { envText, jwtExp } from '@/lib/format'
+import { envText, jwtExp, today } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -87,6 +87,8 @@ interface KeylensState {
   /** 값 교체(회전) 대상 항목. 모달이 열려 있으면 non-null. */
   rotateTarget: VaultItem | null
   envOpen: boolean
+  /** 금고 가져오기(SYNC-0) 모달 열림 여부. */
+  syncOpen: boolean
   toast: string | null
 
   // ── 액션 ──
@@ -154,6 +156,12 @@ interface KeylensState {
   envCopyAll: () => void
   envDownload: () => void
   envCopyGroup: (name: string) => void
+
+  /** 암호화 금고 내보내기/가져오기(SYNC-0). */
+  exportVault: () => void
+  openSync: () => void
+  closeSync: () => void
+  importVault: (file: File, password: string, mode: 'replace' | 'merge') => Promise<boolean>
 
   resetProto: () => void
 }
@@ -226,6 +234,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     dupTarget: null,
     rotateTarget: null,
     envOpen: false,
+    syncOpen: false,
     toast: null,
 
     showToast: (msg) => {
@@ -801,6 +810,59 @@ export const useKeylens = create<KeylensState>((set, get) => {
       get().copy(envText(items), name + ' 그룹 .env 복사됨')
     },
 
+    // ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
+    exportVault: async () => {
+      if (get().locked) {
+        get().showToast('잠금 상태에서는 내보낼 수 없어요 — 먼저 잠금을 해제하세요')
+        return
+      }
+      try {
+        const bundle = await vaultApi.exportBundle()
+        const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' })
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `keylens-vault-${today()}.klvault.json`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+        get().showToast('금고를 암호화 번들로 내보냈어요 — 마스터 비밀번호 없이는 열 수 없습니다')
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().showToast('금고가 잠겨 내보낼 수 없어요 — 잠금을 해제하세요')
+        } else {
+          get().showToast('내보내기 실패 — 백엔드 연결을 확인하세요')
+        }
+      }
+    },
+    openSync: () => set({ syncOpen: true }),
+    closeSync: () => set({ syncOpen: false }),
+    importVault: async (file, password, mode) => {
+      let bundle: import('@/api/types').VaultBundle
+      try {
+        bundle = JSON.parse(await file.text())
+      } catch {
+        get().showToast('파일을 읽을 수 없어요 — 올바른 금고 파일인지 확인하세요')
+        return false
+      }
+      try {
+        const res = await vaultApi.importBundle(bundle, password, mode)
+        set({ syncOpen: false, locked: false })
+        await get().loadVault()
+        const tail = res.skipped ? ` · ${res.skipped}개 건너뜀(중복)` : ''
+        get().showToast(
+          (res.mode === 'replace' ? '금고 교체' : '병합') +
+            ` 완료 — ${res.imported}개 가져옴${tail}`,
+        )
+        return true
+      } catch (e) {
+        // 잘못된 비밀번호(401)·손상/버전(422)은 백엔드 메시지를 그대로 보여준다. 기존 금고는 무손상.
+        get().showToast(
+          e instanceof VaultApiError ? e.message : '가져오기 실패 — 백엔드 연결을 확인하세요',
+        )
+        return false
+      }
+    },
+
     resetProto: () => {
       set({
         vault: [],
@@ -833,6 +895,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         dupTarget: null,
         rotateTarget: null,
         envOpen: false,
+        syncOpen: false,
       })
     },
   }
