@@ -143,6 +143,12 @@ class VaultValue(BaseModel):
     value: str
 
 
+class VaultRotate(BaseModel):
+    """값 교체 요청 — 새 값으로 재암호화(옛 값 폐기)."""
+
+    value: str = Field(min_length=1, max_length=8192)
+
+
 class VaultHistoryEntry(BaseModel):
     """감사 이력 한 줄(값 없음) — 등록·열람·복사·내보내기."""
 

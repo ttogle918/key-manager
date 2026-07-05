@@ -10,6 +10,7 @@ from app.models import (
     VaultEntryCreate,
     VaultEntryUpdate,
     VaultPassword,
+    VaultRotate,
 )
 from app.vault_session import VaultService
 
@@ -147,6 +148,33 @@ def test_history_when_locked_401(vault):
     with pytest.raises(HTTPException) as e:
         main.vault_history(meta.id)
     assert e.value.status_code == 401
+
+
+def test_rotate_replaces_value_and_logs(vault):
+    """값 교체 → 새 값으로 복호화되고, 이력에 '키 교체'가 남는다."""
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    new_value = "sk-proj-RotatedNineEightSevenSix"
+    main.vault_rotate(meta.id, VaultRotate(value=new_value))
+    assert main.vault_get_value(meta.id).value == new_value  # 옛 값은 폐기됨
+    events = [h.event for h in main.vault_history(meta.id)]
+    assert "키 교체" in events
+
+
+def test_rotate_when_locked_401(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_lock()
+    with pytest.raises(HTTPException) as e:
+        main.vault_rotate(meta.id, VaultRotate(value="sk-proj-whatever12345678"))
+    assert e.value.status_code == 401
+
+
+def test_rotate_missing_404(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    with pytest.raises(HTTPException) as e:
+        main.vault_rotate(999, VaultRotate(value="sk-proj-whatever12345678"))
+    assert e.value.status_code == 404
 
 
 def test_delete_cascades_access_log(vault):

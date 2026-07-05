@@ -184,6 +184,15 @@ class VaultService:
         finally:
             conn.close()
 
+    def rotate(self, entry_id: int, new_value: str) -> bool:
+        """값 교체(재암호화) — 서비스에서 키를 재발급했을 때 최신값 유지. 잠금 시 VaultLocked."""
+        key = self._require_key()
+        conn = self._conn()
+        try:
+            return vault_repo.rotate_value(conn, key, entry_id, new_value)
+        finally:
+            conn.close()
+
     def list_entries(self) -> list[dict]:
         """메타데이터만 반환 — 잠금 상태에서도 안전(값 복호화 없음)."""
         if not self.is_initialized():

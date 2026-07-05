@@ -58,6 +58,7 @@ EVENT_LABELS = {
     "reveal": "열람",
     "copy": "복사",
     "export": ".env 내보내기",
+    "rotate": "키 교체",
 }
 
 # 값 복호화 없이 노출 가능한 메타데이터 컬럼(평문). 잠금 상태에서도 안전.
@@ -201,6 +202,26 @@ def delete_entry(conn: sqlite3.Connection, entry_id: int) -> bool:
     cur = conn.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
     conn.commit()
     return cur.rowcount > 0
+
+
+def rotate_value(conn: sqlite3.Connection, key: bytes, entry_id: int, new_value: str) -> bool:
+    """항목의 값을 새 값으로 교체(재암호화). 옛 암호문은 새 nonce/암호문으로 덮어써 폐기된다.
+
+    서비스 콘솔에서 키를 재발급했을 때 금고의 값을 최신으로 유지하기 위함(SECURITY_REVIEW 2-3).
+    official_name(AAD)은 그대로 유지하고, 교체 이력을 남긴다.
+    """
+    row = conn.execute(
+        "SELECT official_name FROM entries WHERE id = ?", (entry_id,)
+    ).fetchone()
+    if row is None:
+        return False
+    nonce, ct = crypto.encrypt(key, new_value, _aad(row["official_name"]))
+    conn.execute(
+        "UPDATE entries SET nonce = ?, ciphertext = ? WHERE id = ?", (nonce, ct, entry_id)
+    )
+    log_access(conn, entry_id, "rotate")
+    conn.commit()
+    return True
 
 
 def get_value(conn: sqlite3.Connection, key: bytes, entry_id: int) -> str:

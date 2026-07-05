@@ -26,6 +26,7 @@ from .models import (
     VaultEntryUpdate,
     VaultHistoryEntry,
     VaultPassword,
+    VaultRotate,
     VaultStatus,
     VaultValue,
 )
@@ -155,6 +156,17 @@ def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
         ok = VAULT.update_meta(
             entry_id, project=body.project, memo=body.memo, expires_at=body.expires_at
         )
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    if not ok:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
+    return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == entry_id)
+
+
+@app.post("/vault/entries/{entry_id}/rotate", response_model=VaultEntryMeta)
+def vault_rotate(entry_id: int, body: VaultRotate) -> VaultEntryMeta:
+    try:
+        ok = VAULT.rotate(entry_id, body.value)
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     if not ok:
