@@ -49,7 +49,36 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 > OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 — 별도 설치가 필요 없고,
 > 필요한 로컬 자산은 `npm run dev`/`npm run build` 시 자동으로 벤더링됩니다(`scripts/vendor-tesseract.mjs`).
 
-### 백엔드
+### 처음 한 번: 의존성 설치
+
+```bash
+# 백엔드 (venv 권장)
+cd backend && python -m venv .venv
+.venv\Scripts\activate      # Windows  (macOS/Linux: source .venv/bin/activate)
+pip install -r requirements.txt
+cd ..
+
+# 프론트엔드
+cd frontend && npm ci && cd ..
+```
+
+### 실행 — 한 번에 (권장)
+
+백엔드(:8003)와 프론트엔드(:5173)를 한 명령으로 동시에 띄웁니다. `backend/.venv`가 있으면 자동으로 사용합니다.
+
+```bash
+node scripts/dev.mjs
+```
+
+브라우저에서 `http://localhost:5173` 접속 → 최초 실행 시 마스터 비밀번호를 설정하면 암호화 금고가 생성됩니다. `Ctrl+C`로 둘 다 종료.
+
+---
+
+### 실행 — 개별 기동 (수동)
+
+<details><summary>백엔드/프론트를 따로 띄우려면</summary>
+
+#### 백엔드
 
 ```bash
 cd backend
@@ -65,13 +94,15 @@ uvicorn app.main:app --port 8003
 
 > 백엔드는 로컬 전용입니다. `--host` 옵션으로 외부에 노출하지 마세요(기본 127.0.0.1 유지).
 
-### 프론트엔드
+#### 프론트엔드
 
 ```bash
 cd frontend
 npm ci
 npm run dev
 ```
+
+</details>
 
 브라우저에서 `http://localhost:5173` 접속 → 최초 실행 시 마스터 비밀번호를 설정하면 금고가 생성됩니다.
 
