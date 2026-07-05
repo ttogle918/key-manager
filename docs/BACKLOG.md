@@ -128,8 +128,8 @@ SPDX-License-Identifier: MIT
     - [ ] GCP `service_account_json`/`oauth_client` 종류 추가(현재 api_key만)
   - **[Engine] 로더 + 검증**
     - [x] 시작 시 YAML 로드·pydantic 스키마 검증, service·official_env_name 중복 에러, 정규식 컴파일 검증
-  - **[OSS] `CONTRIBUTING.md` — "새 서비스 추가법"** *(신설: README·SPEC 7.3이 참조하나 태스크 없었음)*
-    - [ ] YAML 한 개 추가 → PR 절차 가이드 (`new-service` 스킬 연동)
+  - **[OSS] `CONTRIBUTING.md` — "새 서비스 추가법"** — ✅ 완료
+    - [x] YAML 한 개 추가 → PR 절차·체크리스트·정규식 출처 규칙(TruffleHog/AGPL 금지)·더미 위생·테스트 예시
 - **테스트 체크리스트**
   - [x] 🧪 지식베이스 로드·검증 통과, 중복 official_env_name 차단
   - [x] ✅ `value_matchers`가 접두어 명확 종류만 포함(UUID/hex 종류 제외) 검증
@@ -340,6 +340,7 @@ SPDX-License-Identifier: MIT
   - [x] **[결정] 실행 형태**: `docker compose`(결 안 맞음)·PyWebView(안정화 후) 대신 **단일 dev 스크립트** 확정 → `scripts/dev.mjs`(Node, 크로스플랫폼). 백엔드 venv 자동 감지. 실측: 백:8003·프론트:5173 동시 기동 확인.
   - [x] 의존성 버전 고정(requirements.txt / package-lock.json) + `node scripts/dev.mjs` 한 명령 실행.
   - [x] README: 설치(처음 한 번)·실행(한 번에/수동)·빠른 체험·보안 설계 — 실제 상태(암호화 금고)와 일치하게 정합.
+  - [x] **배포·온보딩 문서 강화**: `git clone`부터의 전체 절차 + 요구사항 표(버전 확인·설치 링크) + 문제 해결(PowerShell 실행정책·포트충돌·python3 등) + 데이터 저장 위치 안내 + "배포=각자 로컬 실행" 섹션(호스팅 아님) + `CONTRIBUTING.md`(새 서비스 추가법).
   - [ ] ⏳ **깨끗한 환경(새 VM/컨테이너)에서 README대로 처음부터 실행 검증** — 현 세션은 로컬 재현(venv 재생성 → pytest 80 → dev.mjs 200)까지 확인. 새 VM 검증은 제출주간에.
 - **테스트 체크리스트**
   - [~] ✅ 로컬에서 문서만 보고 실행 성공(venv 재생성·dev 스크립트). 새 VM은 제출주간.

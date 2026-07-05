@@ -44,15 +44,27 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 
 ## 설치 및 실행
 
+로컬에서 5분이면 실행됩니다. **아무 데이터도 외부로 나가지 않으며**, 각자 자기 기기에서 독립적으로 동작합니다.
+
 ### 요구 사항
 
-- Python 3.11+
-- Node.js 20+
+| 도구 | 버전 | 확인 | 설치 |
+|---|---|---|---|
+| Python | 3.11+ | `python --version` | https://www.python.org/downloads/ |
+| Node.js | 20+ | `node --version` | https://nodejs.org/ (LTS 권장) |
+| Git | 아무 최신 | `git --version` | https://git-scm.com/downloads |
 
 > OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 — 별도 설치가 필요 없고,
 > 필요한 로컬 자산은 `npm run dev`/`npm run build` 시 자동으로 벤더링됩니다(`scripts/vendor-tesseract.mjs`).
 
-### 처음 한 번: 의존성 설치
+### 1) 내려받기
+
+```bash
+git clone https://github.com/ttogle918/key-manager.git
+cd key-manager
+```
+
+### 2) 처음 한 번: 의존성 설치
 
 ```bash
 # 백엔드 (venv 권장)
@@ -65,7 +77,7 @@ cd ..
 cd frontend && npm ci && cd ..
 ```
 
-### 실행 — 한 번에 (권장)
+### 3) 실행 — 한 번에 (권장)
 
 백엔드(:8003)와 프론트엔드(:5173)를 한 명령으로 동시에 띄웁니다. `backend/.venv`가 있으면 자동으로 사용합니다.
 
@@ -74,6 +86,9 @@ node scripts/dev.mjs
 ```
 
 브라우저에서 `http://localhost:5173` 접속 → 최초 실행 시 마스터 비밀번호를 설정하면 암호화 금고가 생성됩니다. `Ctrl+C`로 둘 다 종료.
+
+> **내 데이터는 어디에 저장되나?** 암호화된 금고는 `backend/vault.db`(SQLite, 암호문만) 하나에 담깁니다.
+> 이 파일과 마스터 비밀번호만 있으면 어느 기기에서든 복원됩니다(내보내기/가져오기는 보관함 화면에서). `.gitignore`에 포함되어 실수로 커밋되지 않습니다.
 
 ---
 
@@ -117,6 +132,17 @@ npm run dev
 
 > ⚠️ 체험 시에도 실제 발급 키 대신 더미 값 사용을 권장합니다. 데모·문서의 모든 예시는 명백한 가짜 값(`sk-xxxxxxxx` 등)입니다.
 
+### 문제 해결 (자주 겪는 것)
+
+| 증상 | 원인·해결 |
+|---|---|
+| PowerShell에서 `.venv\Scripts\activate` 가 막힘 | 실행 정책 때문. `Set-ExecutionPolicy -Scope Process RemoteSigned` 후 다시 시도 (또는 `python -m venv` 없이 시스템 파이썬으로 `pip install` 해도 됨) |
+| `python` 명령이 없음 | macOS/Linux는 `python3`/`pip3` 를 쓰세요. Windows는 python.org 설치 시 "Add to PATH" 체크 |
+| 포트 충돌(`:8003`/`:5173` 사용 중) | 기존 프로세스 종료 후 재시도. 백엔드 포트는 `uvicorn app.main:app --port <다른포트>` 로 변경 가능 |
+| 브라우저가 "백엔드 미연결" 토스트 | 백엔드가 안 떠 있음. `node scripts/dev.mjs` 로 함께 띄우거나 백엔드를 먼저 실행 |
+| `npm ci` 실패 | Node 20+ 인지 확인(`node --version`). `npm install` 로 대체 시도 |
+| OCR/이미지 인식이 느림 | 최초 1회 WASM·언어데이터 로딩이 있습니다(로컬 벤더링, 네트워크 아님). 이후엔 빠릅니다 |
+
 ## 보안 설계
 
 > ✅ **구현 상태**: 암호화 저장(VAULT-1)·인증 게이트(VAULT-2)가 구현되어 아래 설계(SPEC 6장)대로 동작합니다
@@ -147,9 +173,18 @@ credentials:
 
 자세한 절차는 `CONTRIBUTING.md`를 참고하세요. 기여 환영합니다.
 
+## 배포 (다른 사람도 쓰게 하기)
+
+KeyLens는 **각 사용자가 자기 기기에서 실행**하는 로컬 앱입니다("서버에 올려 여럿이 접속"하는 형태가 아닙니다 — 그러면 키가 기기를 떠나 제로 널리지가 깨집니다). 그래서 "남들도 쓰게" = **배포**입니다.
+
+- **소스 배포**: 위 설치 절차대로 `git clone` → 실행. 개발자라면 이걸로 충분합니다.
+- **데스크톱 앱(예정)**: 더블클릭 실행되는 로컬 앱으로 패키징(PyWebView 등) — 여전히 100% 로컬. 완성 시 [GitHub Releases](https://github.com/ttogle918/key-manager/releases)에 설치 파일을 올립니다.
+- 랜딩 페이지·블로그에서 위 Releases로 링크하면 됩니다(다운로드 페이지는 정적 파일만 제공 — 사용자 키를 만지지 않으므로 안전).
+
 ## 로드맵
 
-- **암호화 금고 내보내기/가져오기**: 암호문 번들 파일을 통째로 내보내 개인 클라우드·USB로 옮기고 다른 기기에서 마스터 비밀번호로 열기 — 서버 없는 멀티 기기
+- ✅ **암호화 금고 내보내기/가져오기**(구현 완료): 암호문 번들 파일을 개인 클라우드·USB로 옮겨 다른 기기에서 마스터 비밀번호로 열기 — 서버 없는 멀티 기기
+- **데스크톱 앱 패키징**: 비개발자도 더블클릭으로 쓰는 로컬 실행 파일
 - **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드. 복호화 열쇠는 항상 로컬의 마스터 비밀번호이며, 자체 서버는 만들지 않음
 - **DOM 기반 자동 캡처**(브라우저 확장): 권한 모델·프라이버시 설계 검증 후 도입
 - 더 많은 서비스 지식베이스, 런타임 주입(SDK)
