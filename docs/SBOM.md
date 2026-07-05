@@ -17,7 +17,7 @@ SPDX-License-Identifier: MIT
 
 | 영역 | 패키지 수 | 카피레프트 | 판정 |
 |---|---|---|---|
-| 백엔드(Python, 런타임+테스트) | 20 | 0 | ✅ |
+| 백엔드(Python, 런타임+테스트) | 22 | 0 | ✅ |
 | 프론트(npm, production 트리) | ~64 | 0 | ✅ |
 
 ---
@@ -28,36 +28,38 @@ SPDX-License-Identifier: MIT
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 사용 목적 |
 |---|---|---|---|---|---|
-| 1 | fastapi | 0.115.6 | MIT | https://github.com/fastapi/fastapi | 로컬 API 서버 프레임워크 |
-| 2 | uvicorn | 0.34.0 | BSD-3-Clause | https://github.com/encode/uvicorn | ASGI 서버(로컬 실행) |
-| 3 | pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic | 스키마 검증·직렬화 |
-| 4 | PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml | 지식베이스 YAML 로드 |
-| 5 | cryptography | 49.0.0 | Apache-2.0 OR BSD-3-Clause (BSD-3 선택) | https://github.com/pyca/cryptography | 금고 암호화(Argon2id + AES-256-GCM) |
+| 1 | fastapi | 0.139.0 | MIT | https://github.com/fastapi/fastapi | 로컬 API 서버 프레임워크 |
+| 2 | starlette | 1.3.1 | BSD-3-Clause | https://github.com/encode/starlette | ASGI 툴킷(fastapi 기반) — CVE 패치본 명시 고정(§5) |
+| 3 | uvicorn | 0.34.0 | BSD-3-Clause | https://github.com/encode/uvicorn | ASGI 서버(로컬 실행) |
+| 4 | pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic | 스키마 검증·직렬화 |
+| 5 | PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml | 지식베이스 YAML 로드 |
+| 6 | cryptography | 49.0.0 | Apache-2.0 OR BSD-3-Clause (BSD-3 선택) | https://github.com/pyca/cryptography | 금고 암호화(Argon2id + AES-256-GCM) |
 
 ### 1-2. 전이 의존성 (런타임)
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 유입 |
 |---|---|---|---|---|---|
-| 6 | starlette | 0.41.3 | BSD-3-Clause | https://github.com/encode/starlette | ← fastapi |
 | 7 | anyio | 4.14.1 | MIT | https://github.com/agronholm/anyio | ← starlette |
 | 8 | idna | 3.18 | BSD-3-Clause | https://github.com/kjd/idna | ← anyio |
 | 9 | typing_extensions | 4.16.0 | Python-2.0 (PSF) | https://github.com/python/typing_extensions | ← pydantic/fastapi/anyio |
-| 10 | pydantic-core | 2.27.2 | MIT | https://github.com/pydantic/pydantic-core | ← pydantic |
-| 11 | annotated-types | 0.7.0 | MIT | https://github.com/annotated-types/annotated-types | ← pydantic |
-| 12 | click | 8.4.2 | BSD-3-Clause | https://github.com/pallets/click | ← uvicorn |
-| 13 | h11 | 0.16.0 | MIT | https://github.com/python-hyper/h11 | ← uvicorn |
-| 14 | colorama | 0.4.6 | BSD-3-Clause | https://github.com/tartley/colorama | ← click (Windows) |
-| 15 | cffi | 2.0.0 | MIT | https://github.com/python-cffi/cffi | ← cryptography |
-| 16 | pycparser | 3.0 | BSD-3-Clause | https://github.com/eliben/pycparser | ← cffi |
+| 10 | typing-inspection | 0.4.2 | MIT | https://github.com/pydantic/typing-inspection | ← pydantic/fastapi |
+| 11 | annotated-doc | 0.0.4 | MIT | https://github.com/tiangolo/annotated-doc | ← fastapi |
+| 12 | pydantic-core | 2.27.2 | MIT | https://github.com/pydantic/pydantic-core | ← pydantic |
+| 13 | annotated-types | 0.7.0 | MIT | https://github.com/annotated-types/annotated-types | ← pydantic |
+| 14 | click | 8.4.2 | BSD-3-Clause | https://github.com/pallets/click | ← uvicorn |
+| 15 | h11 | 0.16.0 | MIT | https://github.com/python-hyper/h11 | ← uvicorn |
+| 16 | colorama | 0.4.6 | BSD-3-Clause | https://github.com/tartley/colorama | ← click (Windows) |
+| 17 | cffi | 2.0.0 | MIT | https://github.com/python-cffi/cffi | ← cryptography |
+| 18 | pycparser | 3.0 | BSD-3-Clause | https://github.com/eliben/pycparser | ← cffi |
 
 ### 1-3. 테스트 전용 (`backend/requirements-dev.txt`, 배포물 아님)
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 사용 목적 |
 |---|---|---|---|---|---|
-| 17 | pytest | 8.3.4 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
-| 18 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging | ← pytest |
-| 19 | iniconfig | 2.3.0 | MIT | https://github.com/pytest-dev/iniconfig | ← pytest |
-| 20 | pluggy | 1.6.0 | MIT | https://github.com/pytest-dev/pluggy | ← pytest |
+| 19 | pytest | 8.3.4 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
+| 20 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging | ← pytest |
+| 21 | iniconfig | 2.3.0 | MIT | https://github.com/pytest-dev/iniconfig | ← pytest |
+| 22 | pluggy | 1.6.0 | MIT | https://github.com/pytest-dev/pluggy | ← pytest |
 
 ---
 
@@ -124,48 +126,42 @@ SPDX-License-Identifier: MIT
 ## 5. 알려진 취약점 점검 (SCA)
 
 > 점검(2026-07-05): 프론트 `npm audit --omit=dev`, 백엔드 `pip-audit`.
-> **프론트 production 트리: 0건.** 백엔드는 아래 항목이 스캐너에 표시되나, **본 도구의 구조상 실제
-> 공격 경로가 성립하지 않는다.** 전제: 서버를 `127.0.0.1` 에만 바인딩하는 **단일 사용자 로컬 도구**이며,
-> 엔드포인트는 **작은 JSON 바디만 수신**한다 — 파일 업로드·멀티파트/폼 파싱·정적파일 서빙(StaticFiles/
-> FileResponse)·`HTTPEndpoint` 클래스 라우트·인증 프록시를 **일절 사용하지 않는다.** 참고용으로 고지하며,
-> 위생(scanner 클리어) 차원의 업그레이드 경로를 함께 적는다.
+> **프론트 production 트리: 0건.** 백엔드 런타임(starlette)은 **패치본으로 업그레이드해 해소**했다.
+> 남은 1건(pytest)은 스캐너에 표시되나 **테스트 전용·UNIX 전용**이라 본 도구(Windows 개발·배포물 미포함)에
+> 적용되지 않는다. 도구 전제: 서버를 `127.0.0.1` 에만 바인딩하는 **단일 사용자 로컬 도구**이며 엔드포인트는
+> **작은 JSON 바디만 수신**한다(파일 업로드·멀티파트/폼·정적파일 서빙·`HTTPEndpoint`·인증 프록시 없음).
 
 ### 5-1. 프론트엔드 (npm, production)
 
 `npm audit --omit=dev` → **0 vulnerabilities**.
 
-### 5-2. 백엔드 런타임 — `starlette 0.41.3` (← fastapi)
+### 5-2. 백엔드 런타임 — `starlette` ✅ 해소 (0.41.3 → **1.3.1**)
 
-X41/OSTIF "BadHost" 감사 등으로 보고된 7건. 전부 **우리가 노출하지 않는 기능**에서만 발현한다.
+X41/OSTIF "BadHost" 감사 등으로 보고된 7건. `fastapi 0.115.6` 의 `starlette<0.42` 상한 때문에 패치본에
+도달할 수 없어, **`fastapi==0.139.0` + `starlette==1.3.1` 로 업그레이드**해 전부 패치본을 적용했다
+(백엔드 테스트 129개 회귀 통과, `pip-audit` 재감사에서 starlette 0건 확인). 아래는 이력 기록.
 
-| ID | 요약 | 최초 수정본 | 본 도구 적용 |
+| ID | 요약 | 최초 수정본 | 현재(1.3.1) |
 |---|---|---|---|
-| CVE-2025-54121 | 멀티파트 대용량 업로드가 이벤트 루프 블로킹(DoS) | 0.47.2 | ✗ 멀티파트/업로드 미사용 |
-| CVE-2025-62727 | `Range` 헤더로 FileResponse/StaticFiles O(n²) CPU DoS | 0.49.1 | ✗ FileResponse/StaticFiles 미사용 |
-| CVE-2026-48817 | `HTTPEndpoint` 에 임의 HTTP 메서드 디스패치(인증 우회) | 1.1.0 | ✗ HTTPEndpoint 클래스 미사용 |
-| CVE-2026-48818 | StaticFiles UNC 경로 SSRF/NTLM 유출(Windows) | 1.1.0 | ✗ StaticFiles 미사용 |
-| CVE-2026-48710 (PYSEC-2026-161) | Host 헤더 미검증 → `request.url.path` 오염(경로 인증 우회) | 1.0.1 | ✗ request.url 기반 인증 없음 |
-| CVE-2026-54282 (PYSEC-2026-248) | `request.url.hostname`/`netloc` 공격자 제어 | 1.3.0 | ✗ 해당 값으로 보안 판단 안 함 |
-| CVE-2026-54283 (PYSEC-2026-249) | urlencoded 폼에서 `max_fields`/`max_part_size` 미적용(메모리 DoS) | 1.3.1 | ✗ `request.form()` 미사용(JSON 전용) |
+| CVE-2025-54121 | 멀티파트 대용량 업로드가 이벤트 루프 블로킹(DoS) | 0.47.2 | ✅ 패치됨 |
+| CVE-2025-62727 | `Range` 헤더로 FileResponse/StaticFiles O(n²) CPU DoS | 0.49.1 | ✅ 패치됨 |
+| CVE-2026-48817 | `HTTPEndpoint` 에 임의 HTTP 메서드 디스패치(인증 우회) | 1.1.0 | ✅ 패치됨 |
+| CVE-2026-48818 | StaticFiles UNC 경로 SSRF/NTLM 유출(Windows) | 1.1.0 | ✅ 패치됨 |
+| CVE-2026-48710 (PYSEC-2026-161) | Host 헤더 미검증 → `request.url.path` 오염(경로 인증 우회) | 1.0.1 | ✅ 패치됨 |
+| CVE-2026-54282 (PYSEC-2026-248) | `request.url.hostname`/`netloc` 공격자 제어 | 1.3.0 | ✅ 패치됨 |
+| CVE-2026-54283 (PYSEC-2026-249) | urlencoded 폼에서 `max_fields`/`max_part_size` 미적용(메모리 DoS) | 1.3.1 | ✅ 패치됨 |
 
-- 네트워크 공격자는 `127.0.0.1` 소켓에 도달할 수 없고, DoS 류는 단일 로컬 사용자에게 무의미하다.
-- **전제 유지 조건**: 향후 정적파일 서빙·멀티파트/폼 파싱·`HTTPEndpoint` 클래스·`request.url` 기반
-  보안 판단을 추가하지 않는 한 위 비적용 판정은 유효하다.
+> 업그레이드로 딸려온 신규 전이 의존성 `annotated-doc`(MIT)·`typing-inspection`(MIT)은 permissive 라이선스로
+> 카피레프트 정책에 부합(§1-2 반영).
 
-### 5-3. 백엔드 테스트 전용 — `pytest 8.3.4` (배포물 아님)
+### 5-3. 백엔드 테스트 전용 — `pytest 8.3.4` (배포물 아님, 잔여 1건)
 
 | ID | 요약 | 최초 수정본 | 본 도구 적용 |
 |---|---|---|---|
 | CVE-2025-71176 | `/tmp/pytest-of-{user}` 예측가능 경로 TOCTOU 레이스(로컬 권한상승/DoS) | 9.0.3 | ✗ **UNIX 전용**(개발 환경 Windows) · 배포물 미포함 |
 
-### 5-4. 위생 업그레이드 경로 (후속 검토)
-
-현재 `fastapi 0.115.6` 은 `starlette>=0.40,<0.42` 로 고정되어 패치본(≥0.47)에 도달할 수 없다. 스캐너를
-0건으로 만들려면 다음을 후속 적용한다(기능 영향은 없으나 회귀 검증 필요):
-
-- `fastapi==0.139.0` + `starlette==1.3.1` (상한이 제거된 라인). JSON 전용 앱이라 starlette 1.x
-  브레이킹 체인지 영향은 미미하며, 백엔드 테스트 129개로 회귀 검증한다.
-- `pytest>=9.0.3` (테스트 러너 — 배포물과 무관).
+> pytest 9.x 는 major 업그레이드라 별도 회귀 검증이 필요해 보류. 배포물·런타임과 무관하며 위 사유로
+> 실질 위험이 없다. 필요 시 `pytest>=9.0.3` 으로 올려 스캐너를 완전 0건으로 만들 수 있다.
 
 ---
 

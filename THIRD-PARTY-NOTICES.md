@@ -57,7 +57,8 @@ SPDX-License-Identifier: MIT
 
 | 패키지 | 버전 | 라이선스 | 출처 |
 |---|---|---|---|
-| fastapi | 0.115.6 | MIT | https://github.com/fastapi/fastapi |
+| fastapi | 0.139.0 | MIT | https://github.com/fastapi/fastapi |
+| starlette | 1.3.1 | BSD-3-Clause | https://github.com/encode/starlette |
 | uvicorn | 0.34.0 | BSD-3-Clause | https://github.com/encode/uvicorn |
 | pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic |
 | PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml |
