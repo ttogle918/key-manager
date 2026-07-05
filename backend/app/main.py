@@ -7,12 +7,27 @@
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import crypto
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
-from .models import AnalyzeRequest, AnalyzeResponse, HealthResponse
+from .models import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    HealthResponse,
+    VaultChangePassword,
+    VaultEntryCreate,
+    VaultEntryMeta,
+    VaultPassword,
+    VaultStatus,
+    VaultValue,
+)
+from .vault_session import VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
 
@@ -31,6 +46,12 @@ app.add_middleware(
 
 # 지식베이스는 기동 시 1회 로드 (검증 실패하면 서버가 뜨지 않는다).
 KB = load_knowledge_base()
+
+# 금고 파일 위치(로컬 전용). 기본은 backend/vault.db(.gitignore 로 제외). 환경변수로 재정의 가능.
+_VAULT_PATH = os.environ.get(
+    "KEYLENS_VAULT_PATH", str(Path(__file__).resolve().parent.parent / "vault.db")
+)
+VAULT = VaultService(_VAULT_PATH)
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -67,6 +88,84 @@ def knowledge() -> dict:
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze_endpoint(request: AnalyzeRequest) -> AnalyzeResponse:
     return analyze(request, KB)
+
+
+# ── 금고 (VAULT-1/2) ─────────────────────────────────────────────
+# 값은 잠금 해제(인증) 상태에서만 복호화된다. 잠금 상태에선 메타데이터만 노출.
+
+
+@app.get("/vault/status", response_model=VaultStatus)
+def vault_status() -> VaultStatus:
+    return VaultStatus(**VAULT.status())
+
+
+@app.post("/vault/init", response_model=VaultStatus)
+def vault_init(body: VaultPassword) -> VaultStatus:
+    if VAULT.is_initialized():
+        raise HTTPException(status_code=409, detail="이미 금고가 있습니다 — 잠금 해제하세요")
+    VAULT.init(body.password)
+    return VaultStatus(**VAULT.status())
+
+
+@app.post("/vault/unlock", response_model=VaultStatus)
+def vault_unlock(body: VaultPassword) -> VaultStatus:
+    try:
+        VAULT.unlock(body.password)
+    except VaultRateLimited as e:
+        raise HTTPException(
+            status_code=429, detail=str(e), headers={"Retry-After": str(e.retry_after)}
+        ) from e
+    except crypto.DecryptError:
+        raise HTTPException(status_code=401, detail="마스터 비밀번호가 올바르지 않습니다") from None
+    except ValueError as e:  # 초기화되지 않은 금고
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return VaultStatus(**VAULT.status())
+
+
+@app.post("/vault/lock", response_model=VaultStatus)
+def vault_lock() -> VaultStatus:
+    VAULT.lock()
+    return VaultStatus(**VAULT.status())
+
+
+@app.get("/vault/entries", response_model=list[VaultEntryMeta])
+def vault_list() -> list[VaultEntryMeta]:
+    return [VaultEntryMeta(**m) for m in VAULT.list_entries()]
+
+
+@app.post("/vault/entries", response_model=VaultEntryMeta)
+def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
+    try:
+        eid = VAULT.add_entry(
+            service=body.service, kind=body.kind, official_name=body.official_name,
+            value=body.value, label=body.label, expires_at=body.expires_at,
+        )
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == eid)
+
+
+@app.get("/vault/entries/{entry_id}/value", response_model=VaultValue)
+def vault_get_value(entry_id: int) -> VaultValue:
+    try:
+        return VaultValue(value=VAULT.get_value(entry_id))
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    except KeyError:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
+    except crypto.DecryptError:
+        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+
+
+@app.post("/vault/change-password", response_model=VaultStatus)
+def vault_change_password(body: VaultChangePassword) -> VaultStatus:
+    try:
+        VAULT.change_password(body.old_password, body.new_password)
+    except crypto.DecryptError:
+        raise HTTPException(status_code=401, detail="현재 비밀번호가 올바르지 않습니다") from None
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return VaultStatus(**VAULT.status())
 
 
 # 로컬 기본 포트 8003 (흔한 8000 회피). `python -m app.main` 으로 실행 가능.
