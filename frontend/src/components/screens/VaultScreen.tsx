@@ -10,7 +10,7 @@ import type { VaultItem } from '@/types'
 export function VaultScreen() {
   const s = useKeylens()
   const projectNames = useProjectNames()
-  const { vault, search, projFilter, locked, justUnlocked, remaskLeft } = s
+  const { vault, search, projFilter, locked } = s
 
   const q = search.trim().toLowerCase()
   const match = (it: VaultItem) =>
@@ -39,7 +39,7 @@ export function VaultScreen() {
         <div className="min-w-[170px] flex-1">
           <h1 className="m-0 text-[20px] font-bold tracking-[-.015em]">보관함</h1>
           <div className="mt-1 text-[12.5px] text-faint-2">
-            {vault.length}개 자격증명 · AES-256 로컬 암호화
+            {vault.length}개 자격증명 · AES-256-GCM으로 암호화되어 이 기기에만 보관
           </div>
         </div>
         <select
@@ -104,14 +104,6 @@ export function VaultScreen() {
           >
             잠금 해제
           </button>
-        </div>
-      )}
-
-      {/* 방금 잠금 해제됨 배너 */}
-      {justUnlocked && (
-        <div className="mb-4 flex items-center gap-[10px] rounded-[10px] border border-[rgba(62,207,142,.3)] bg-[rgba(62,207,142,.06)] px-[15px] py-[11px] text-[12.5px] text-mint-pale [animation:klFade_.2s]">
-          <span className="size-[7px] flex-none rounded-full bg-mint [animation:klRingSpin_1s_linear_infinite]" />
-          잠금 해제됨 — <strong className="font-bold">{remaskLeft}초</strong> 후 값이 자동으로 다시 마스킹됩니다.
         </div>
       )}
 

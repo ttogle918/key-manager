@@ -1,7 +1,14 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 /** KeyLens 백엔드 클라이언트 (로컬 FastAPI). */
-import type { AnalyzeApiRequest, AnalyzeApiResponse } from './types'
+import type {
+  AnalyzeApiRequest,
+  AnalyzeApiResponse,
+  VaultEntryCreate,
+  VaultEntryMeta,
+  VaultEntryUpdate,
+  VaultStatus,
+} from './types'
 
 /** 백엔드 주소. 기본 로컬 8003, 필요 시 VITE_API_BASE 로 재정의. */
 const API_BASE =
@@ -38,4 +45,64 @@ export async function analyzeApi(
   } finally {
     clearTimeout(timer)
   }
+}
+
+// ── 금고 (VAULT-1/2) ──────────────────────────────────────────────
+
+/** 금고 API 오류 — HTTP 상태를 담아 401(잠금)·429(지연)·409(충돌)를 구분한다. status=0 은 네트워크 실패. */
+export class VaultApiError extends Error {
+  readonly status: number
+  readonly retryAfter?: number
+  constructor(status: number, message: string, retryAfter?: number) {
+    super(message)
+    this.status = status
+    this.retryAfter = retryAfter
+  }
+}
+
+async function vreq<T>(path: string, init?: RequestInit): Promise<T> {
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...init,
+    })
+  } catch {
+    throw new VaultApiError(0, '백엔드에 연결할 수 없습니다')
+  }
+  if (!res.ok) {
+    let detail = `금고 오류 (${res.status})`
+    try {
+      const body = (await res.json()) as { detail?: string }
+      if (body.detail) detail = body.detail
+    } catch {
+      /* 본문 없음 */
+    }
+    const retry = Number(res.headers.get('Retry-After')) || undefined
+    throw new VaultApiError(res.status, detail, retry)
+  }
+  if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+export const vaultApi = {
+  status: () => vreq<VaultStatus>('/vault/status'),
+  init: (password: string) =>
+    vreq<VaultStatus>('/vault/init', { method: 'POST', body: JSON.stringify({ password }) }),
+  unlock: (password: string) =>
+    vreq<VaultStatus>('/vault/unlock', { method: 'POST', body: JSON.stringify({ password }) }),
+  lock: () => vreq<VaultStatus>('/vault/lock', { method: 'POST' }),
+  list: () => vreq<VaultEntryMeta[]>('/vault/entries'),
+  add: (entry: VaultEntryCreate) =>
+    vreq<VaultEntryMeta>('/vault/entries', { method: 'POST', body: JSON.stringify(entry) }),
+  value: (id: number) => vreq<{ value: string }>(`/vault/entries/${id}/value`),
+  update: (id: number, patch: VaultEntryUpdate) =>
+    vreq<VaultEntryMeta>(`/vault/entries/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  remove: (id: number) =>
+    vreq<VaultStatus>(`/vault/entries/${id}`, { method: 'DELETE' }),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    vreq<VaultStatus>('/vault/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+    }),
 }

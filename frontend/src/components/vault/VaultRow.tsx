@@ -18,17 +18,16 @@ function CopyIcon() {
 /** 보관함 항목 한 줄 + 상세 펼침. */
 export function VaultRow({ it }: { it: VaultItem }) {
   const locked = useKeylens((s) => s.locked)
-  const justUnlocked = useKeylens((s) => s.justUnlocked)
   const revealed = useKeylens((s) => s.revealed[it.id])
   const expanded = useKeylens((s) => s.expandedId === it.id)
   const reveal = useKeylens((s) => s.reveal)
-  const copy = useKeylens((s) => s.copy)
+  const copyValue = useKeylens((s) => s.copyValue)
   const rotate = useKeylens((s) => s.rotate)
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
 
-  const canSee = !locked && (justUnlocked || revealed)
+  const canSee = !locked && !!revealed
   const hasRealImg = !!(it.sourceImage && it.sourceImage !== 'sample')
   const exp = expiryInfo(it.expiresAt)
   const showExp = exp && (exp.expired || exp.days <= 14)
@@ -84,7 +83,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
           )}
           <button
             type="button"
-            onClick={() => copy(it.full, it.varName + ' 복사됨')}
+            onClick={() => copyValue(it.id, it.varName + ' 복사됨')}
             title="복사"
             className="flex items-center gap-[5px] rounded-[6px] border border-border bg-chip px-[9px] py-[5.5px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
             style={{ opacity: copyOp, cursor: copyCursor }}
@@ -116,7 +115,8 @@ export function VaultRow({ it }: { it: VaultItem }) {
       {expanded && (
         <div className="flex gap-4 border-t border-[#14181E] bg-[#0D1014] px-4 pb-4 pt-[14px] [animation:klFade_.15s]">
           <div className="w-[150px] flex-none">
-            {hasRealImg ? (
+            {/* 스크린샷에는 값이 평문으로 찍혀 있다 — 값과 동일한 공개 조건(canSee)으로만 표시. */}
+            {hasRealImg && canSee ? (
               <div
                 role="img"
                 aria-label="원본 스크린샷"
@@ -125,8 +125,12 @@ export function VaultRow({ it }: { it: VaultItem }) {
               />
             ) : (
               <div className="flex h-[96px] w-[150px] items-center justify-center rounded-lg border border-border [background:repeating-linear-gradient(45deg,#12151A,#12151A_6px,#161B21_6px,#161B21_12px)]">
-                <span className="font-mono text-[10px] text-dim">
-                  {it.sourceImage === 'sample' ? 'sample screenshot' : '원본 없음'}
+                <span className="px-2 text-center font-mono text-[10px] text-dim">
+                  {hasRealImg
+                    ? '가려짐 — 값 표시 시 공개'
+                    : it.sourceImage === 'sample'
+                      ? 'sample screenshot'
+                      : '원본 없음'}
                 </span>
               </div>
             )}
@@ -194,7 +198,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => copy(it.varName + '=' + it.full, '.env 형식으로 복사됨')}
+                onClick={() => copyValue(it.id, '.env 형식으로 복사됨', it.varName + '=')}
                 className="rounded-[7px] border border-border bg-chip px-[11px] py-[6px] font-mono text-[11px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
                 style={{ opacity: copyOp, cursor: copyCursor }}
               >

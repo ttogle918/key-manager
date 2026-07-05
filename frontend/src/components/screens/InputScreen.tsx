@@ -116,7 +116,7 @@ export function InputScreen() {
                     {attachedName}
                   </div>
                   <div className="mt-[2px] text-[11px] text-mint-soft">
-                    첨부됨 — 분석 시 원본이 보관함에 함께 저장됩니다
+                    첨부됨 — 브라우저에서 OCR 후 분류에만 사용(이미지는 저장되지 않음)
                   </div>
                 </div>
                 <button
@@ -269,7 +269,7 @@ export function InputScreen() {
           </div>
           <div className="mt-4 text-[15px] font-bold">모두 저장했어요</div>
           <div className="mt-[5px] text-[12.5px] text-muted">
-            원본 스크린샷·메모와 함께 암호화되어 이 기기에만 보관됩니다.
+            값은 AES-256-GCM으로 암호화되어 이 기기에만 보관됩니다.
           </div>
           <div className="mt-5 flex justify-center gap-2">
             <button

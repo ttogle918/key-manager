@@ -6,18 +6,17 @@
 // 목업 로직(seed 데이터, 가짜 분석·저장)은 그대로 유지하며,
 // 실제 백엔드(SPEC 5장: OCR·분류·암호화·SQLite)로 교체할 지점은 seed.ts / services.ts로 분리해 둔다.
 import { create } from 'zustand'
-import { analyzeApi, ApiError } from '@/api/client'
-import { toAnalysisResults } from '@/api/map'
+import { analyzeApi, ApiError, vaultApi, VaultApiError } from '@/api/client'
+import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { TYPE_MAP } from '@/data/services'
-import { freshResults, seedVault } from '@/data/seed'
+import { freshResults } from '@/data/seed'
 import { envText, today } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
   DupTarget,
   Screen,
-  TypeOption,
   UnknownItem,
   VaultItem,
   View,
@@ -25,14 +24,16 @@ import type {
 
 /** 분석 시뮬레이션 시간(초). 실제 앱에선 백엔드 응답 시간으로 대체. */
 const ANALYZE_SECONDS = 1.4
-/** 잠금 해제 후 값이 자동 재마스킹되기까지의 시간(초). */
-const REMASK_SECONDS = 5
+/** 복사한 값이 클립보드에서 자동 삭제되기까지의 시간(ms). */
+const CLIP_CLEAR_MS = 30_000
 
 // ── 비반응(non-reactive) 타이머 핸들 ──
 let timers: ReturnType<typeof setTimeout>[] = []
-let remaskCd: ReturnType<typeof setInterval> | null = null
 let toastT: ReturnType<typeof setTimeout> | null = null
+let clipClearT: ReturnType<typeof setTimeout> | null = null
 const revealTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+// 메타데이터(프로젝트·메모·만료) 편집을 디바운스해 백엔드에 저장한다(키 입력마다 요청 방지).
+const metaSaveT: Record<string, ReturnType<typeof setTimeout>> = {}
 
 interface KeylensState {
   // 화면
@@ -50,8 +51,6 @@ interface KeylensState {
   lockShakeN: number
   unlocking: boolean
   locked: boolean
-  justUnlocked: boolean
-  remaskLeft: number
 
   // 입력
   dragOver: boolean
@@ -91,6 +90,12 @@ interface KeylensState {
   // ── 액션 ──
   showToast: (msg: string) => void
   cleanup: () => void
+  /** 앱 시작 시 백엔드 금고 상태로 화면(설정/잠금/앱)을 결정. */
+  boot: () => void
+  /** 백엔드에서 금고 항목 메타데이터를 다시 불러온다. */
+  loadVault: () => void
+  /** 항목 값을 복호화해 클립보드에 복사(잠금 시 인증 유도). prefix 지정 시 `prefix+값`(.env 한 줄). */
+  copyValue: (id: string, label: string, prefix?: string) => void
 
   goInput: () => void
   goVault: () => void
@@ -153,56 +158,29 @@ export const useKeylens = create<KeylensState>((set, get) => {
     return id
   }
 
+  // 값(full)은 로컬에 두지 않으므로 중복은 변수명+프로젝트(메타데이터)로만 판단한다.
   const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined =>
     get().vault.find(
-      (v) =>
-        v.full === r.full ||
-        (v.varName === varName && (v.project || '') === (r.project || '').trim()),
+      (v) => v.varName === varName && (v.project || '') === (r.project || '').trim(),
     )
 
-  const vaultItemFrom = (r: AnalysisResult, t: TypeOption): VaultItem => {
-    const d = today()
-    const optionEvidence =
-      r.typeKey && r.options
-        ? (r.options.find((o) => o.k === r.typeKey) || { evidence: '' }).evidence
-        : ''
-    return {
-      id: 'v_' + r.id + '_' + timers.length + '_' + get().vault.length,
-      service: r.service,
-      type: t.label,
-      varName: t.var,
-      masked: r.masked,
-      full: r.full,
-      addedAt: d,
-      project: (r.project || '').trim(),
-      context: r.context || optionEvidence || '',
-      memo: r.memo || '',
-      sourceImage: get().analyzedImage || null,
-      expiresAt: null,
-      history: [{ date: d, event: '등록' }],
-      meta: { ...r.meta, confirmed_as: t.var, saved_at: d },
+  // .env 내보내기용으로 각 항목의 값을 복호화해 채운다(잠금/실패 항목은 제외).
+  const withValues = async (items: VaultItem[]): Promise<VaultItem[]> => {
+    const out: VaultItem[] = []
+    for (const it of items) {
+      try {
+        const { value } = await vaultApi.value(Number(it.id))
+        out.push({ ...it, full: value })
+      } catch {
+        /* 잠금/네트워크 실패 항목은 건너뜀 */
+      }
     }
+    return out
   }
 
   const envItems = (): VaultItem[] => {
     const s = get()
     return s.vault.filter((v) => !s.projFilter || (v.project || '') === s.projFilter)
-  }
-
-  const startRemask = () => {
-    const secs = Math.max(2, Math.round(REMASK_SECONDS))
-    if (remaskCd) clearInterval(remaskCd)
-    set({ justUnlocked: true, remaskLeft: secs })
-    remaskCd = setInterval(() => {
-      const left = get().remaskLeft - 1
-      if (left <= 0) {
-        if (remaskCd) clearInterval(remaskCd)
-        set({ justUnlocked: false, remaskLeft: 0, revealed: {} })
-        get().showToast('값이 다시 마스킹되었습니다')
-      } else {
-        set({ remaskLeft: left })
-      }
-    }, 1000)
   }
 
   return {
@@ -216,8 +194,6 @@ export const useKeylens = create<KeylensState>((set, get) => {
     lockShakeN: 0,
     unlocking: false,
     locked: false,
-    justUnlocked: false,
-    remaskLeft: 0,
     dragOver: false,
     urlVal: '',
     textVal: '',
@@ -233,7 +209,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     apiError: null,
     sourceLabel: '',
     analyzedImage: null,
-    vault: seedVault(),
+    vault: [],
     search: '',
     projFilter: '',
     revealed: {},
@@ -251,18 +227,58 @@ export const useKeylens = create<KeylensState>((set, get) => {
     cleanup: () => {
       timers.forEach(clearTimeout)
       timers = []
-      if (remaskCd) clearInterval(remaskCd)
       if (toastT) clearTimeout(toastT)
+      if (clipClearT) clearTimeout(clipClearT)
       Object.values(revealTimers).forEach(clearTimeout)
     },
 
     goInput: () => set({ view: 'input' }),
     goVault: () => set({ view: 'vault' }),
 
+    // ── 부팅 / 금고 로딩 ──
+    boot: async () => {
+      try {
+        const st = await vaultApi.status()
+        if (!st.initialized) {
+          set({ screen: 'setup' })
+        } else if (st.unlocked) {
+          set({ screen: 'app', locked: false })
+          get().loadVault()
+        } else {
+          set({ screen: 'lock', locked: true })
+        }
+      } catch {
+        // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
+        set({ screen: 'setup' })
+        get().showToast('백엔드(:8003) 미연결 — 금고 기능은 백엔드를 켜야 동작해요')
+      }
+    },
+    loadVault: async () => {
+      try {
+        const metas = await vaultApi.list()
+        set({ vault: metas.map(metaToVaultItem) })
+      } catch {
+        /* 목록 로딩 실패는 조용히 무시(잠금/네트워크) */
+      }
+    },
+    copyValue: async (id, label, prefix) => {
+      try {
+        const { value } = await vaultApi.value(Number(id))
+        get().copy((prefix ?? '') + value, label)
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().showToast('잠금 상태입니다 — 먼저 잠금을 해제하세요')
+        } else {
+          get().showToast('값을 불러오지 못했어요')
+        }
+      }
+    },
+
     // ── 설정(최초 실행) ──
     setPw: (v) => set({ pw: v, setupErr: '' }),
     setPw2: (v) => set({ pw2: v, setupErr: '' }),
-    createVault: () => {
+    createVault: async () => {
       const { pw, pw2 } = get()
       if (pw.length < 8) {
         set({ setupErr: '비밀번호는 8자 이상이어야 해요.' })
@@ -273,29 +289,61 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return
       }
       set({ unlocking: true, setupErr: '' })
-      timer(() => {
+      try {
+        await vaultApi.init(pw)
         set({ screen: 'app', view: 'input', unlocking: false, pw: '', pw2: '', locked: false })
-        get().showToast('금고 생성 완료 — 모든 데이터는 이 기기에만 저장됩니다')
-      }, 650)
+        get().loadVault()
+        get().showToast('금고 생성 완료 — 값은 AES-256-GCM으로 암호화되어 이 기기에만 저장됩니다')
+      } catch (e) {
+        const conflict = e instanceof VaultApiError && e.status === 409
+        set({
+          unlocking: false,
+          setupErr: conflict
+            ? '이미 금고가 있어요 — 잠금 해제로 진행하세요.'
+            : '금고 생성 실패 — 백엔드(:8003)가 켜져 있는지 확인하세요.',
+        })
+        if (conflict) set({ screen: 'lock', locked: true })
+      }
     },
 
     // ── 잠금 / 해제 ──
     setLockPw: (v) => set({ lockPw: v, lockErr: '' }),
-    submitUnlock: () => {
+    submitUnlock: async () => {
       if (get().unlocking) return
       if (!get().lockPw) {
         set({ lockErr: '마스터 비밀번호를 입력해 주세요.', lockShakeN: get().lockShakeN + 1 })
         return
       }
       set({ unlocking: true, lockErr: '' })
-      timer(() => {
+      try {
+        await vaultApi.unlock(get().lockPw)
         set({ screen: 'app', locked: false, unlocking: false, lockPw: '' })
-        startRemask()
-      }, 750)
+        get().loadVault()
+        // 해제 후에도 값은 마스킹 유지 — 항목별 클릭 시에만 4초간 표시(일괄 노출 금지).
+        get().showToast('잠금 해제됨 — 값은 항목을 클릭하면 4초간 표시됩니다')
+      } catch (e) {
+        let msg = '잠금 해제 실패 — 백엔드 연결을 확인하세요.'
+        if (e instanceof VaultApiError) {
+          if (e.status === 401) msg = '마스터 비밀번호가 올바르지 않아요.'
+          else if (e.status === 429)
+            msg = `시도가 많아요 — ${e.retryAfter ?? '잠시'}초 후 다시 시도하세요.`
+        }
+        set({ unlocking: false, lockErr: msg, lockShakeN: get().lockShakeN + 1 })
+      }
     },
-    lockNow: () => {
-      if (remaskCd) clearInterval(remaskCd)
-      set({ locked: true, revealed: {}, justUnlocked: false, remaskLeft: 0, envOpen: false })
+    lockNow: async () => {
+      // 값 캐시(공개된 full)를 즉시 비우고 백엔드 세션도 잠근다.
+      set((s) => ({
+        locked: true,
+        revealed: {},
+        envOpen: false,
+        vault: s.vault.map((v) => ({ ...v, full: '' })),
+      }))
+      try {
+        await vaultApi.lock()
+      } catch {
+        /* 네트워크 실패해도 로컬은 잠금 표시 */
+      }
       get().showToast('금고가 잠겼습니다')
     },
     gotoLockScreen: () => set({ screen: 'lock', lockPw: '', lockErr: '' }),
@@ -424,7 +472,12 @@ export const useKeylens = create<KeylensState>((set, get) => {
     setType: (id, v) => {
       if (v) get().patchResult(id, { typeKey: v })
     },
-    save: (id, force = false) => {
+    save: async (id, force = false) => {
+      // 백엔드 장애 폴백(샘플 목업) 결과는 진짜 분류가 아니다 — 보관함 오염 방지.
+      if (get().apiError) {
+        get().showToast('백엔드 미연결 — 샘플 목업 결과는 저장할 수 없어요')
+        return
+      }
       const r = get().results.find((x) => x.id === id)
       if (!r) return
       const t = TYPE_MAP[r.service].find((t) => t.v === r.typeKey)
@@ -436,20 +489,38 @@ export const useKeylens = create<KeylensState>((set, get) => {
           return
         }
       }
-      const item = vaultItemFrom(r, t)
-      set((s) => ({
-        vault: [...s.vault, item],
-        results: s.results.filter((x) => x.id !== id),
-        dupTarget: null,
-      }))
-      get().showToast(t.var + ' 저장됨 · AES-256 암호화 완료')
+      try {
+        await vaultApi.add({
+          service: SERVICE_TO_ID[r.service],
+          kind: t.v,
+          official_name: t.var,
+          value: r.full,
+          label: t.label,
+          project: (r.project || '').trim() || null,
+          memo: r.memo || null,
+        })
+        set((s) => ({ results: s.results.filter((x) => x.id !== id), dupTarget: null }))
+        await get().loadVault()
+        get().showToast(t.var + ' 저장됨 — AES-256-GCM으로 암호화되어 이 기기에만 보관')
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ dupTarget: null })
+          get().showToast('금고가 잠겨 저장할 수 없어요 — 잠금을 해제하세요')
+        } else {
+          get().showToast('저장 실패 — 백엔드 연결을 확인하세요')
+        }
+      }
     },
     confirmDup: () => {
       const d = get().dupTarget
       if (d) get().save(d.resultId, true)
     },
     cancelDup: () => set({ dupTarget: null }),
-    saveAll: () => {
+    saveAll: async () => {
+      if (get().apiError) {
+        get().showToast('백엔드 미연결 — 샘플 목업 결과는 저장할 수 없어요')
+        return
+      }
       const savable = get().results.filter((r) =>
         TYPE_MAP[r.service].some((t) => t.v === r.typeKey),
       )
@@ -457,34 +528,39 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('확인 필요 항목의 종류를 먼저 선택해 주세요')
         return
       }
-      let vault = get().vault.slice()
+      let saved = 0
       let dupCount = 0
       const savedIds: string[] = []
-      savable.forEach((r) => {
-        const t = TYPE_MAP[r.service].find((t) => t.v === r.typeKey)!
-        const dup = vault.find(
-          (v) =>
-            v.full === r.full ||
-            (v.varName === t.var && (v.project || '') === (r.project || '').trim()),
-        )
-        if (dup) {
+      for (const r of savable) {
+        const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)!
+        if (findDup(r, t.var)) {
           dupCount++
-          return
+          continue
         }
-        vault = vault.concat([vaultItemFrom(r, t)])
-        savedIds.push(r.id)
-      })
+        try {
+          await vaultApi.add({
+            service: SERVICE_TO_ID[r.service],
+            kind: t.v,
+            official_name: t.var,
+            value: r.full,
+            label: t.label,
+            project: (r.project || '').trim() || null,
+            memo: r.memo || null,
+          })
+          saved++
+          savedIds.push(r.id)
+          await get().loadVault() // dup 판정이 최신 목록을 보도록 갱신
+        } catch (e) {
+          if (e instanceof VaultApiError && e.status === 401) {
+            get().showToast('금고가 잠겨 저장할 수 없어요 — 잠금을 해제하세요')
+            break
+          }
+        }
+      }
       const remaining = get().results.filter((r) => !savedIds.includes(r.id))
       const dupMarked = remaining.map((r) => {
-        const t = TYPE_MAP[r.service].find((t) => t.v === r.typeKey)
-        if (
-          t &&
-          vault.find(
-            (v) =>
-              v.full === r.full ||
-              (v.varName === t.var && (v.project || '') === (r.project || '').trim()),
-          )
-        ) {
+        const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)
+        if (t && findDup(r, t.var)) {
           return {
             ...r,
             dupNote: '이미 보관 중인 키예요 — [확정 후 저장]을 누르면 추가 여부를 물어봅니다.',
@@ -492,8 +568,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         }
         return r
       })
-      set({ vault, results: dupMarked })
-      const parts = [savedIds.length + '개 저장됨']
+      set({ results: dupMarked })
+      const parts = [saved + '개 저장됨']
       if (dupCount) parts.push('중복 ' + dupCount + '건은 카드에서 개별 확인')
       get().showToast(parts.join(' · '))
     },
@@ -501,25 +577,46 @@ export const useKeylens = create<KeylensState>((set, get) => {
     // ── 보관함 ──
     setSearch: (v) => set({ search: v }),
     setProjFilter: (v) => set({ projFilter: v }),
-    reveal: (id) => {
+    reveal: async (id) => {
       if (get().locked) {
         get().showToast('잠금 상태에서는 값을 볼 수 없어요 — 먼저 잠금을 해제하세요')
         return
       }
       const revealed = { ...get().revealed }
       if (revealed[id]) {
+        // 숨기기 — 캐시된 값도 지운다(메모리 노출 최소화).
         delete revealed[id]
-        set({ revealed })
+        set((s) => ({
+          revealed,
+          vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)),
+        }))
+        if (revealTimers[id]) clearTimeout(revealTimers[id])
         return
       }
-      revealed[id] = true
-      set({ revealed })
-      revealTimers[id] = timer(() => {
-        const r2 = { ...get().revealed }
-        if (r2[id]) {
-          delete r2[id]
-          set({ revealed: r2 })
+      try {
+        const { value } = await vaultApi.value(Number(id))
+        set((s) => ({
+          revealed: { ...s.revealed, [id]: true },
+          vault: s.vault.map((it) => (it.id === id ? { ...it, full: value } : it)),
+        }))
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().gotoLockScreen()
+          get().showToast('잠금 상태입니다 — 다시 인증해 주세요')
+        } else {
+          get().showToast('값을 불러오지 못했어요')
         }
+        return
+      }
+      // 4초 후 자동 숨김(값 캐시 제거).
+      revealTimers[id] = timer(() => {
+        set((s) => {
+          if (!s.revealed[id]) return {}
+          const r2 = { ...s.revealed }
+          delete r2[id]
+          return { revealed: r2, vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)) }
+        })
       }, 4000)
     },
     copy: (text, label) => {
@@ -532,13 +629,41 @@ export const useKeylens = create<KeylensState>((set, get) => {
       } catch {
         /* noop */
       }
+      // 30초 후 클립보드 자동 삭제 — 그 사이 사용자가 다른 것을 복사했으면 건드리지 않는다.
+      if (clipClearT) clearTimeout(clipClearT)
+      clipClearT = setTimeout(async () => {
+        try {
+          if ((await navigator.clipboard.readText()) === text) {
+            await navigator.clipboard.writeText('')
+            get().showToast('복사한 값을 클립보드에서 지웠어요')
+          }
+        } catch {
+          /* readText 미지원·권한 거부·포커스 없음 — 삭제 생략(덮어쓰기 오동작 방지) */
+        }
+      }, CLIP_CLEAR_MS)
       get().showToast(label + ' · 30초 후 클립보드에서 지워져요')
     },
-    setVaultField: (id, key, v) =>
+    setVaultField: (id, key, v) => {
+      // 즉시 로컬 반영(반응성) + 디바운스 백엔드 저장(평문 메타만).
       set((s) => ({
         vault: s.vault.map((it) => (it.id === id ? { ...it, [key]: v } : it)),
-      })),
+      }))
+      if (key !== 'project' && key !== 'memo' && key !== 'expiresAt') return
+      if (metaSaveT[id]) clearTimeout(metaSaveT[id])
+      metaSaveT[id] = setTimeout(() => {
+        const cur = get().vault.find((x) => x.id === id)
+        if (!cur) return
+        void vaultApi
+          .update(Number(id), {
+            project: cur.project || null,
+            memo: cur.memo || null,
+            expires_at: cur.expiresAt,
+          })
+          .catch(() => get().showToast('메모 저장 실패 — 백엔드 연결을 확인하세요'))
+      }, 600)
+    },
     rotate: (id) => {
+      // 회전 이력 저장은 백엔드 스키마 미지원 — 이 세션 표시용(재시작 시 사라짐).
       const d = today()
       set((s) => ({
         vault: s.vault.map((it) =>
@@ -547,15 +672,27 @@ export const useKeylens = create<KeylensState>((set, get) => {
             : it,
         ),
       }))
-      get().showToast('회전 기록이 추가되었습니다')
+      get().showToast('회전 기록 추가(이 세션에만 표시 — 이력 저장은 후속)')
     },
     setDeleteTarget: (it) => set({ deleteTarget: it }),
     cancelDelete: () => set({ deleteTarget: null }),
-    confirmDelete: () => {
+    confirmDelete: async () => {
       const t = get().deleteTarget
       if (!t) return
-      set((s) => ({ vault: s.vault.filter((v) => v.id !== t.id), deleteTarget: null }))
-      get().showToast(t.varName + ' 삭제됨')
+      try {
+        await vaultApi.remove(Number(t.id))
+        set({ deleteTarget: null })
+        await get().loadVault()
+        get().showToast(t.varName + ' 삭제됨')
+      } catch (e) {
+        set({ deleteTarget: null })
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().showToast('금고가 잠겨 삭제할 수 없어요 — 잠금을 해제하세요')
+        } else {
+          get().showToast('삭제 실패 — 백엔드 연결을 확인하세요')
+        }
+      }
     },
     toggleExpanded: (id) => set((s) => ({ expandedId: s.expandedId === id ? null : id })),
 
@@ -572,10 +709,14 @@ export const useKeylens = create<KeylensState>((set, get) => {
       set({ envOpen: true })
     },
     closeEnv: () => set({ envOpen: false }),
-    envCopyAll: () => get().copy(envText(envItems()), '.env 내용 복사됨'),
-    envDownload: () => {
+    envCopyAll: async () => {
+      const items = await withValues(envItems())
+      get().copy(envText(items), '.env 내용 복사됨')
+    },
+    envDownload: async () => {
       try {
-        const blob = new Blob([envText(envItems()) + '\n'], { type: 'text/plain' })
+        const items = await withValues(envItems())
+        const blob = new Blob([envText(items) + '\n'], { type: 'text/plain' })
         const a = document.createElement('a')
         a.href = URL.createObjectURL(blob)
         a.download = 'keylens.env'
@@ -586,13 +727,12 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('다운로드에 실패했어요')
       }
     },
-    envCopyGroup: (name) => {
-      const items = envItems().filter((i) => i.service === name)
+    envCopyGroup: async (name) => {
+      const items = await withValues(envItems().filter((i) => i.service === name))
       get().copy(envText(items), name + ' 그룹 .env 복사됨')
     },
 
     resetProto: () => {
-      if (remaskCd) clearInterval(remaskCd)
       set({
         vault: [],
         screen: 'setup',
@@ -604,8 +744,6 @@ export const useKeylens = create<KeylensState>((set, get) => {
         unknowns: [],
         apiError: null,
         locked: false,
-        justUnlocked: false,
-        remaskLeft: 0,
         search: '',
         projFilter: '',
         revealed: {},

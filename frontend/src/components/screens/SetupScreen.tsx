@@ -42,9 +42,9 @@ export function SetupScreen() {
         </div>
         <div className="mt-5 text-[17px] font-bold tracking-[-.01em]">마스터 비밀번호 설정</div>
         <div className="mt-[6px] text-[12.5px] leading-[1.5] text-muted">
-          KeyLens의 모든 자격증명은 이 비밀번호로
+          값은 마스터 비밀번호에서 Argon2id로 유도한 키로 AES-256-GCM 암호화되어
           <br />
-          암호화되어 이 기기에만 저장됩니다.
+          이 기기에만 저장됩니다. 비밀번호·키는 디스크에 남지 않습니다.
         </div>
 
         <input

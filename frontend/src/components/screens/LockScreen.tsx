@@ -70,7 +70,7 @@ export function LockScreen() {
         >
           {unlocking ? '여는 중…' : '잠금 해제'}
         </button>
-        <div className="mt-4 text-[11px] text-dim-3">비밀번호는 이 기기에서만 검증됩니다 · 서버 전송 없음</div>
+        <div className="mt-4 text-[11px] text-dim-3">서버 전송 없음 · 마스터 비밀번호로 로컬 인증(틀리면 복호화 거부)</div>
       </div>
     </div>
   )

@@ -21,6 +21,7 @@ export const TYPE_MAP: Record<Service, TypeOption[]> = {
     { v: 'rest', label: 'REST API 키', var: 'KAKAO_REST_API_KEY' },
     { v: 'js', label: 'JavaScript 키', var: 'KAKAO_JS_KEY' },
     { v: 'admin', label: 'Admin 키', var: 'KAKAO_ADMIN_KEY' },
+    { v: 'native', label: 'Native 앱 키', var: 'KAKAO_NATIVE_APP_KEY' },
   ],
   GCP: [{ v: 'api', label: 'API Key', var: 'GOOGLE_API_KEY' }],
   Ollama: [{ v: 'api', label: 'API Key', var: 'OLLAMA_API_KEY' }],

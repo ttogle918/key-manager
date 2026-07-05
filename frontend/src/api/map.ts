@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 /** 백엔드 분류 결과(ClassifiedItem)를 프론트 도메인(AnalysisResult)으로 변환. */
 import { TYPE_MAP } from '@/data/services'
-import type { AnalysisResult, Confidence, Service, UnknownItem } from '@/types'
-import type { ApiConfidence, ClassifiedItem } from './types'
+import type { AnalysisResult, Confidence, Service, UnknownItem, VaultItem } from '@/types'
+import type { ApiConfidence, ClassifiedItem, VaultEntryMeta } from './types'
 
 /** 백엔드 service id → 프론트 Service enum (SVC_META·TYPE_MAP 키). */
 const SERVICE_BY_ID: Record<string, Service> = {
@@ -12,6 +12,45 @@ const SERVICE_BY_ID: Record<string, Service> = {
   gcp: 'GCP',
   openai: 'OpenAI',
   ollama: 'Ollama',
+}
+
+/** 프론트 Service → 백엔드 service id (금고 저장 시). */
+export const SERVICE_TO_ID: Record<Service, string> = {
+  Notion: 'notion',
+  Kakao: 'kakao',
+  GCP: 'gcp',
+  OpenAI: 'openai',
+  Ollama: 'ollama',
+}
+
+/** 잠금 상태에서 값을 모르므로 표시용 자리표시 마스크. 값 공개 시 실제 값으로 대체된다. */
+const MASK_PLACEHOLDER = '••••••••••••'
+
+/**
+ * 백엔드 금고 항목 메타데이터 → 프론트 VaultItem. 값(full)은 잠금/미공개 상태라 비어 있고,
+ * 공개(reveal) 시 복호화 값을 채운다. context·history·sourceImage 는 백엔드 미저장 → 비움.
+ */
+export function metaToVaultItem(m: VaultEntryMeta): VaultItem {
+  const svc = (m.service && SERVICE_BY_ID[m.service]) || 'OpenAI'
+  const typeDef = m.official_name
+    ? TYPE_MAP[svc]?.find((t) => t.var === m.official_name)
+    : undefined
+  return {
+    id: String(m.id),
+    service: svc,
+    type: m.label || typeDef?.label || m.kind || '',
+    varName: m.official_name || '',
+    masked: MASK_PLACEHOLDER,
+    full: '',
+    addedAt: (m.created_at || '').slice(0, 10),
+    project: m.project || '',
+    context: '',
+    memo: m.memo || '',
+    sourceImage: null,
+    expiresAt: m.expires_at || null,
+    history: [],
+    meta: {},
+  }
 }
 
 /** 백엔드 confidence → 프론트 conf. */

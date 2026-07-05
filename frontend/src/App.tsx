@@ -15,6 +15,11 @@ export default function App() {
   const screen = useKeylens((s) => s.screen)
   const view = useKeylens((s) => s.view)
 
+  // 앱 시작 시 백엔드 금고 상태로 화면(설정/잠금/앱) 결정.
+  useEffect(() => {
+    useKeylens.getState().boot()
+  }, [])
+
   // 전역 붙여넣기: 입력 화면에서 이미지는 첨부, 텍스트는 붙여넣기 영역으로.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
