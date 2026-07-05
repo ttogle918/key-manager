@@ -12,3 +12,34 @@ License: MIT
 Files: backend/tests/fixtures/demo/*.recon.txt
 Copyright: 2026 [Your Name]
 License: MIT
+
+# 지시·설정 파일(YAML frontmatter 라 인라인 SPDX 헤더를 맨 위에 넣을 수 없음) — 여기서 선언.
+Files: CLAUDE.md .claude/*.md .claude/agents/*.md .claude/commands/*.md
+Copyright: 2026 [Your Name]
+License: MIT
+
+# 아래 3개는 파일 1~2줄에 정상 MIT SPDX 헤더가 있으나, reuse 6.x 파서가 CJK 텍스트 + docstring
+# 혼합에서 오탐(no license identifier)한다. 헤더는 정상 — dep5 로 명시해 도구 오탐을 해소한다.
+Files: backend/app/vault_repo.py backend/app/vault_session.py frontend/src/ocr/reconstruct.ts
+Copyright: 2026 [Your Name]
+License: MIT
+
+# 관용적으로 SPDX 헤더를 넣지 않는 설정·생성·라이선스 파일(빌드 설정, lockfile, tsconfig 등).
+Files:
+  LICENSE
+  .gitignore
+  frontend/.gitignore
+  .env.example
+  backend/pytest.ini
+  backend/requirements-dev.txt
+  .claude/settings.json
+  frontend/.oxlintrc.json
+  frontend/tsconfig.json
+  frontend/tsconfig.app.json
+  frontend/tsconfig.node.json
+  frontend/package.json
+  frontend/package-lock.json
+  frontend/index.html
+  frontend/public/favicon.svg
+Copyright: 2026 [Your Name]
+License: MIT

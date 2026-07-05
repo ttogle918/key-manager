@@ -41,5 +41,28 @@ SPDX-License-Identifier: MIT
   (`hazmat.primitives.kdf.argon2.Argon2id`, `hazmat.primitives.ciphers.aead.AESGCM`).
 - 전이 의존성: cffi 2.0.0 (MIT), pycparser 3.0 (BSD-3-Clause). certifi/MPL/카피레프트 없음.
 
+## 프론트엔드 런타임 (React SPA — 배포 번들 포함)
+
+| 패키지 | 버전 | 라이선스 | 출처 |
+|---|---|---|---|
+| react · react-dom | 19.2.7 | MIT | https://github.com/facebook/react |
+| @radix-ui/react-dialog · react-select | 1.1.18 · 2.3.2 | MIT | https://github.com/radix-ui/primitives |
+| zustand | 5.0.14 | MIT | https://github.com/pmndrs/zustand |
+| clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx |
+| tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge |
+| lucide-react | 1.23.0 | ISC | https://github.com/lucide-icons/lucide |
+| tailwindcss | 4.3.2 | MIT | https://github.com/tailwindlabs/tailwindcss (생성 CSS가 배포물에 포함) |
+
+## 백엔드 런타임 (FastAPI 로컬 서버)
+
+| 패키지 | 버전 | 라이선스 | 출처 |
+|---|---|---|---|
+| fastapi | 0.115.6 | MIT | https://github.com/fastapi/fastapi |
+| uvicorn | 0.34.0 | BSD-3-Clause | https://github.com/encode/uvicorn |
+| pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic |
+| PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml |
+
+> 전체 의존성(전이 포함)·SBOM 6컬럼 표는 [docs/SBOM.md](./docs/SBOM.md) 참고. 런타임 트리 카피레프트 0건(2026-07-05 스캔).
+
 > Apache-2.0 구성요소가 다수이므로, Apache-2.0 §4의 고지 의무를 위해 각 저장소의 NOTICE/LICENSE 원문을 함께 참고하라.
 > 전문: https://www.apache.org/licenses/LICENSE-2.0

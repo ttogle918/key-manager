@@ -189,7 +189,7 @@ SPDX-License-Identifier: MIT
 - 의존성: **permissive만**(MIT/Apache-2.0/BSD/ISC). 카피레프트(GPL/AGPL/LGPL/MPL) 도입 금지.
 
 ### 7.2 라이선스 명시 — 파일별 + 별도 정리(이중)
-- **파일별**: 모든 소스 상단에 **SPDX 헤더**(`SPDX-License-Identifier: MIT` 등). 에이전트 규칙(CLAUDE.md)으로 신규 파일 자동 삽입, `reuse lint`로 누락 0 검증.
+- **파일별**: 모든 소스 상단에 **SPDX 헤더**(저작권 2줄 + `MIT` 식별자). 에이전트 규칙(CLAUDE.md)으로 신규 파일 자동 삽입, `reuse lint`로 누락 0 검증.
 - **별도 정리**: `THIRD-PARTY-NOTICES.md`에 의존성·참고 출처와 각 라이선스를 집계. `pip-licenses`/`license-checker` 출력으로 **라이선스 인벤토리**를 생성·첨부.
 
 ### 7.3 기여 유도 구조
