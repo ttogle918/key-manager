@@ -35,7 +35,13 @@ export async function analyzeApi(
       body: JSON.stringify(req),
       signal: ctrl.signal,
     })
-    if (!res.ok) throw new ApiError(`백엔드 오류 (${res.status})`)
+    if (!res.ok) {
+      // 4xx(입력 문제)와 5xx(서버 문제)를 사용자 언어로 구분.
+      if (res.status === 413 || res.status === 422) {
+        throw new ApiError('입력이 너무 크거나 형식이 올바르지 않아요 — 줄여서 다시 시도하세요')
+      }
+      throw new ApiError(`백엔드 오류 (${res.status})`)
+    }
     return (await res.json()) as AnalyzeApiResponse
   } catch (e) {
     if (e instanceof ApiError) throw e

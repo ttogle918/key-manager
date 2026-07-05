@@ -34,7 +34,11 @@ export default function App() {
           const f = items[i].getAsFile()
           if (!f) continue
           const rd = new FileReader()
-          rd.onload = () => useKeylens.getState().handlePasteImage(rd.result as string)
+          rd.onload = () => {
+            if (typeof rd.result === 'string') useKeylens.getState().handlePasteImage(rd.result)
+            else useKeylens.getState().showToast('붙여넣은 이미지를 읽지 못했어요')
+          }
+          rd.onerror = () => useKeylens.getState().showToast('붙여넣은 이미지를 읽지 못했어요')
           rd.readAsDataURL(f)
           e.preventDefault()
           return

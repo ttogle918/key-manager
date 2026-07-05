@@ -47,8 +47,14 @@ export function InputScreen() {
     const f = e.dataTransfer?.files?.[0]
     if (f && f.type.startsWith('image')) {
       const rd = new FileReader()
-      rd.onload = () => s.attachImage(rd.result as string, f.name)
+      rd.onload = () => {
+        if (typeof rd.result === 'string') s.attachImage(rd.result, f.name)
+        else s.showToast('이미지를 읽지 못했어요 — 다른 파일로 시도해 주세요')
+      }
+      rd.onerror = () => s.showToast('이미지를 읽지 못했어요 — 다른 파일로 시도해 주세요')
       rd.readAsDataURL(f)
+    } else if (f) {
+      s.showToast('이미지 파일만 첨부할 수 있어요 (스크린샷 이미지)')
     } else {
       s.attachSample()
     }
