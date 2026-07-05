@@ -134,7 +134,8 @@ def classify_context(
             items.append(
                 ClassifiedItem(
                     value=value,
-                    masked=mask(value),
+                    # Stage2 대상(UUID·hex)은 공개 접두어가 없다 → 노출 축소
+                    masked=mask(value, keep_front=4),
                     service=s.service,
                     display_name=s.display_name,
                     kind=c.kind,
@@ -165,7 +166,7 @@ def classify_context(
             items.append(
                 ClassifiedItem(
                     value=value,
-                    masked=mask(value),
+                    masked=mask(value, keep_front=4),
                     service=svc.service,
                     display_name=svc.display_name,
                     kind="ambiguous",

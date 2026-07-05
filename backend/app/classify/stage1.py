@@ -137,7 +137,8 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
             items.append(
                 ClassifiedItem(
                     value=value,
-                    masked=mask(value),
+                    # 서비스 미확정 = 접두어가 공개 정보라는 보장 없음 → 노출 축소
+                    masked=mask(value, keep_front=4),
                     kind="ambiguous",
                     label="종류 미확정",
                     confidence="unknown",
@@ -154,7 +155,7 @@ def classify_text(text: str, kb: KnowledgeBase, source_label: str = "text") -> l
             items.append(
                 ClassifiedItem(
                     value=value,
-                    masked=mask(value),
+                    masked=mask(value, keep_front=4),
                     kind="unknown",
                     label="미상",
                     confidence="unknown",
