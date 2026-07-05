@@ -5,7 +5,12 @@ import pytest
 from fastapi import HTTPException
 
 from app import main
-from app.models import VaultChangePassword, VaultEntryCreate, VaultPassword
+from app.models import (
+    VaultChangePassword,
+    VaultEntryCreate,
+    VaultEntryUpdate,
+    VaultPassword,
+)
 from app.vault_session import VaultService
 
 MASTER = "correct horse battery staple"
@@ -80,4 +85,42 @@ def test_change_password_wrong_old_401(vault):
         main.vault_change_password(
             VaultChangePassword(old_password="wrong", new_password="new long password")
         )
+    assert e.value.status_code == 401
+
+
+def test_add_stores_project_memo(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(
+        VaultEntryCreate(
+            official_name="OPENAI_API_KEY", value=DUMMY, project="블로그", memo="6월 발급"
+        )
+    )
+    assert meta.project == "블로그" and meta.memo == "6월 발급"
+
+
+def test_update_meta(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    updated = main.vault_update(meta.id, VaultEntryUpdate(project="새프로젝트", memo="메모"))
+    assert updated.project == "새프로젝트" and updated.memo == "메모"
+    # 값은 여전히 복호화 가능(암호문 불변)
+    assert main.vault_get_value(meta.id).value == DUMMY
+
+
+def test_delete_entry(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_delete(meta.id)
+    assert main.vault_list() == []
+    with pytest.raises(HTTPException) as e:
+        main.vault_get_value(meta.id)
+    assert e.value.status_code == 404
+
+
+def test_delete_when_locked_401(vault):
+    main.vault_init(VaultPassword(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_lock()
+    with pytest.raises(HTTPException) as e:
+        main.vault_delete(meta.id)
     assert e.value.status_code == 401

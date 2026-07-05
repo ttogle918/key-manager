@@ -120,6 +120,8 @@ class VaultService:
         official_name: str | None,
         value: str,
         label: str | None = None,
+        project: str | None = None,
+        memo: str | None = None,
         expires_at: str | None = None,
     ) -> int:
         key = self._require_key()
@@ -127,8 +129,33 @@ class VaultService:
         try:
             return vault_repo.add_entry(
                 conn, key, service=service, kind=kind, official_name=official_name,
-                value=value, label=label, expires_at=expires_at,
+                value=value, label=label, project=project, memo=memo, expires_at=expires_at,
             )
+        finally:
+            conn.close()
+
+    def update_meta(
+        self,
+        entry_id: int,
+        *,
+        project: str | None = None,
+        memo: str | None = None,
+        expires_at: str | None = None,
+    ) -> bool:
+        self._require_key()
+        conn = self._conn()
+        try:
+            return vault_repo.update_meta(
+                conn, entry_id, project=project, memo=memo, expires_at=expires_at
+            )
+        finally:
+            conn.close()
+
+    def delete_entry(self, entry_id: int) -> bool:
+        self._require_key()
+        conn = self._conn()
+        try:
+            return vault_repo.delete_entry(conn, entry_id)
         finally:
             conn.close()
 

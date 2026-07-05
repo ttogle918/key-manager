@@ -36,12 +36,17 @@ CREATE TABLE IF NOT EXISTS entries (
     kind           TEXT,
     official_name  TEXT,
     label          TEXT,
+    project        TEXT,
+    memo           TEXT,
     nonce          BLOB NOT NULL,
     ciphertext     BLOB NOT NULL,
     created_at     TEXT NOT NULL,
     expires_at     TEXT
 );
 """
+
+# 값 복호화 없이 노출 가능한 메타데이터 컬럼(평문). 잠금 상태에서도 안전.
+_META_COLS = "id, service, kind, official_name, label, project, memo, created_at, expires_at"
 
 
 def _now() -> str:
@@ -116,14 +121,16 @@ def add_entry(
     official_name: str | None,
     value: str,
     label: str | None = None,
+    project: str | None = None,
+    memo: str | None = None,
     expires_at: str | None = None,
 ) -> int:
-    """값을 암호화해 저장. 반환: 새 항목 id. 평문 value 는 저장되지 않는다."""
+    """값을 암호화해 저장. 반환: 새 항목 id. 평문 value 는 저장되지 않는다(project/memo 는 평문 메타)."""
     nonce, ct = crypto.encrypt(key, value, _aad(official_name))
     cur = conn.execute(
-        "INSERT INTO entries (service, kind, official_name, label, nonce,"
-        " ciphertext, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?)",
-        (service, kind, official_name, label, nonce, ct, _now(), expires_at),
+        "INSERT INTO entries (service, kind, official_name, label, project, memo,"
+        " nonce, ciphertext, created_at, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (service, kind, official_name, label, project, memo, nonce, ct, _now(), expires_at),
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -131,11 +138,31 @@ def add_entry(
 
 def list_entries(conn: sqlite3.Connection) -> list[dict]:
     """항목 메타데이터만 반환(값 복호화 없음 — 잠금 상태에서도 안전)."""
-    rows = conn.execute(
-        "SELECT id, service, kind, official_name, label, created_at, expires_at"
-        " FROM entries ORDER BY id"
-    ).fetchall()
+    rows = conn.execute(f"SELECT {_META_COLS} FROM entries ORDER BY id").fetchall()
     return [dict(r) for r in rows]
+
+
+def update_meta(
+    conn: sqlite3.Connection,
+    entry_id: int,
+    *,
+    project: str | None = None,
+    memo: str | None = None,
+    expires_at: str | None = None,
+) -> bool:
+    """평문 메타데이터(프로젝트·메모·만료일)만 수정. 값·암호문은 건드리지 않는다."""
+    cur = conn.execute(
+        "UPDATE entries SET project = ?, memo = ?, expires_at = ? WHERE id = ?",
+        (project, memo, expires_at, entry_id),
+    )
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def delete_entry(conn: sqlite3.Connection, entry_id: int) -> bool:
+    cur = conn.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
+    conn.commit()
+    return cur.rowcount > 0
 
 
 def get_value(conn: sqlite3.Connection, key: bytes, entry_id: int) -> str:

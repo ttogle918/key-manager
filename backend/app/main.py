@@ -23,6 +23,7 @@ from .models import (
     VaultChangePassword,
     VaultEntryCreate,
     VaultEntryMeta,
+    VaultEntryUpdate,
     VaultPassword,
     VaultStatus,
     VaultValue,
@@ -138,11 +139,36 @@ def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
     try:
         eid = VAULT.add_entry(
             service=body.service, kind=body.kind, official_name=body.official_name,
-            value=body.value, label=body.label, expires_at=body.expires_at,
+            value=body.value, label=body.label, project=body.project, memo=body.memo,
+            expires_at=body.expires_at,
         )
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == eid)
+
+
+@app.patch("/vault/entries/{entry_id}", response_model=VaultEntryMeta)
+def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
+    try:
+        ok = VAULT.update_meta(
+            entry_id, project=body.project, memo=body.memo, expires_at=body.expires_at
+        )
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    if not ok:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
+    return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == entry_id)
+
+
+@app.delete("/vault/entries/{entry_id}", response_model=VaultStatus)
+def vault_delete(entry_id: int) -> VaultStatus:
+    try:
+        ok = VAULT.delete_entry(entry_id)
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    if not ok:
+        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
+    return VaultStatus(**VAULT.status())
 
 
 @app.get("/vault/entries/{entry_id}/value", response_model=VaultValue)

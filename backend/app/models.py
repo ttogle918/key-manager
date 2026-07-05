@@ -105,13 +105,23 @@ class VaultChangePassword(BaseModel):
 
 
 class VaultEntryCreate(BaseModel):
-    """금고에 저장할 항목. value 는 암호화되어 저장되고 평문은 남지 않는다."""
+    """금고에 저장할 항목. value 는 암호화되어 저장되고 평문은 남지 않는다(project/memo 는 평문 메타)."""
 
     service: Optional[str] = None
     kind: Optional[str] = None
     official_name: Optional[str] = None
     value: str = Field(min_length=1, max_length=8192)
     label: Optional[str] = None
+    project: Optional[str] = None
+    memo: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class VaultEntryUpdate(BaseModel):
+    """평문 메타데이터만 수정(값·암호문은 불변)."""
+
+    project: Optional[str] = None
+    memo: Optional[str] = None
     expires_at: Optional[str] = None
 
 
@@ -123,6 +133,8 @@ class VaultEntryMeta(BaseModel):
     kind: Optional[str] = None
     official_name: Optional[str] = None
     label: Optional[str] = None
+    project: Optional[str] = None
+    memo: Optional[str] = None
     created_at: str
     expires_at: Optional[str] = None
 
