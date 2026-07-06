@@ -46,7 +46,7 @@ SPDX-License-Identifier: MIT
 - ✅ **CI(GitHub Actions)**: push/PR마다 백엔드 pytest·프론트 build/vitest/oxlint·**reuse lint·카피레프트 0(pip-licenses/license-checker, clean 런타임 env)**·취약점(pip-audit/npm audit) 자동 실행 + README 배지. 대회 2차 검증(라이선스·재현·테스트·보안)을 자동화·상시화.
 - ✅ **KB 확장**: GCP 4종(api_key·OAuth id/secret·service_account_json)으로 확장 — 프론트 코드 0줄(=/knowledge 동적).
 - **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서).
-- **제안(후보)**: **GUIDE-1**(키 발급·역할 도움말 — KB에 role/issue_url/docs_url 추가, `/knowledge` 노출, 프론트 도움말·발급 바로가기; URL 딥링크는 2차). 생활 편의 각도. stretch 3종(TRUST-1/2, SYNC-0)은 전부 소진.
+- **제안(후보)**: **GUIDE-1**(키 발급·역할 도움말 — role/issue_url/docs_url/steps/prereq, `/knowledge` 노출, 발급 바로가기; URL 딥링크 2차) → **GUIDE-2**(보안 등급·재발급·상태 연동 — 노출등급 뱃지, revoke_url, TRUST/회전 연동, 유출 피해·보안 팁). 생활 편의 + 보안 실체. stretch 3종(TRUST-1/2, SYNC-0)은 전부 소진.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 
 ---
@@ -159,6 +159,8 @@ SPDX-License-Identifier: MIT
     - [ ] `role`: 이 종류(kind)가 무슨 키인지 한 줄 설명(예: "카카오 서버 REST API 호출용, 백엔드 전용·노출 금지")
     - [ ] `issue_url`: 발급 콘솔 바로가기(플레이스홀더 `{project}`/`{app_id}` 허용)
     - [ ] `docs_url`: 공식 문서 링크(선택)
+    - [ ] `steps`: 발급 단계 2~3줄 요약(콘솔 → 메뉴 → 버튼) — **링크만으론 어디를 클릭할지 몰라서**. `docs/demo/*.png` 콘솔 스크린샷과 연결 가능
+    - [ ] `prereq`: 사전조건(예: GCP 프로젝트+결제 활성화, Kakao 앱 등록 먼저) — **발급이 막히는 실제 이유**
     - [ ] (서비스 레벨) `console_url`: 종류별 URL이 없을 때의 서비스 일반 콘솔 폴백
   - [ ] **[Data] 9종 KB에 값 채우기** — Notion/Kakao/GCP/OpenAI/Ollama/GitHub/AWS/Slack/Stripe 각 종류에 `role`·`issue_url`·`docs_url`(공식 문서 기준, 링크 유효성 확인)
   - [ ] **[Engine] `/knowledge` 노출** — credential 항목에 `role`·`issue_url`·`docs_url`(+서비스 `console_url`) 추가(값 없음, 메타만)
@@ -172,7 +174,34 @@ SPDX-License-Identifier: MIT
   - [ ] 🧪 `issue_url` 플레이스홀더 치환: `project` 있으면 채워지고, 없으면 일반 콘솔 폴백(B)
   - [ ] ✅ 외부 링크는 `rel=noopener noreferrer`·새 탭, 자동 이동/전송 없음(보안)
   - [ ] ✅ 링크 도메인 화이트리스트 — 알려진 콘솔 도메인만 허용(B)
+- **추가 후보(선택, 여유 시)**: `usage_snippet`(코드 사용 예시 한 줄, 예: `os.environ['OPENAI_API_KEY']` — `.env` 내보내기와 엮임) · 관련 키 세트 안내("이 서비스는 이런 키들도 있어요", Kakao 4종).
 - **범위 밖(스코프 사수)**: 콘솔 자동 로그인·키 자동 발급(OAuth 대행) 등은 하지 않는다 — **안내(링크·설명)까지만**. 실제 발급은 사용자가 공식 콘솔에서 직접.
+- **관련**: 보안 등급·유출 대응·상태 연동은 → **GUIDE-2**.
+
+### GUIDE-2 🟡 키 보안 등급·재발급·상태 연동 (GUIDE-1 확장) — ⏳ 제안
+- **중요도**: 🟡 Medium(보안 실체) | **스프린트**: GUIDE-1 이후 | **의존성**: GUIDE-1, TRUST-1(검증)·TRUST-2(만료)·VAULT-2(회전)·CORE-2(충돌 카드) | **사이즈**: M
+- **배경**: GUIDE-1이 "어디서·어떻게 발급"이라면, GUIDE-2는 **"안전하게 다루고, 유출·만료 시 조치"**다. 같은 서비스라도 **공개 가능 키 vs 절대 노출 금지 키**가 갈리는데(Kakao JS vs REST/Admin, Stripe pk vs sk, Slack bot vs user), 이를 명시해 **유출을 예방**하고, 폐기/재발급 링크로 **사고에 대응**하며, 기존 기능(키 회전·유효성 검증·만료 알림)과 **행동으로 연결**한다. 이 도구의 보안 정체성을 안내 계층까지 확장.
+- **하위 할일**
+  - **[Data] KB 보안 필드 추가** (선택, 하위호환)
+    - [ ] `exposure`: `public` | `secret` — 클라이언트 노출 허용 여부(Kakao JS=public, REST/Admin=secret 등)
+    - [ ] `revoke_url`: 폐기/재발급 콘솔 바로가기(플레이스홀더 허용)
+    - [ ] `impact`: 유출 시 피해 한 줄(예: "Admin 키 유출 시 계정 전체 장악 가능") — 노출 등급과 세트
+    - [ ] `security_tip`: per-key 하드닝 팁(예: GCP API 키 IP/referrer 제한, 만료일 설정 권장)
+    - [ ] `scope_hint`: 최소 권한 안내(GitHub fine-grained PAT, Slack scopes 등)
+  - **[FE] 노출 등급 뱃지** — `secret` 키에 **빨간 "노출 금지"** 뱃지, `public` 키엔 "공개 가능"(안심). 마스킹·암호화(기존)와 시각적으로 일관
+  - **[FE] "폐기/재발급 →" 링크** — 카드·보관함 행에서 `revoke_url`(새 탭·noopener)
+  - **[연동] 상태 → 액션 연결**
+    - [ ] TRUST-1 `invalid` → "폐기+재발급 →"
+    - [ ] TRUST-2 만료 임박/만료 → "재발급 →"
+    - [ ] 값 교체(회전) 모달 → "먼저 새 키 발급 →" 링크
+  - **[FE] 보안 팁·피해 문구 표시** — `security_tip`·`impact`를 도움말 패널에
+  - **[분류 이해 돕기] 신호 충돌 카드에 "구분법"** — Database ID vs Page ID 등, 왜 이렇게 판별했는지 한 줄(CORE-2 차별점 강화). KB `disambiguation` 또는 conflict evidence 확장
+- **테스트 체크리스트**
+  - [ ] 🧪 `exposure` 필드 → `secret`은 "노출 금지" 뱃지, `public`은 "공개 가능"
+  - [ ] ✅ `revoke_url`·재발급 링크는 새 탭·`rel=noopener noreferrer`, 도메인 화이트리스트(오픈리다이렉트 방지)
+  - [ ] 🧪 TRUST-1 invalid·TRUST-2 만료 → 재발급 링크 노출(연동)
+  - [ ] ✅ 자동 폐기·자동 재발급은 하지 않음(링크·안내까지만)
+- **범위 밖**: 키 자동 폐기·자동 재발급·OAuth 대행 없음 — 안내·링크까지만. 노출 등급은 **보조 신호**이며 최종 판단은 사용자 몫(오탐 시 과신 금지).
 
 ---
 
