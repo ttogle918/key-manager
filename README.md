@@ -171,7 +171,11 @@ credentials:
     expiry_known: false
 ```
 
-자세한 절차는 `CONTRIBUTING.md`를 참고하세요. 기여 환영합니다.
+자세한 절차는 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참고하세요. 기여 환영합니다.
+
+- 기여 가이드: [CONTRIBUTING.md](./CONTRIBUTING.md) · 행동 강령: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- 보안 취약점 신고: [SECURITY.md](./SECURITY.md) (공개 이슈 금지, 비공개로)
+- 변경 이력: [CHANGELOG.md](./CHANGELOG.md)
 
 ## 배포 (다른 사람도 쓰게 하기)
 
