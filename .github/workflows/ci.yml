@@ -1,0 +1,118 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# CI — 대회 2차 검증(테스트·라이선스·재현성·취약점)을 push/PR 마다 자동 실행.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    name: 백엔드 테스트 (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 의존성 설치(런타임+테스트)
+        run: pip install -r backend/requirements-dev.txt
+      - name: pytest
+        working-directory: backend
+        run: python -m pytest -q
+
+  frontend:
+    name: 프론트 빌드·테스트·린트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: npm ci
+        working-directory: frontend
+        run: npm ci
+      - name: 린트(oxlint)
+        working-directory: frontend
+        run: npm run lint
+      - name: 유닛 테스트(vitest)
+        working-directory: frontend
+        run: npm run test
+      - name: 프로덕션 빌드(tsc + vite, tesseract 벤더링 포함)
+        working-directory: frontend
+        run: npm run build
+
+  license:
+    name: 라이선스 (reuse + 카피레프트 0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # SPDX 헤더 누락 0 (REUSE 3.3). reuse 의 전이 의존성은 검사 대상이 아니라 별도 스텝에서 실행.
+      - name: reuse lint
+        run: |
+          pip install "reuse==6.2.0"
+          reuse lint
+
+      # 백엔드 런타임 의존성만 깐 clean 환경에서 카피레프트 검사(도구 의존성 오탐 회피).
+      - name: 백엔드 라이선스 (pip-licenses, 카피레프트 0)
+        run: |
+          python -m venv /tmp/rt
+          /tmp/rt/bin/pip install -q -r backend/requirements.txt pip-licenses
+          /tmp/rt/bin/pip-licenses --format=csv > licenses-backend.csv
+          echo "--- 백엔드 런타임 라이선스 ---"; cat licenses-backend.csv
+          if grep -iE '(^|,|")(A?L?GPL|GNU (Affero|Lesser|General)|Mozilla Public|MPL)' licenses-backend.csv; then
+            echo "::error::백엔드 런타임에 카피레프트 의존성이 있습니다"; exit 1
+          fi
+
+      # 프론트 production(배포) 트리만 검사 — devDependencies(빌드 CSS 도구의 MPL 등)는 제외.
+      - name: 프론트 라이선스 (license-checker --production, 카피레프트 0)
+        working-directory: frontend
+        run: |
+          npm ci
+          npx --yes license-checker --production --summary | tee licenses-frontend.txt
+          if grep -iE '(A?L?GPL|MPL)' licenses-frontend.txt; then
+            echo "::error::프론트 production 트리에 카피레프트 의존성이 있습니다"; exit 1
+          fi
+
+  security:
+    name: 취약점 (SCA)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: 백엔드 취약점 (pip-audit)
+        env:
+          PYTHONUTF8: "1"  # requirements.txt 의 한글 주석을 UTF-8로 확실히 파싱
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt
+      - name: 프론트 취약점 (npm audit, production)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm audit --omit=dev --audit-level=high

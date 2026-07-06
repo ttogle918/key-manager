@@ -43,6 +43,8 @@ SPDX-License-Identifier: MIT
 - ✅ **멀티 기기(stretch 선반영)**: SYNC-0(암호화 금고 번들 내보내기/가져오기 — 교체·병합, 제로 널리지 유지) 완료. 서버리스 멀티 기기의 최소 단위 확보.
 - ✅ **배포·데스크톱**: 배포/설치 온보딩 문서 강화(git clone·요구사항·트러블슈팅)·CONTRIBUTING.md, **데스크톱 앱**(PyWebView `desktop/app.py` — 네이티브 창, API+SPA same-origin 서빙, 100% 로컬), **실행 파일 패키징**(`desktop/setup.py` cx_Freeze=permissive; app.py frozen 감지 + `KEYLENS_KNOWLEDGE_DIR` env) 완료 — **`KeyLens.exe` 빌드 실증**(번들 KB 9종·SPA·분류까지 정상 서빙 확인). GUI 창 시각 확인만 실기기 몫.
 - ✅ **호스팅 로드맵**: 결과보고서에 "왜 로컬인가 / 웹 호스팅하려면 클라이언트 E2E 암호화 선행 / 랜딩 페이지는 안전" 설계 근거(§8.5) 추가.
+- ✅ **CI(GitHub Actions)**: push/PR마다 백엔드 pytest·프론트 build/vitest/oxlint·**reuse lint·카피레프트 0(pip-licenses/license-checker, clean 런타임 env)**·취약점(pip-audit/npm audit) 자동 실행 + README 배지. 대회 2차 검증(라이선스·재현·테스트·보안)을 자동화·상시화.
+- ✅ **KB 확장**: GCP 4종(api_key·OAuth id/secret·service_account_json)으로 확장 — 프론트 코드 0줄(=/knowledge 동적).
 - **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서). stretch 3종(TRUST-1/2, SYNC-0) 전부 소진.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 

@@ -5,6 +5,10 @@ SPDX-License-Identifier: MIT
 
 # KeyLens
 
+[![CI](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![Copyleft-free](https://img.shields.io/badge/dependencies-permissive%20only-brightgreen.svg)](./docs/SBOM.md)
+
 > 스크린샷이나 URL을 던지면 "이건 Notion API 키, 이건 database ID"처럼 **맥락으로 정체를 가려** 공식 환경변수명에 매핑하고, 로컬에 암호화해 나만 볼 수 있게 보관하는 개인 개발자용 자격증명 관리 도구.
 
 <p align="center">
