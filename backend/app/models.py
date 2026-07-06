@@ -39,6 +39,10 @@ class Credential(BaseModel):
     official_env_name: str
     expiry_known: bool = False
     verify: Optional[VerifySpec] = None
+    # 발급 도움말 — 종류별 (GUIDE-1). 값이 아니라 '이 키가 뭔지·어디서 받는지' 안내 메타.
+    role: Optional[str] = None  # 이 키의 역할 한 줄(노출 가능/서버 전용 등)
+    issue_url: Optional[str] = None  # 발급 콘솔 바로가기(없으면 service.console_url 폴백)
+    docs_url: Optional[str] = None  # 공식 문서 링크
 
 
 class Service(BaseModel):
@@ -47,6 +51,10 @@ class Service(BaseModel):
     service: str
     display_name: str
     credentials: list[Credential]
+    # 발급 도움말 — 서비스 단위 (GUIDE-1). 콘솔 도달·사전조건은 종류가 아니라 서비스에 붙는다.
+    console_url: Optional[str] = None  # 서비스 일반 콘솔(종류별 issue_url 폴백)
+    steps: list[str] = Field(default_factory=list)  # 발급 단계 2~3줄 요약
+    prereq: Optional[str] = None  # 사전조건(예: 프로젝트/앱 먼저 생성)
 
 
 # ── API 입출력 ──

@@ -16,11 +16,15 @@ export type View = 'input' | 'vault'
 /** 분류 신뢰도. */
 export type Confidence = 'high' | 'mid' | 'low'
 
-/** 서비스별 키 종류 정의 (변수명 매핑 포함). */
+/** 서비스별 키 종류 정의 (변수명 매핑 + 발급 도움말 GUIDE-1). */
 export interface TypeOption {
   v: string
   label: string
   var: string
+  /** 발급 도움말 종류 단위 (선택) — /knowledge 에서 채워짐. */
+  role?: string | null
+  issueUrl?: string | null
+  docsUrl?: string | null
 }
 
 /** UUID 신호 충돌 시 사용자가 고르는 후보. */

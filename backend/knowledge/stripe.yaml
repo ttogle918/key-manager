@@ -5,6 +5,12 @@
 # 포맷 출처: Stripe 공식 문서(keys). OpenAI 의 "sk-"(하이픈)와 달리 "sk_"(언더스코어)라 충돌 없음.
 service: stripe
 display_name: Stripe
+console_url: "https://dashboard.stripe.com/apikeys"
+prereq: "없음 (계정 생성 시 키 자동 발급)"
+steps:
+  - "dashboard.stripe.com/apikeys 접속"
+  - "Publishable·Secret 키 확인 또는 Create restricted key"
+  - "Secret 키는 생성 시 1회만 표시 → 즉시 보관"
 credentials:
   - kind: secret_key
     label: "Secret Key"
@@ -15,6 +21,8 @@ credentials:
       - "dashboard\\.stripe\\.com/apikeys"
     value_regex: "^(sk|rk)_(live|test)_[A-Za-z0-9]{16,}$"
     official_env_name: STRIPE_SECRET_KEY
+    role: "서버 측 API 인증용 비밀 키. 서버 전용 — 노출 금지(sk_/rk_)"
+    docs_url: "https://docs.stripe.com/keys"
     expiry_known: false
     # 유효성 검증(TRUST-1): 잔액 조회는 read-only. 유효=200, 폐기/오타=401.
     verify:
@@ -29,4 +37,6 @@ credentials:
     url_patterns: []
     value_regex: "^pk_(live|test)_[A-Za-z0-9]{16,}$"
     official_env_name: STRIPE_PUBLISHABLE_KEY
+    role: "클라이언트(브라우저·앱)에서 쓰는 공개 키. 노출돼도 안전(pk_)"
+    docs_url: "https://docs.stripe.com/keys"
     expiry_known: false

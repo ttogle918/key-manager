@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import type { ReactNode } from 'react'
+import { KeyHelp } from '@/components/KeyHelp'
+import { TYPE_MAP } from '@/data/services'
 import { expiryInfo, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem, VerifyStatus } from '@/types'
@@ -191,6 +193,10 @@ export function VaultRow({ it }: { it: VaultItem }) {
                 <VerifyBadge status={it.verify.status} detail={it.verify.detail} />
               )}
             </Row>
+            <KeyHelp
+              service={it.service}
+              typeKey={TYPE_MAP[it.service]?.find((t) => t.var === it.varName)?.v ?? ''}
+            />
             <Row label="이력">
               <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted-2">
                 {(it.history || []).map((h) => h.date + ' ' + h.event).join(' · ') || '기록 없음'}

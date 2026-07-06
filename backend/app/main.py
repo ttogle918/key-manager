@@ -77,6 +77,10 @@ def knowledge() -> dict:
             {
                 "service": s.service,
                 "display_name": s.display_name,
+                # 발급 도움말 서비스 단위 (GUIDE-1)
+                "console_url": s.console_url,
+                "steps": s.steps,
+                "prereq": s.prereq,
                 "credentials": [
                     {
                         "kind": c.kind,
@@ -85,6 +89,10 @@ def knowledge() -> dict:
                         "value_based": c.value_regex is not None,
                         "expiry_known": c.expiry_known,
                         "verifiable": c.verify is not None,
+                        # 발급 도움말 종류 단위 (GUIDE-1) — 값 없음, 안내 메타만
+                        "role": c.role,
+                        "issue_url": c.issue_url,
+                        "docs_url": c.docs_url,
                     }
                     for c in s.credentials
                 ],

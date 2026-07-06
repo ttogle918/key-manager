@@ -6,6 +6,12 @@
 # 판단 불가 → verify 미선언(unsupported).
 service: slack
 display_name: Slack
+console_url: "https://api.slack.com/apps"
+prereq: "Slack 앱 먼저 생성 (api.slack.com/apps)"
+steps:
+  - "api.slack.com/apps 에서 앱 선택·생성"
+  - "OAuth & Permissions에서 Bot·User 스코프 추가"
+  - "Install to Workspace로 설치 → 토큰 발급"
 credentials:
   - kind: bot_token
     label: "Bot Token"
@@ -15,6 +21,8 @@ credentials:
     url_patterns: []
     value_regex: "^xoxb-[0-9A-Za-z-]{10,}$"
     official_env_name: SLACK_BOT_TOKEN
+    role: "앱(봇) 신원으로 API 호출하는 토큰. 서버 전용 비밀(xoxb-)"
+    docs_url: "https://api.slack.com/authentication/token-types"
     expiry_known: false
 
   - kind: user_token
@@ -25,4 +33,6 @@ credentials:
     url_patterns: []
     value_regex: "^xoxp-[0-9A-Za-z-]{10,}$"
     official_env_name: SLACK_USER_TOKEN
+    role: "사용자 본인 권한으로 행동하는 토큰. 서버 전용 비밀(xoxp-)"
+    docs_url: "https://api.slack.com/authentication/token-types"
     expiry_known: false

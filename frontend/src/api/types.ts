@@ -12,10 +12,18 @@ export interface KnowledgeCredential {
   value_based: boolean
   expiry_known: boolean
   verifiable: boolean
+  // 발급 도움말 종류 단위 (GUIDE-1) — 선택
+  role?: string | null
+  issue_url?: string | null
+  docs_url?: string | null
 }
 export interface KnowledgeService {
   service: string
   display_name: string
+  // 발급 도움말 서비스 단위 (GUIDE-1)
+  console_url?: string | null
+  steps?: string[]
+  prereq?: string | null
   credentials: KnowledgeCredential[]
 }
 export interface KnowledgeResponse {

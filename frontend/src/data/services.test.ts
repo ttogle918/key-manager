@@ -29,7 +29,7 @@ const PAYLOAD: KnowledgeResponse = {
 describe('applyKnowledge', () => {
   it('TYPE_MAP을 kind=typeKey, official_env_name=var로 구성한다', () => {
     reg.applyKnowledge(PAYLOAD)
-    expect(reg.TYPE_MAP['Notion']).toEqual([
+    expect(reg.TYPE_MAP['Notion']).toMatchObject([
       { v: 'api_key', label: 'API Key', var: 'NOTION_API_KEY' },
       { v: 'database_id', label: 'Database ID', var: 'NOTION_DATABASE_ID' },
     ])
@@ -59,8 +59,37 @@ describe('applyKnowledge', () => {
     expect(gh.bg).toMatch(/^#[0-9A-F]{6}$/i) // 팔레트에서 결정적으로 배정
     expect(gh.fg).toBe('#FFFFFF')
     // 새 서비스의 종류도 그대로 노출된다(프론트 하드코딩 없이)
-    expect(reg.TYPE_MAP['GitHub']).toEqual([
+    expect(reg.TYPE_MAP['GitHub']).toMatchObject([
       { v: 'pat', label: 'Personal Access Token', var: 'GITHUB_TOKEN' },
     ])
+  })
+
+  it('발급 도움말(GUIDE-1)을 종류·서비스 단위로 싣는다', () => {
+    reg.applyKnowledge({
+      services: [
+        {
+          service: 'demo',
+          display_name: 'Demo',
+          console_url: 'https://demo.example/console',
+          steps: ['1단계', '2단계'],
+          prereq: '앱 먼저 생성',
+          credentials: [
+            {
+              ...cred('api_key', 'API Key', 'DEMO_API_KEY'),
+              role: '서버 전용 비밀 키',
+              issue_url: 'https://demo.example/keys',
+              docs_url: 'https://demo.example/docs',
+            },
+          ],
+        },
+      ],
+    })
+    const t = reg.TYPE_MAP['Demo'][0]
+    expect(t.role).toBe('서버 전용 비밀 키')
+    expect(t.issueUrl).toBe('https://demo.example/keys')
+    expect(t.docsUrl).toBe('https://demo.example/docs')
+    expect(reg.CONSOLE_URL['Demo']).toBe('https://demo.example/console')
+    expect(reg.SVC_STEPS['Demo']).toEqual(['1단계', '2단계'])
+    expect(reg.SVC_PREREQ['Demo']).toBe('앱 먼저 생성')
   })
 })

@@ -29,6 +29,21 @@ def test_knowledge_endpoint():
     assert db["value_based"] is False
 
 
+def test_knowledge_exposes_guide_help():
+    """GUIDE-1: /knowledge 가 발급 도움말(서비스: console_url/steps/prereq, 종류: role/issue_url/docs_url)을 노출."""
+    services = knowledge()["services"]
+    gcp = next(s for s in services if s["service"] == "gcp")
+    # 서비스 단위 도움말
+    assert gcp["console_url"] and gcp["console_url"].startswith("https://")
+    assert len(gcp["steps"]) >= 2 and gcp["prereq"]
+    # 종류 단위 도움말 — 서비스 계정 키는 별도 issue_url(IAM) 보유
+    sa = next(c for c in gcp["credentials"] if c["kind"] == "service_account_json")
+    assert sa["role"] and sa["docs_url"].startswith("https://")
+    assert "iam-admin" in sa["issue_url"]
+    # 도움말 미선언 서비스도 필드는 존재(None/[] — 하위호환)
+    assert "role" in gcp["credentials"][0] and "console_url" in gcp
+
+
 def test_analyze():
     resp = analyze_endpoint(AnalyzeRequest(text=f"OPENAI_API_KEY={OPENAI_KEY}"))
     assert resp.count == 1

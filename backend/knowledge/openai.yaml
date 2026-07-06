@@ -4,6 +4,12 @@
 # OpenAI. API 키는 "sk-"(프로젝트 키는 "sk-proj-") 접두어로, 조직 ID는 "org-" 접두어로 명확.
 service: openai
 display_name: OpenAI
+console_url: "https://platform.openai.com/api-keys"
+prereq: "OpenAI 계정 로그인 (조직·프로젝트 자동 생성)"
+steps:
+  - "platform.openai.com/api-keys 접속"
+  - "Create new secret key 클릭 후 이름·권한 설정"
+  - "생성 즉시 키 복사(다시 볼 수 없음)"
 credentials:
   - kind: api_key
     label: "API Key"
@@ -13,6 +19,8 @@ credentials:
     url_patterns: []
     value_regex: "^sk-(proj-)?[A-Za-z0-9_\\-]{20,}$"
     official_env_name: OPENAI_API_KEY
+    role: "API 요청 인증용 비밀 키. 서버 전용 — 절대 노출 금지(sk-)"
+    docs_url: "https://platform.openai.com/docs/api-reference/authentication"
     expiry_known: false
     # 유효성 검증(TRUST-1): 모델 목록 조회는 read-only. 유효 키=200, 폐기/오타=401.
     verify:
@@ -28,4 +36,7 @@ credentials:
     url_patterns: []
     value_regex: "^org-[A-Za-z0-9]{20,}$"
     official_env_name: OPENAI_ORG_ID
+    role: "요청을 특정 조직에 귀속시키는 식별자. 비밀 아님(OpenAI-Organization 헤더)"
+    issue_url: "https://platform.openai.com/settings/organization/general"
+    docs_url: "https://platform.openai.com/docs/api-reference/authentication"
     expiry_known: false

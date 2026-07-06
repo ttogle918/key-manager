@@ -5,6 +5,12 @@
 # → value_regex 없이 콘솔 탭 라벨(Stage2)로만 구분한다. KeyLens 차별점의 대표 사례.
 service: kakao
 display_name: Kakao
+console_url: "https://developers.kakao.com/console/app"
+prereq: "앱 먼저 등록 (앱 생성 시 4종 자동 발급)"
+steps:
+  - "카카오 디벨로퍼스 콘솔 → 내 애플리케이션에서 앱 선택"
+  - "네이티브·JS·REST 키: 앱 > 앱 키(플랫폼 키)"
+  - "어드민 키: 앱 > 어드민 키 탭"
 credentials:
   - kind: rest_api_key
     label: "REST API 키"
@@ -14,6 +20,8 @@ credentials:
     url_patterns: []
     value_regex: null
     official_env_name: KAKAO_REST_API_KEY
+    role: "서버에서 REST API 호출 시 앱 인증에 쓰는 키. 서버 전용(백엔드 보관)"
+    docs_url: "https://developers.kakao.com/docs/ko/app-setting/app"
     expiry_known: false
 
   - kind: javascript_key
@@ -24,6 +32,8 @@ credentials:
     url_patterns: []
     value_regex: null
     official_env_name: KAKAO_JS_KEY
+    role: "웹 JavaScript SDK용 키. 웹 클라이언트에 노출돼도 되는 키(허용 도메인 등록 필요)"
+    docs_url: "https://developers.kakao.com/docs/ko/app-setting/app"
     expiry_known: false
 
   - kind: admin_key
@@ -34,6 +44,8 @@ credentials:
     url_patterns: []
     value_regex: null
     official_env_name: KAKAO_ADMIN_KEY
+    role: "앱 전체 권한을 가진 최고 권한 키. 서버 전용·소스코드에 절대 포함 금지(매우 민감)"
+    docs_url: "https://developers.kakao.com/docs/ko/app-setting/app"
     expiry_known: false
 
   - kind: native_app_key
@@ -44,4 +56,6 @@ credentials:
     url_patterns: []
     value_regex: null
     official_env_name: KAKAO_NATIVE_APP_KEY
+    role: "Android·iOS 네이티브 앱 SDK용 키. 모바일 앱에 내장해 사용"
+    docs_url: "https://developers.kakao.com/docs/ko/app-setting/app"
     expiry_known: false

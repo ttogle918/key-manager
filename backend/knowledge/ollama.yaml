@@ -5,6 +5,12 @@
 # 접두어(sk- 같은)는 없지만 '.'로 나뉜 hex+base62 구조가 독특해 값만으로 식별 가능(Stage1).
 service: ollama
 display_name: Ollama
+console_url: "https://ollama.com/settings/keys"
+prereq: "없음 (로컬 사용 시 키 불필요, Ollama Cloud 사용 시에만 필요)"
+steps:
+  - "ollama.com/settings/keys 접속"
+  - "Create key 클릭"
+  - "생성된 키 복사(만료 없음, 언제든 폐기 가능)"
 credentials:
   - kind: api_key
     label: "API Key"
@@ -15,4 +21,6 @@ credentials:
     # 32자리 소문자 hex + '.' + 24자 영숫자. 콘솔에서 발급되는 형식(공식 문서 기준 직접 작성).
     value_regex: "^[0-9a-f]{32}\\.[A-Za-z0-9]{24}$"
     official_env_name: OLLAMA_API_KEY
+    role: "Ollama Cloud 요청 인증용 Bearer 토큰. 서버 전용 — 노출 금지(로컬 전용이면 불필요)"
+    docs_url: "https://docs.ollama.com/api/authentication"
     expiry_known: false

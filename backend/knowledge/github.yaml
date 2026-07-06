@@ -5,6 +5,12 @@
 # 포맷 출처: GitHub 공식 문서/변경로그(접두어 + 36자 base62, fine-grained 는 github_pat_).
 service: github
 display_name: GitHub
+console_url: "https://github.com/settings/tokens"
+prereq: "없음 (GitHub 계정 로그인만)"
+steps:
+  - "Settings → Developer settings"
+  - "Personal access tokens (Fine-grained 또는 Tokens classic)"
+  - "Generate new token → 권한·스코프 지정 후 생성"
 credentials:
   - kind: personal_access_token
     label: "Personal Access Token"
@@ -17,6 +23,8 @@ credentials:
     # 클래식 PAT(ghp_+36) 또는 fine-grained(github_pat_+가변). 둘 다 값만으로 식별 가능.
     value_regex: "^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,})$"
     official_env_name: GITHUB_TOKEN
+    role: "GitHub API·git 인증용 개인 토큰. 서버·CI에 안전 보관(classic ghp_ / fine-grained github_pat_)"
+    docs_url: "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
     expiry_known: false
     # 유효성 검증(TRUST-1): 현재 사용자 조회는 read-only. GitHub API 는 User-Agent 필수.
     verify:

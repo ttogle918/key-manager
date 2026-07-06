@@ -62,6 +62,11 @@ export let SERVICE_BY_ID: Record<string, string> = {
   ollama: 'Ollama',
 }
 
+/** 서비스 표시명 → 발급 도움말(서비스 단위, GUIDE-1). /knowledge 로 채워짐. */
+export let CONSOLE_URL: Record<string, string | null> = {}
+export let SVC_STEPS: Record<string, string[]> = {}
+export let SVC_PREREQ: Record<string, string | null> = {}
+
 // 알려진 서비스의 큐레이션된 외양(id 기준). 없으면 autoMeta 로 자동 생성.
 const CURATED_META: Record<string, SvcMeta> = {
   notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
@@ -97,16 +102,25 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   const svcMeta: Record<string, SvcMeta> = {}
   const toId: Record<string, string> = {}
   const byId: Record<string, string> = {}
+  const consoleUrl: Record<string, string | null> = {}
+  const steps: Record<string, string[]> = {}
+  const prereq: Record<string, string | null> = {}
   for (const s of payload.services) {
     const name = s.display_name
     typeMap[name] = s.credentials.map((c) => ({
       v: c.kind,
       label: c.label,
       var: c.official_env_name,
+      role: c.role ?? null,
+      issueUrl: c.issue_url ?? null,
+      docsUrl: c.docs_url ?? null,
     }))
     svcMeta[name] = CURATED_META[s.service] ?? autoMeta(name)
     toId[name] = s.service
     byId[s.service] = name
+    consoleUrl[name] = s.console_url ?? null
+    steps[name] = s.steps ?? []
+    prereq[name] = s.prereq ?? null
   }
   const rank = (id: string) => {
     const i = CURATED_ORDER.indexOf(id)
@@ -123,6 +137,9 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   SVC_META = svcMeta
   SERVICE_TO_ID = toId
   SERVICE_BY_ID = byId
+  CONSOLE_URL = consoleUrl
+  SVC_STEPS = steps
+  SVC_PREREQ = prereq
 }
 
 export interface ConfStyle {

@@ -8,6 +8,12 @@
 # 포맷 출처: Google Cloud 공식 문서(자격증명 종류).
 service: gcp
 display_name: Google Cloud
+console_url: "https://console.cloud.google.com/apis/credentials"
+prereq: "GCP 프로젝트 생성(필요 시 결제 활성화) 먼저"
+steps:
+  - "Cloud Console → API 및 서비스 → 사용자 인증 정보"
+  - "사용자 인증 정보 만들기 클릭"
+  - "유형(API 키 / OAuth 클라이언트 ID / 서비스 계정) 선택"
 credentials:
   - kind: api_key
     label: "API Key"
@@ -17,6 +23,8 @@ credentials:
     url_patterns: []
     value_regex: "^AIza[0-9A-Za-z_\\-]{35}$"
     official_env_name: GOOGLE_API_KEY
+    role: "API 접근용 단순 키. 노출 금지·용도 제한 설정 권장(브라우저 노출 시 제한 필수)"
+    docs_url: "https://cloud.google.com/api-keys/docs/create-manage-api-keys"
     expiry_known: false
 
   - kind: oauth_client_id
@@ -29,6 +37,8 @@ credentials:
     # {프로젝트번호}-{랜덤}.apps.googleusercontent.com — 매우 특징적이라 값만으로 식별.
     value_regex: "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
     official_env_name: GOOGLE_CLIENT_ID
+    role: "OAuth 2.0에서 앱을 식별하는 공개 식별자. 비밀 아님 — 클라이언트 노출 무방"
+    docs_url: "https://developers.google.com/workspace/guides/create-credentials"
     expiry_known: false
 
   - kind: oauth_client_secret
@@ -41,6 +51,8 @@ credentials:
     # 최신 시크릿은 "GOCSPX-" 접두어. 값 기반 식별.
     value_regex: "^GOCSPX-[A-Za-z0-9_\\-]{20,}$"
     official_env_name: GOOGLE_CLIENT_SECRET
+    role: "OAuth 클라이언트의 비밀값. 서버 전용·절대 노출 금지(생성 시 1회만 확인)"
+    docs_url: "https://developers.google.com/workspace/guides/create-credentials"
     expiry_known: false
 
   - kind: service_account_json
@@ -55,4 +67,7 @@ credentials:
     # JSON 키 파일 전체라 단일 값으로 단정할 수 없음 → 라벨/맥락(Stage2)으로만 식별(오탐 금지).
     value_regex: null
     official_env_name: GOOGLE_APPLICATION_CREDENTIALS
+    role: "서비스 계정 개인키가 담긴 JSON. 서버 전용·최고 민감, 다운로드 1회만 가능"
+    issue_url: "https://console.cloud.google.com/iam-admin/serviceaccounts"
+    docs_url: "https://cloud.google.com/iam/docs/keys-create-delete"
     expiry_known: false

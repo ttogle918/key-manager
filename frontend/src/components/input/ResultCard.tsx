@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import { CONF_META, SVC_META, TYPE_MAP } from '@/data/services'
+import { KeyHelp } from '@/components/KeyHelp'
 import { useKeylens } from '@/store/keylensStore'
 import type { AnalysisResult } from '@/types'
 
@@ -111,6 +112,13 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
         <div className="mx-4 mt-[10px] flex items-baseline gap-[7px] text-[12px] text-amber">
           <span className="relative -top-px inline-block size-[7px] flex-none rotate-45 bg-amber" />
           {r.dupNote}
+        </div>
+      )}
+
+      {/* 키 발급 도움말(GUIDE-1) — 종류가 정해졌을 때만 */}
+      {cur && (
+        <div className="mx-4 mt-[10px]">
+          <KeyHelp service={r.service} typeKey={r.typeKey} />
         </div>
       )}
 

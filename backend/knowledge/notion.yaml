@@ -5,6 +5,12 @@
 # database/data_source/page ID는 전부 동일한 32자리 UUID라 값만으로는 구분 불가 → Stage2(라벨·URL).
 service: notion
 display_name: Notion
+console_url: "https://www.notion.so/my-integrations"
+prereq: "워크스페이스 소유자 권한 필요 — Internal Integration 생성 후 대상 페이지·DB를 통합에 공유"
+steps:
+  - "notion.so/my-integrations 접속 → + New integration"
+  - "이름·워크스페이스 선택, 타입 Internal 로 생성"
+  - "Internal Integration Secret → Show → Copy"
 credentials:
   - kind: api_key
     label: "API Key"
@@ -17,6 +23,8 @@ credentials:
     url_patterns: []
     value_regex: "^(secret_|ntn_)[A-Za-z0-9]{36,}$"
     official_env_name: NOTION_API_KEY
+    role: "Notion API 인증용 비밀 토큰. 서버 전용 — 절대 노출·커밋 금지"
+    docs_url: "https://developers.notion.com/docs/create-a-notion-integration"
     expiry_known: false
     # 유효성 검증(TRUST-1): 봇 사용자 정보 조회는 read-only. 유효=200, 폐기/오타=401.
     verify:
@@ -35,6 +43,8 @@ credentials:
       - "notion\\.so/[^/?]+/([0-9a-fA-F]{32})\\?v="
     value_regex: null
     official_env_name: NOTION_DATABASE_ID
+    role: "DB를 가리키는 36자 식별자. 공유 링크 URL의 ?v= 앞에서 추출 — 비밀 아님"
+    docs_url: "https://developers.notion.com/docs/working-with-databases"
     expiry_known: false
 
   - kind: data_source_id
@@ -46,6 +56,8 @@ credentials:
     url_patterns: []
     value_regex: null
     official_env_name: NOTION_DATA_SOURCE_ID
+    role: "DB 내 개별 데이터 소스 ID. Retrieve a database 응답·'Manage data sources'에서 확인 — 비밀 아님"
+    docs_url: "https://developers.notion.com/docs/working-with-databases"
     expiry_known: false
 
   - kind: page_id
@@ -57,4 +69,6 @@ credentials:
       - "notion\\.so/(?:[^/?]+/)?(?:[^/?]*-)?([0-9a-fA-F]{32})(?:$|\\?p=|#)"
     value_regex: null
     official_env_name: NOTION_PAGE_ID
+    role: "특정 페이지를 가리키는 UUID. 페이지 URL 끝에서 추출 — 비밀 아님"
+    docs_url: "https://developers.notion.com/reference/retrieve-a-page"
     expiry_known: false

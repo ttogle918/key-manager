@@ -6,6 +6,12 @@
 # 포맷 출처: AWS 공식 문서(Access Key ID 20자, 앞 4자가 종류).
 service: aws
 display_name: AWS
+console_url: "https://console.aws.amazon.com/iam/home#/users"
+prereq: "IAM 사용자 먼저 생성 (루트 계정 키 사용 금지)"
+steps:
+  - "IAM 콘솔 → 사용자 → 대상 사용자 선택"
+  - "보안 자격 증명 탭 → 액세스 키 섹션"
+  - "액세스 키 만들기 클릭"
 credentials:
   - kind: access_key_id
     label: "Access Key ID"
@@ -15,6 +21,8 @@ credentials:
     url_patterns: []
     value_regex: "^(AKIA|ASIA)[0-9A-Z]{16}$"
     official_env_name: AWS_ACCESS_KEY_ID
+    role: "요청 서명용 공개 식별자(AKIA…). 비밀은 아니나 시크릿과 함께 관리"
+    docs_url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
     expiry_known: false
 
   - kind: secret_access_key
@@ -26,4 +34,6 @@ credentials:
     # 접두어 없는 40자 base64 — 값만으로 단정 불가. 라벨 맥락으로만 식별(오탐 방지).
     value_regex: null
     official_env_name: AWS_SECRET_ACCESS_KEY
+    role: "요청 서명용 비밀키. 서버 전용·절대 노출 금지(생성 시 1회만 표시)"
+    docs_url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
     expiry_known: false
