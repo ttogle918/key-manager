@@ -46,7 +46,8 @@ SPDX-License-Identifier: MIT
 - ✅ **CI(GitHub Actions)**: push/PR마다 백엔드 pytest·프론트 build/vitest/oxlint·**reuse lint·카피레프트 0(pip-licenses/license-checker, clean 런타임 env)**·취약점(pip-audit/npm audit) 자동 실행 + README 배지. 대회 2차 검증(라이선스·재현·테스트·보안)을 자동화·상시화.
 - ✅ **KB 확장**: GCP 4종(api_key·OAuth id/secret·service_account_json)으로 확장 — 프론트 코드 0줄(=/knowledge 동적).
 - **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서).
-- **제안(후보)**: **GUIDE-1**(키 발급·역할 도움말 — role/issue_url/docs_url/steps/prereq, `/knowledge` 노출, 발급 바로가기; URL 딥링크 2차) → **GUIDE-2**(보안 등급·재발급·상태 연동 — 노출등급 뱃지, revoke_url, TRUST/회전 연동, 유출 피해·보안 팁). 생활 편의 + 보안 실체. stretch 3종(TRUST-1/2, SYNC-0)은 전부 소진.
+- ✅ **키 발급 도움말**: **GUIDE-1 A 완료** — KB에 역할·발급 콘솔·문서·발급 단계·사전조건(9종), `/knowledge` 노출, `KeyHelp` 컴포넌트(발급받기/문서 링크·발급 방법)로 ResultCard·보관함에 안내. URL 딥링크(B)는 잔여.
+- **제안(후보)**: **GUIDE-2**(보안 등급·재발급·상태 연동 — 노출등급 뱃지, revoke_url, TRUST/회전 연동, 유출 피해·보안 팁) · GUIDE-1 B(딥링크). stretch 3종(TRUST-1/2, SYNC-0)은 전부 소진.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 
 ---
@@ -150,29 +151,29 @@ SPDX-License-Identifier: MIT
   - [x] 🧪 키 선택 → 올바른 official_name으로 `.env` 생성(브라우저 저장·조회 E2E에서 확인)
   - [x] ✅ 미인증(잠금) 상태에서는 내보내기 차단(값 401 → 건너뜀)
 
-### GUIDE-1 🟡 키 발급·역할 도움말 (지식베이스 주도) — ⏳ 제안
+### GUIDE-1 🟡 키 발급·역할 도움말 (지식베이스 주도) — ✅ A 완료(딥링크 B 잔여)
 - **중요도**: 🟡 Medium(생활 편의) | **스프린트**: S4 이후 | **의존성**: CORE-4(지식베이스), INTEG-1(`/knowledge` 동적) | **사이즈**: S(기본)~M(딥링크 포함)
 - **배경**: GCP·AWS·Kakao 등은 **키 발급 경로가 헷갈리고**("이 키가 무슨 역할인지", "어디서 발급받는지" 모름), 콘솔 UI가 서비스마다 제각각이다. KeyLens는 이미 서비스별 지식베이스가 있으므로, **"이 키의 역할 + 발급 바로가기 + 공식 문서"를 KB에 선언**하면 분류·보관을 넘어 **발급까지 안내**하는 도구가 된다. 확장성(YAML 하나로 서비스 추가)·대회 "생활 편의" 각도와 정합. 프론트는 `/knowledge` 동적 소비라 **코드 0줄**로 반영된다.
 - **관찰(설계 근거)**: 여러 콘솔 URL은 **가운데 ID만 바뀐다**(예: `developers.kakao.com/console/app/{app_id}/...`, `console.cloud.google.com/apis/credentials?project={project_id}`). → `issue_url`에 **플레이스홀더**를 두고, 항목의 저장된 `project`/감지된 ID를 알면 채워서 **바로 그 페이지로 딥링크**, 모르면 서비스 일반 콘솔로 폴백.
 - **하위 할일 (A: 기본)**
   - [ ] **[Data] KB 스키마 확장** (`Credential`/`Service`, 전부 선택 필드 — 하위호환)
-    - [ ] `role`: 이 종류(kind)가 무슨 키인지 한 줄 설명(예: "카카오 서버 REST API 호출용, 백엔드 전용·노출 금지")
-    - [ ] `issue_url`: 발급 콘솔 바로가기(플레이스홀더 `{project}`/`{app_id}` 허용)
-    - [ ] `docs_url`: 공식 문서 링크(선택)
-    - [ ] `steps`: 발급 단계 2~3줄 요약(콘솔 → 메뉴 → 버튼) — **링크만으론 어디를 클릭할지 몰라서**. `docs/demo/*.png` 콘솔 스크린샷과 연결 가능
-    - [ ] `prereq`: 사전조건(예: GCP 프로젝트+결제 활성화, Kakao 앱 등록 먼저) — **발급이 막히는 실제 이유**
-    - [ ] (서비스 레벨) `console_url`: 종류별 URL이 없을 때의 서비스 일반 콘솔 폴백
-  - [ ] **[Data] 9종 KB에 값 채우기** — Notion/Kakao/GCP/OpenAI/Ollama/GitHub/AWS/Slack/Stripe 각 종류에 `role`·`issue_url`·`docs_url`(공식 문서 기준, 링크 유효성 확인)
-  - [ ] **[Engine] `/knowledge` 노출** — credential 항목에 `role`·`issue_url`·`docs_url`(+서비스 `console_url`) 추가(값 없음, 메타만)
-  - [ ] **[FE] 도움말 UI** — 결과 카드·보관함 행에 "?" 아이콘/툴팁으로 `role` 표시 + **"발급받기 →"** 버튼(외부 링크)
-  - [ ] **[FE] 안전** — 외부 링크는 **새 탭 열기만**(`target=_blank rel=noopener noreferrer`), 자동 이동·자동 fetch 없음. 우리 쪽에서 어떤 데이터도 전송하지 않음(로컬 우선 유지)
+    - [x] `role`: 종류별 역할 한 줄(노출 가능/서버 전용 명시) — `Credential.role`
+    - [x] `issue_url`: 발급 콘솔 바로가기 — `Credential.issue_url`(GCP 서비스계정 등 종류별, 없으면 `console_url` 폴백)
+    - [x] `docs_url`: 공식 문서 링크 — `Credential.docs_url`
+    - [x] `steps`: 발급 단계 2~3줄 — `Service.steps`(서비스 단위로 이동)
+    - [x] `prereq`: 사전조건 — `Service.prereq`
+    - [x] (서비스 레벨) `console_url`: 서비스 일반 콘솔 폴백 — `Service.console_url`
+  - [x] **[Data] 9종 KB에 값 채우기** — 병렬 리서치 에이전트 4개로 공식 문서 기준 수집, `knowledge/*.yaml` 채움
+  - [x] **[Engine] `/knowledge` 노출** — 서비스(console_url/steps/prereq)·종류(role/issue_url/docs_url) 메타 추가
+  - [x] **[FE] 도움말 UI** — `KeyHelp` 컴포넌트: 역할 + "발급받기 →"·"문서 →" + "발급 방법"(사전조건·단계) 접기. ResultCard·VaultRow 삽입
+  - [x] **[FE] 안전** — 외부 링크 `target=_blank rel=noopener noreferrer`, 자동 이동/전송 없음
 - **하위 할일 (B: 딥링크 — A 위에 얹음, 선택)**
   - [ ] `issue_url` 플레이스홀더를 항목의 `project`/메타 ID로 치환해 **바로 그 콘솔 페이지로** 딥링크. 값이 없으면 서비스 일반 콘솔로 폴백(안전한 기본값)
   - [ ] 치환 시 URL 인코딩·화이트리스트(알려진 콘솔 도메인만) — 오픈 리다이렉트/주입 방지
 - **테스트 체크리스트**
-  - [ ] 🧪 KB에 `role`/`issue_url` 추가 → `/knowledge` 응답에 노출, 없는 서비스는 필드 생략(하위호환)
+  - [x] 🧪 `/knowledge` 도움말 노출(백엔드 `test_knowledge_exposes_guide_help`) · 프론트 레지스트리 흐름(`services.test`)
   - [ ] 🧪 `issue_url` 플레이스홀더 치환: `project` 있으면 채워지고, 없으면 일반 콘솔 폴백(B)
-  - [ ] ✅ 외부 링크는 `rel=noopener noreferrer`·새 탭, 자동 이동/전송 없음(보안)
+  - [x] ✅ 외부 링크는 `rel=noopener noreferrer`·새 탭, 자동 이동/전송 없음(보안)
   - [ ] ✅ 링크 도메인 화이트리스트 — 알려진 콘솔 도메인만 허용(B)
 - **추가 후보(선택, 여유 시)**: `usage_snippet`(코드 사용 예시 한 줄, 예: `os.environ['OPENAI_API_KEY']` — `.env` 내보내기와 엮임) · 관련 키 세트 안내("이 서비스는 이런 키들도 있어요", Kakao 4종).
 - **범위 밖(스코프 사수)**: 콘솔 자동 로그인·키 자동 발급(OAuth 대행) 등은 하지 않는다 — **안내(링크·설명)까지만**. 실제 발급은 사용자가 공식 콘솔에서 직접.
