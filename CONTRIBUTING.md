@@ -66,7 +66,7 @@ def test_example(kb):
 
 ## 커밋·PR 체크리스트
 
-- [ ] **새 파일 맨 위에 SPDX 헤더 2줄** (`SPDX-FileCopyrightText` / `SPDX-License-Identifier: MIT`)
+- [ ] **새 파일 맨 위에 SPDX 헤더 2줄** (저작권 표기 + MIT 라이선스 식별자)
 - [ ] **허용적(permissive) 라이선스 의존성만** 추가 (MIT/Apache-2.0/BSD/ISC). **카피레프트(GPL/AGPL/LGPL/MPL) 금지** — 필요하면 이슈로 먼저 문의
 - [ ] **실제 키·시크릿 없음** — 예시·테스트는 명백한 더미(`sk-xxxxxxxx`)만
 - [ ] 백엔드: `cd backend && ./.venv/Scripts/python.exe -m pytest -q` (또는 `python -m pytest -q`) 통과
