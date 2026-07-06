@@ -16,7 +16,7 @@ def test_health():
     r = health()
     assert r.status == "ok"
     assert r.services == 9
-    assert r.credentials == 19
+    assert r.credentials == 22
 
 
 def test_knowledge_endpoint():

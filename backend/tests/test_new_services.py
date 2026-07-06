@@ -74,6 +74,43 @@ def test_aws_secret_key_not_value_classified(kb):
     )
 
 
+GCP_OAUTH_ID = "123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com"
+GCP_OAUTH_SECRET = "GOCSPX-" + "AbCdEfGhIjKlMnOpQrStUvWx"
+
+
+@pytest.mark.parametrize(
+    "value,env",
+    [
+        (GCP_OAUTH_ID, "GOOGLE_CLIENT_ID"),
+        (GCP_OAUTH_SECRET, "GOOGLE_CLIENT_SECRET"),
+    ],
+)
+def test_gcp_oauth_value_based(kb, value, env):
+    """GCP OAuth 클라이언트 ID/시크릿은 접두어·도메인이 특징적이라 값만으로 식별."""
+    items = classify_text(value, kb)
+    assert len(items) == 1
+    assert items[0].service == "gcp"
+    assert items[0].official_env_name == env
+    assert items[0].confidence == "high"
+
+
+def test_gcp_service_account_json_not_value_classified(kb):
+    """서비스 계정 키(JSON)는 파일이라 값만으론 단정하지 않는다(라벨 맥락 전용)."""
+    # 서비스 계정 JSON 조각(더미) — 값 기반으로 GOOGLE_APPLICATION_CREDENTIALS 로 단정 금지.
+    blob = '{"type":"service_account","project_id":"demo","private_key_id":"abc123"}'
+    items = classify_text(blob, kb)
+    assert not any(
+        it.official_env_name == "GOOGLE_APPLICATION_CREDENTIALS" and it.confidence == "high"
+        for it in items
+    )
+
+
+def test_gcp_api_key_still_works(kb):
+    """기존 GCP API 키(AIza) 분류가 종류 추가 후에도 유지되는지 회귀 확인."""
+    items = classify_text("AIza" + "x" * 35, kb)
+    assert len(items) == 1 and items[0].official_env_name == "GOOGLE_API_KEY"
+
+
 def test_random_string_no_false_positive(kb):
     """무작위 문자열은 어떤 신규 서비스로도 high 분류되지 않는다."""
     items = classify_text("just-some-random-text-not-a-key", kb)

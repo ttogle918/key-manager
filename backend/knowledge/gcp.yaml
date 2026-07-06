@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 #
-# Google Cloud. API 키는 "AIza" 접두어 + 35자(총 39자)로 값 기반 식별이 명확하다.
-# (서비스 계정 JSON·OAuth 클라이언트는 별도 종류 — 후속 확장.)
+# Google Cloud. 자격증명이 여러 종류다:
+#  - API 키: "AIza" 접두어 + 35자 → 값 기반 식별 명확.
+#  - OAuth 클라이언트 ID/시크릿: ".apps.googleusercontent.com" / "GOCSPX-" 접두어 → 값 기반.
+#  - 서비스 계정 키(JSON): 토큰이 아니라 파일이라 값 단정 불가 → 라벨 맥락(Stage2)으로만.
+# 포맷 출처: Google Cloud 공식 문서(자격증명 종류).
 service: gcp
 display_name: Google Cloud
 credentials:
@@ -14,4 +17,42 @@ credentials:
     url_patterns: []
     value_regex: "^AIza[0-9A-Za-z_\\-]{35}$"
     official_env_name: GOOGLE_API_KEY
+    expiry_known: false
+
+  - kind: oauth_client_id
+    label: "OAuth Client ID"
+    label_patterns:
+      - "Client ID"
+      - "클라이언트 ID"
+      - "OAuth 2.0 클라이언트 ID"
+    url_patterns: []
+    # {프로젝트번호}-{랜덤}.apps.googleusercontent.com — 매우 특징적이라 값만으로 식별.
+    value_regex: "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
+    official_env_name: GOOGLE_CLIENT_ID
+    expiry_known: false
+
+  - kind: oauth_client_secret
+    label: "OAuth Client Secret"
+    label_patterns:
+      - "Client secret"
+      - "클라이언트 보안 비밀"
+      - "클라이언트 시크릿"
+    url_patterns: []
+    # 최신 시크릿은 "GOCSPX-" 접두어. 값 기반 식별.
+    value_regex: "^GOCSPX-[A-Za-z0-9_\\-]{20,}$"
+    official_env_name: GOOGLE_CLIENT_SECRET
+    expiry_known: false
+
+  - kind: service_account_json
+    label: "Service Account Key (JSON)"
+    label_patterns:
+      - "Service account"
+      - "서비스 계정"
+      - "service_account"
+      - "private_key"
+    url_patterns:
+      - "console\\.cloud\\.google\\.com/iam-admin/serviceaccounts"
+    # JSON 키 파일 전체라 단일 값으로 단정할 수 없음 → 라벨/맥락(Stage2)으로만 식별(오탐 금지).
+    value_regex: null
+    official_env_name: GOOGLE_APPLICATION_CREDENTIALS
     expiry_known: false
