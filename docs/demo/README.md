@@ -33,6 +33,15 @@ SPDX-License-Identifier: MIT
 ```bash
 pip install Pillow                 # 개발 전용(런타임 의존성 아님)
 python docs/demo/generate.py       # docs/demo/*.png 재생성 (전부 더미)
+python docs/demo/make_gif.py       # docs/demo/demo.gif 재생성 (README 히어로)
 # 이어서 프론트에서 OCR 재실행 → backend/tests/fixtures/demo/*.recon.txt 갱신
 # (tesseract.js 버전/언어데이터가 바뀌면 골든 텍스트도 갱신 필요)
 ```
+
+## README 히어로 GIF (`demo.gif`)
+
+`make_gif.py`가 **콘솔 스크린샷 → 분류 결과** magic moment 를 앱 다크 테마로 렌더링한다(정지 프레임 3장,
+루프). 입력은 실제 더미 스크린샷(`notion.png`), 결과 카드는 그 화면의 분류 결과(값 없이 종류·변수명만)다.
+같은 32자 UUID 형식을 **맥락(라벨)으로 API Key vs Database ID 로 구분**하는 차별점을 한눈에 보여준다.
+
+> 이 GIF 는 정지 자산으로 만든 예시다. **실제 앱 화면 시연 영상**은 OSS-4(3분 데모)에서 별도 녹화한다.

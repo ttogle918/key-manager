@@ -5,7 +5,7 @@ Source: https://github.com/ttogle918/key-manager
 # 헤더를 넣을 수 없는 바이너리·생성물 자산의 라이선스 선언 (REUSE).
 # 데모 스크린샷과 그 골든 OCR 재구성 픽스처는 docs/demo/generate.py 로 생성되며 전부 더미 값이다.
 
-Files: docs/demo/*.png
+Files: docs/demo/*.png docs/demo/*.gif
 Copyright: 2026 [Your Name]
 License: MIT
 
@@ -28,7 +28,7 @@ License: MIT
 
 # 아래 파일들은 1~2줄에 정상 MIT SPDX 헤더가 있으나, reuse 6.x 파서가 한글(CJK) 본문에서
 # 오탐(no license identifier)한다. 헤더는 정상 — dep5 로 명시해 도구 오탐을 해소한다.
-Files: CONTRIBUTING.md backend/app/vault_repo.py backend/app/vault_session.py backend/app/verify.py backend/tests/test_new_services.py desktop/app.py frontend/src/ocr/reconstruct.ts docs/AI_MODEL_DISCLOSURE.md docs/DEMO_SCRIPT.md
+Files: README.md CONTRIBUTING.md backend/app/vault_repo.py backend/app/vault_session.py backend/app/verify.py backend/tests/test_new_services.py desktop/app.py frontend/src/ocr/reconstruct.ts docs/AI_MODEL_DISCLOSURE.md docs/DEMO_SCRIPT.md
 Copyright: 2026 [Your Name]
 License: MIT
 

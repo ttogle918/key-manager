@@ -7,6 +7,12 @@ SPDX-License-Identifier: MIT
 
 > 스크린샷이나 URL을 던지면 "이건 Notion API 키, 이건 database ID"처럼 **맥락으로 정체를 가려** 공식 환경변수명에 매핑하고, 로컬에 암호화해 나만 볼 수 있게 보관하는 개인 개발자용 자격증명 관리 도구.
 
+<p align="center">
+  <img src="docs/demo/demo.gif" alt="KeyLens 데모 — 콘솔 스크린샷을 던지면 무슨 키인지 맥락으로 분류해 공식 변수명으로 매핑" width="100%">
+</p>
+
+<p align="center"><sub>데모 · 모든 값은 더미. 실제 앱 화면 시연 영상은 준비 중입니다.</sub></p>
+
 ## 왜 만들었나
 
 API 연동을 하다 보면 키·토큰·ID가 끝없이 쌓입니다. 이것들은 보통 메모장이나 이름 없는 텍스트 파일에 흩어지고, 두 가지 문제를 낳습니다.
