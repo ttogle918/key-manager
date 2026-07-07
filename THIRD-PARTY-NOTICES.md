@@ -84,4 +84,12 @@ SPDX-License-Identifier: MIT
 - 근거로 삼은 공식 문서: GitHub 인증 토큰 포맷 변경로그(2021), AWS Access Key ID 포맷 문서, Slack Tokens 문서,
   Stripe API keys 문서. 포맷은 공개적으로 널리 문서화된 사실(접두어 등)이다.
 - 참고로 Gitleaks(MIT), 각 벤더의 secret-scanning 문서 등 permissive/공개 출처와 교차 확인했으며, 도입한 코드는 없다.
+
+## 발급 도움말 데이터 (지식베이스 GUIDE-1/2 필드)
+
+- KB의 `role`·`issue_url`·`docs_url`·`console_url`·`steps`·`prereq`·`exposure`·`security_tip`·`disambiguation`
+  값은 **각 서비스의 공식 문서·개발자 콘솔을 근거로 정리한 사실 정보**다(발급 위치·키 역할·보안 등급 등).
+  각 `docs_url` 이 그 출처 링크이며, 벤더의 저작물 텍스트를 그대로 복제하지 않고 요약·재작성했다.
+- 조사 출처 예: Notion Developers, Kakao Developers, Google Cloud 문서, AWS IAM 문서, OpenAI/Slack/Stripe/GitHub 공식 문서.
+
 > 전문: https://www.apache.org/licenses/LICENSE-2.0

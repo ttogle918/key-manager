@@ -117,6 +117,8 @@ SPDX-License-Identifier: MIT
   **tailwindcss·@tailwindcss/vite**(빌드타임 CSS — 이들이 끌어오는 `lightningcss`는 MPL-2.0이나
   컴파일된 CSS만 배포되어 산출물에 미포함). dev 트리 라이선스: MIT/Apache-2.0/ISC.
 - **백엔드(dev)**: 위 §1-3 참고.
+- **데모 자산 생성**(`docs/demo/generate.py`·`make_gif.py`, 개발 전용 — 런타임 아님): **Pillow (HPND, permissive/MIT류)**.
+  콘솔 스크린샷 더미 PNG와 README 히어로 GIF 생성에만 사용. 카피레프트 0.
 - **데스크톱 런처**(`desktop/`, 선택 실행 — 웹 배포물엔 미포함): **pywebview 6.2.1 (BSD-3-Clause)**.
   전이 pythonnet(MIT)·clr-loader(MIT)·bottle(MIT)·proxy_tools(MIT). WebView2 런타임은 Windows 기본 OS 구성요소. 카피레프트 0.
 - **데스크톱 패키저**(빌드 도구, 실행 파일에 도구 코드 미포함): **cx_Freeze**(PSF 계열 permissive) 기본 채택.
