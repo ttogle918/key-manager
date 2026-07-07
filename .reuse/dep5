@@ -28,7 +28,7 @@ License: MIT
 
 # 아래 파일들은 1~2줄에 정상 MIT SPDX 헤더가 있으나, reuse 6.x 파서가 한글(CJK) 본문에서
 # 오탐(no license identifier)한다. 헤더는 정상 — dep5 로 명시해 도구 오탐을 해소한다.
-Files: README.md CONTRIBUTING.md backend/app/models.py backend/app/vault_repo.py backend/app/vault_session.py backend/app/verify.py backend/tests/test_new_services.py desktop/app.py frontend/src/data/services.test.ts frontend/src/ocr/reconstruct.ts docs/AI_MODEL_DISCLOSURE.md docs/DEMO_SCRIPT.md
+Files: README.md CONTRIBUTING.md backend/app/models.py backend/app/vault_repo.py backend/app/vault_session.py backend/app/verify.py backend/knowledge/kakao.yaml backend/tests/test_api.py backend/tests/test_new_services.py desktop/app.py frontend/src/data/services.test.ts frontend/src/ocr/reconstruct.ts docs/AI_MODEL_DISCLOSURE.md docs/DEMO_SCRIPT.md
 Copyright: 2026 [Your Name]
 License: MIT
 

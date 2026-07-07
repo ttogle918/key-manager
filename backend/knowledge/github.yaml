@@ -23,6 +23,9 @@ credentials:
     # 클래식 PAT(ghp_+36) 또는 fine-grained(github_pat_+가변). 둘 다 값만으로 식별 가능.
     value_regex: "^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,})$"
     official_env_name: GITHUB_TOKEN
+    exposure: secret
+    impact: "유출 시 레포·계정 권한 범위의 코드·설정 접근"
+    security_tip: "fine-grained·최소 스코프·만료일 설정 권장"
     role: "GitHub API·git 인증용 개인 토큰. 서버·CI에 안전 보관(classic ghp_ / fine-grained github_pat_)"
     docs_url: "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens"
     expiry_known: false

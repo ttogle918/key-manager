@@ -130,6 +130,9 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
       role: c.role ?? null,
       issueUrl: c.issue_url ?? null,
       docsUrl: c.docs_url ?? null,
+      exposure: c.exposure ?? null,
+      impact: c.impact ?? null,
+      securityTip: c.security_tip ?? null,
     }))
     svcMeta[name] = CURATED_META[s.service] ?? autoMeta(name)
     toId[name] = s.service

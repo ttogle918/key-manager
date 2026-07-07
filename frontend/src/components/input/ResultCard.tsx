@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import { CONF_META, SVC_META, TYPE_MAP } from '@/data/services'
-import { KeyHelp } from '@/components/KeyHelp'
+import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
 import { useKeylens } from '@/store/keylensStore'
 import type { AnalysisResult } from '@/types'
 
@@ -52,6 +52,7 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
           </div>
           <div className="mt-px text-[11.5px] text-dim">{r.source}</div>
         </div>
+        {cur && <ExposureBadge exposure={cur.exposure} />}
         <span
           className="whitespace-nowrap rounded-[6px] border px-2 py-[3px] text-[11px] font-bold"
           style={{ background: cm.bg, color: cm.fg, borderColor: cm.border }}

@@ -21,6 +21,7 @@ credentials:
     url_patterns: []
     value_regex: "^(AKIA|ASIA)[0-9A-Z]{16}$"
     official_env_name: AWS_ACCESS_KEY_ID
+    exposure: public
     role: "요청 서명용 공개 식별자(AKIA…). 비밀은 아니나 시크릿과 함께 관리"
     docs_url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
     expiry_known: false
@@ -34,6 +35,9 @@ credentials:
     # 접두어 없는 40자 base64 — 값만으로 단정 불가. 라벨 맥락으로만 식별(오탐 방지).
     value_regex: null
     official_env_name: AWS_SECRET_ACCESS_KEY
+    exposure: secret
+    impact: "유출 시 IAM 권한 범위의 AWS 리소스 무단 접근·과금"
+    security_tip: "IAM 최소 권한·루트 키 금지·정기 회전"
     role: "요청 서명용 비밀키. 서버 전용·절대 노출 금지(생성 시 1회만 표시)"
     docs_url: "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html"
     expiry_known: false

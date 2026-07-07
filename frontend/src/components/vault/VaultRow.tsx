@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import type { ReactNode } from 'react'
-import { KeyHelp } from '@/components/KeyHelp'
-import { TYPE_MAP } from '@/data/services'
+import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
+import { CONSOLE_URL, resolveIssueUrl, TYPE_MAP } from '@/data/services'
 import { expiryInfo, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem, VerifyStatus } from '@/types'
@@ -30,6 +30,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const setVaultField = useKeylens((s) => s.setVaultField)
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
 
+  const cur = TYPE_MAP[it.service]?.find((t) => t.var === it.varName)
   const canSee = !locked && !!revealed
   const hasRealImg = !!(it.sourceImage && it.sourceImage !== 'sample')
   const exp = expiryInfo(it.expiresAt)
@@ -51,6 +52,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
               </span>
             )}
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.type}</span>
+            {cur?.exposure === 'secret' && <ExposureBadge exposure="secret" />}
           </div>
           <div className="mt-[2px] overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12px] text-fg-soft">
             {it.varName}
@@ -192,10 +194,25 @@ export function VaultRow({ it }: { it: VaultItem }) {
               {it.verify && !it.verify.checking && (
                 <VerifyBadge status={it.verify.status} detail={it.verify.detail} />
               )}
+              {/* 검증 실패(폐기·오타) → 재발급 바로가기(GUIDE-2 상태 연동) */}
+              {it.verify?.status === 'invalid' &&
+                (() => {
+                  const url = resolveIssueUrl(cur?.issueUrl || CONSOLE_URL[it.service], it.project)
+                  return url ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-[6px] border border-[rgba(229,103,92,.3)] bg-[rgba(229,103,92,.08)] px-[9px] py-[4px] text-[11px] font-semibold text-danger hover:brightness-110"
+                    >
+                      재발급 →
+                    </a>
+                  ) : null
+                })()}
             </Row>
             <KeyHelp
               service={it.service}
-              typeKey={TYPE_MAP[it.service]?.find((t) => t.var === it.varName)?.v ?? ''}
+              typeKey={cur?.v ?? ''}
               project={it.project}
             />
             <Row label="이력">

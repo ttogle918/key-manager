@@ -93,6 +93,10 @@ def knowledge() -> dict:
                         "role": c.role,
                         "issue_url": c.issue_url,
                         "docs_url": c.docs_url,
+                        # 보안 등급·유출 대응 (GUIDE-2)
+                        "exposure": c.exposure,
+                        "impact": c.impact,
+                        "security_tip": c.security_tip,
                     }
                     for c in s.credentials
                 ],

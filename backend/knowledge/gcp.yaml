@@ -23,6 +23,9 @@ credentials:
     url_patterns: []
     value_regex: "^AIza[0-9A-Za-z_\\-]{35}$"
     official_env_name: GOOGLE_API_KEY
+    exposure: secret
+    impact: "유출 시 활성화된 API 무단 사용·과금"
+    security_tip: "IP·HTTP referrer·API 제한을 걸어 오남용 방지"
     role: "API 접근용 단순 키. 노출 금지·용도 제한 설정 권장(브라우저 노출 시 제한 필수)"
     docs_url: "https://cloud.google.com/api-keys/docs/create-manage-api-keys"
     expiry_known: false
@@ -37,6 +40,7 @@ credentials:
     # {프로젝트번호}-{랜덤}.apps.googleusercontent.com — 매우 특징적이라 값만으로 식별.
     value_regex: "^[0-9]+-[a-z0-9]+\\.apps\\.googleusercontent\\.com$"
     official_env_name: GOOGLE_CLIENT_ID
+    exposure: public
     role: "OAuth 2.0에서 앱을 식별하는 공개 식별자. 비밀 아님 — 클라이언트 노출 무방"
     docs_url: "https://developers.google.com/workspace/guides/create-credentials"
     expiry_known: false
@@ -51,6 +55,8 @@ credentials:
     # 최신 시크릿은 "GOCSPX-" 접두어. 값 기반 식별.
     value_regex: "^GOCSPX-[A-Za-z0-9_\\-]{20,}$"
     official_env_name: GOOGLE_CLIENT_SECRET
+    exposure: secret
+    impact: "유출 시 OAuth 앱 사칭 가능"
     role: "OAuth 클라이언트의 비밀값. 서버 전용·절대 노출 금지(생성 시 1회만 확인)"
     docs_url: "https://developers.google.com/workspace/guides/create-credentials"
     expiry_known: false
@@ -67,6 +73,9 @@ credentials:
     # JSON 키 파일 전체라 단일 값으로 단정할 수 없음 → 라벨/맥락(Stage2)으로만 식별(오탐 금지).
     value_regex: null
     official_env_name: GOOGLE_APPLICATION_CREDENTIALS
+    exposure: secret
+    impact: "유출 시 서비스 계정 권한 전체 탈취 — 클라우드 리소스 장악"
+    security_tip: "최소 권한 부여·키 정기 폐기/회전"
     role: "서비스 계정 개인키가 담긴 JSON. 서버 전용·최고 민감, 다운로드 1회만 가능"
     issue_url: "https://console.cloud.google.com/iam-admin/serviceaccounts?project={project}"
     docs_url: "https://cloud.google.com/iam/docs/keys-create-delete"

@@ -21,6 +21,8 @@ credentials:
     url_patterns: []
     value_regex: "^xoxb-[0-9A-Za-z-]{10,}$"
     official_env_name: SLACK_BOT_TOKEN
+    exposure: secret
+    impact: "유출 시 워크스페이스 메시지·데이터 접근"
     role: "앱(봇) 신원으로 API 호출하는 토큰. 서버 전용 비밀(xoxb-)"
     docs_url: "https://api.slack.com/authentication/token-types"
     expiry_known: false
@@ -33,6 +35,8 @@ credentials:
     url_patterns: []
     value_regex: "^xoxp-[0-9A-Za-z-]{10,}$"
     official_env_name: SLACK_USER_TOKEN
+    exposure: secret
+    impact: "유출 시 사용자 권한으로 워크스페이스 접근"
     role: "사용자 본인 권한으로 행동하는 토큰. 서버 전용 비밀(xoxp-)"
     docs_url: "https://api.slack.com/authentication/token-types"
     expiry_known: false

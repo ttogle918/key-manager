@@ -79,6 +79,9 @@ describe('applyKnowledge', () => {
               role: '서버 전용 비밀 키',
               issue_url: 'https://demo.example/keys',
               docs_url: 'https://demo.example/docs',
+              exposure: 'secret',
+              impact: '유출 시 계정 장악',
+              security_tip: 'IP 제한 권장',
             },
           ],
         },
@@ -88,6 +91,10 @@ describe('applyKnowledge', () => {
     expect(t.role).toBe('서버 전용 비밀 키')
     expect(t.issueUrl).toBe('https://demo.example/keys')
     expect(t.docsUrl).toBe('https://demo.example/docs')
+    // 보안 등급·유출 대응 (GUIDE-2)
+    expect(t.exposure).toBe('secret')
+    expect(t.impact).toBe('유출 시 계정 장악')
+    expect(t.securityTip).toBe('IP 제한 권장')
     expect(reg.CONSOLE_URL['Demo']).toBe('https://demo.example/console')
     expect(reg.SVC_STEPS['Demo']).toEqual(['1단계', '2단계'])
     expect(reg.SVC_PREREQ['Demo']).toBe('앱 먼저 생성')

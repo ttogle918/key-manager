@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import { CONSOLE_URL, resolveIssueUrl, TYPE_MAP } from '@/data/services'
 import { envText, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 
@@ -50,6 +51,15 @@ export function RotateModal() {
     if (target) setValue('') // 열릴 때마다 입력 초기화
   }, [target])
 
+  // 발급 콘솔 바로가기(GUIDE-2) — 회전 전에 새 키를 발급받도록.
+  const issueUrl = target
+    ? resolveIssueUrl(
+        TYPE_MAP[target.service]?.find((t) => t.var === target.varName)?.issueUrl ||
+          CONSOLE_URL[target.service],
+        target.project,
+      )
+    : null
+
   return (
     <Modal open={!!target} onClose={cancel} title="값 교체" className="w-[420px]">
       <div className="text-[15px] font-bold">값 교체 (회전)</div>
@@ -58,6 +68,16 @@ export function RotateModal() {
         <br />
         옛 값은 즉시 폐기되어 복구할 수 없고, 교체는 이력에 기록됩니다.
       </p>
+      {issueUrl && (
+        <a
+          href={issueUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-[10px] inline-flex items-center rounded-[7px] border border-border bg-chip px-[11px] py-[6px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          먼저 새 키 발급 →
+        </a>
+      )}
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}

@@ -43,6 +43,10 @@ class Credential(BaseModel):
     role: Optional[str] = None  # 이 키의 역할 한 줄(노출 가능/서버 전용 등)
     issue_url: Optional[str] = None  # 발급 콘솔 바로가기(없으면 service.console_url 폴백)
     docs_url: Optional[str] = None  # 공식 문서 링크
+    # 보안 등급·유출 대응 (GUIDE-2)
+    exposure: Optional[Literal["public", "secret"]] = None  # 공개 가능 vs 절대 노출 금지
+    impact: Optional[str] = None  # 유출 시 피해 한 줄(secret 종류)
+    security_tip: Optional[str] = None  # per-key 하드닝 팁(IP 제한·최소 권한 등)
 
 
 class Service(BaseModel):

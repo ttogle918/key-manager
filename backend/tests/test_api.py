@@ -44,6 +44,18 @@ def test_knowledge_exposes_guide_help():
     assert "role" in gcp["credentials"][0] and "console_url" in gcp
 
 
+def test_knowledge_exposes_security_grade():
+    """GUIDE-2: /knowledge 가 노출 등급·유출 피해·보안 팁을 노출."""
+    services = knowledge()["services"]
+    kakao = next(s for s in services if s["service"] == "kakao")
+    admin = next(c for c in kakao["credentials"] if c["kind"] == "admin_key")
+    js = next(c for c in kakao["credentials"] if c["kind"] == "javascript_key")
+    assert admin["exposure"] == "secret" and admin["impact"]  # 서버 전용 + 피해 문구
+    assert js["exposure"] == "public"  # 웹 노출 허용 키
+    # 필드는 모든 종류에 존재(하위호환)
+    assert "exposure" in js and "security_tip" in admin
+
+
 def test_analyze():
     resp = analyze_endpoint(AnalyzeRequest(text=f"OPENAI_API_KEY={OPENAI_KEY}"))
     assert resp.count == 1

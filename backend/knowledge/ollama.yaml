@@ -21,6 +21,8 @@ credentials:
     # 32자리 소문자 hex + '.' + 24자 영숫자. 콘솔에서 발급되는 형식(공식 문서 기준 직접 작성).
     value_regex: "^[0-9a-f]{32}\\.[A-Za-z0-9]{24}$"
     official_env_name: OLLAMA_API_KEY
+    exposure: secret
+    impact: "유출 시 계정 사용량 무단 소비(과금)"
     role: "Ollama Cloud 요청 인증용 Bearer 토큰. 서버 전용 — 노출 금지(로컬 전용이면 불필요)"
     docs_url: "https://docs.ollama.com/api/authentication"
     expiry_known: false

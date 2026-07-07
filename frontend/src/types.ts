@@ -25,6 +25,10 @@ export interface TypeOption {
   role?: string | null
   issueUrl?: string | null
   docsUrl?: string | null
+  /** 보안 등급·유출 대응 (GUIDE-2). */
+  exposure?: 'public' | 'secret' | null
+  impact?: string | null
+  securityTip?: string | null
 }
 
 /** UUID 신호 충돌 시 사용자가 고르는 후보. */

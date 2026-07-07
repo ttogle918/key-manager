@@ -16,6 +16,10 @@ export interface KnowledgeCredential {
   role?: string | null
   issue_url?: string | null
   docs_url?: string | null
+  // 보안 등급·유출 대응 (GUIDE-2) — 선택
+  exposure?: 'public' | 'secret' | null
+  impact?: string | null
+  security_tip?: string | null
 }
 export interface KnowledgeService {
   service: string

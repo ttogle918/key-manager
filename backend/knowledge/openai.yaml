@@ -19,6 +19,9 @@ credentials:
     url_patterns: []
     value_regex: "^sk-(proj-)?[A-Za-z0-9_\\-]{20,}$"
     official_env_name: OPENAI_API_KEY
+    exposure: secret
+    impact: "유출 시 API 무단 호출로 과금 폭탄"
+    security_tip: "사용량 한도(usage limit) 설정 권장"
     role: "API 요청 인증용 비밀 키. 서버 전용 — 절대 노출 금지(sk-)"
     docs_url: "https://platform.openai.com/docs/api-reference/authentication"
     expiry_known: false
@@ -36,6 +39,7 @@ credentials:
     url_patterns: []
     value_regex: "^org-[A-Za-z0-9]{20,}$"
     official_env_name: OPENAI_ORG_ID
+    exposure: public
     role: "요청을 특정 조직에 귀속시키는 식별자. 비밀 아님(OpenAI-Organization 헤더)"
     issue_url: "https://platform.openai.com/settings/organization/general"
     docs_url: "https://platform.openai.com/docs/api-reference/authentication"

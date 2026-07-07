@@ -21,6 +21,8 @@ credentials:
       - "dashboard\\.stripe\\.com/apikeys"
     value_regex: "^(sk|rk)_(live|test)_[A-Za-z0-9]{16,}$"
     official_env_name: STRIPE_SECRET_KEY
+    exposure: secret
+    impact: "유출 시 결제·환불 등 계정 전체 조작 가능"
     role: "서버 측 API 인증용 비밀 키. 서버 전용 — 노출 금지(sk_/rk_)"
     docs_url: "https://docs.stripe.com/keys"
     expiry_known: false
@@ -37,6 +39,7 @@ credentials:
     url_patterns: []
     value_regex: "^pk_(live|test)_[A-Za-z0-9]{16,}$"
     official_env_name: STRIPE_PUBLISHABLE_KEY
+    exposure: public
     role: "클라이언트(브라우저·앱)에서 쓰는 공개 키. 노출돼도 안전(pk_)"
     docs_url: "https://docs.stripe.com/keys"
     expiry_known: false
