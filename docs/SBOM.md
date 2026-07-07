@@ -77,7 +77,6 @@ SPDX-License-Identifier: MIT
 | 6 | @radix-ui/react-select | 2.3.2 | MIT | https://github.com/radix-ui/primitives | 접근성 셀렉트 |
 | 7 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx | 클래스 병합 |
 | 8 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge | Tailwind 클래스 충돌 해소 |
-| 9 | lucide-react | 1.23.0 | ISC | https://github.com/lucide-icons/lucide | 아이콘 |
 
 ### 2-2. 주요 전이 의존성 (런타임)
 
@@ -104,6 +103,11 @@ SPDX-License-Identifier: MIT
 |---|---|---|---|---|
 | Tesseract 학습 데이터 (eng·kor `.traineddata`) | tessdata_fast | Apache-2.0 | https://github.com/tesseract-ocr/tessdata_fast | OCR 언어 모델(로컬 벤더링) |
 | tesseract.js WASM core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | OCR 추론 엔진(WASM) |
+| Pretendard (Variable) | 1.3.9 | OFL-1.1 | https://github.com/orioncactus/pretendard | 본문 폰트(로컬 벤더링) |
+| JetBrains Mono | 2.304 | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono | 값·키 모노 폰트(로컬 벤더링) |
+
+> 폰트는 **CDN 대신 빌드 시 로컬 벤더링**(`frontend/scripts/vendor-fonts.mjs` → `public/fonts/`, same-origin 서빙)으로
+> 런타임 외부 요청 0(local-first). OFL-1.1 은 permissive(임베드·배포 허용, 폰트 단독 판매 금지·예약명칭 유지).
 
 > ⚠️ 붙임2(AI 모델 활용 명세서)와 연동: OCR 엔진은 **외부 모델 그대로 활용(유형1)**, 파인튜닝 없음. 상세는 OSS-4.
 

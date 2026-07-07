@@ -4,6 +4,33 @@ SPDX-License-Identifier: MIT
 */
 @import 'tailwindcss';
 
+/* ── 로컬 벤더 웹폰트 (OFL-1.1) — CDN 대신 same-origin 서빙(local-first). scripts/vendor-fonts.mjs ── */
+@font-face {
+  font-family: 'Pretendard Variable';
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url('/fonts/PretendardVariable.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/JetBrainsMono-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
 /* ── KeyLens 디자인 토큰 (프로토타입 KeyLens.dc.html에서 이식) ── */
 @theme {
   --font-sans:

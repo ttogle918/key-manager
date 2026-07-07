@@ -6,19 +6,19 @@
   "scripts": {
     "vendor:ocr": "node scripts/vendor-tesseract.mjs",
     "fixtures:ocr": "node --experimental-strip-types scripts/ocr-demo-fixtures.mts",
-    "predev": "node scripts/vendor-tesseract.mjs",
-    "prebuild": "node scripts/vendor-tesseract.mjs",
+    "predev": "node scripts/vendor-tesseract.mjs && node scripts/vendor-fonts.mjs",
+    "prebuild": "node scripts/vendor-tesseract.mjs && node scripts/vendor-fonts.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vendor:fonts": "node scripts/vendor-fonts.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.18",
     "@radix-ui/react-select": "^2.3.2",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.23.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tailwind-merge": "^3.6.0",

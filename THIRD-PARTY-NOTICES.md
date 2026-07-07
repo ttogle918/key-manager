@@ -50,8 +50,19 @@ SPDX-License-Identifier: MIT
 | zustand | 5.0.14 | MIT | https://github.com/pmndrs/zustand |
 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx |
 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge |
-| lucide-react | 1.23.0 | ISC | https://github.com/lucide-icons/lucide |
 | tailwindcss | 4.3.2 | MIT | https://github.com/tailwindlabs/tailwindcss (생성 CSS가 배포물에 포함) |
+
+## 웹폰트 (로컬 벤더링 — 배포 번들 포함, CDN 미사용)
+
+| 폰트 | 버전 | 라이선스 | 출처 |
+|---|---|---|---|
+| Pretendard (Variable) | 1.3.9 | OFL-1.1 | https://github.com/orioncactus/pretendard |
+| JetBrains Mono | 2.304 | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono |
+
+- 두 폰트 모두 **SIL Open Font License 1.1 (permissive)** — 임베드·재배포 허용(폰트 단독 판매 금지·예약 명칭 유지).
+- **local-first**: Google Fonts·jsdelivr CDN 런타임 로드를 없애고, `frontend/scripts/vendor-fonts.mjs`가 빌드 시
+  `public/fonts/`로 받아 same-origin 서빙한다(외부 요청 0). 폰트 파일은 저장소에 커밋하지 않는다(.gitignore).
+> OFL 전문: https://openfontlicense.org/
 
 ## 백엔드 런타임 (FastAPI 로컬 서버)
 
