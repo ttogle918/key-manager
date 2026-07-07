@@ -183,6 +183,7 @@ credentials:
 
 자세한 절차는 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참고하세요. 기여 환영합니다.
 
+- **전체 기능 문서**: [docs/FEATURES.md](./docs/FEATURES.md) — 기능 카탈로그 + 아키텍처·흐름 다이어그램(mermaid) + API 18종
 - 기여 가이드: [CONTRIBUTING.md](./CONTRIBUTING.md) · 행동 강령: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 - 보안 취약점 신고: [SECURITY.md](./SECURITY.md) (공개 이슈 금지, 비공개로)
 - 변경 이력: [CHANGELOG.md](./CHANGELOG.md)
