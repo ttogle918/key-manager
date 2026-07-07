@@ -73,6 +73,7 @@ describe('applyKnowledge', () => {
           console_url: 'https://demo.example/console',
           steps: ['1단계', '2단계'],
           prereq: '앱 먼저 생성',
+          disambiguation: '위치로 구분',
           credentials: [
             {
               ...cred('api_key', 'API Key', 'DEMO_API_KEY'),
@@ -98,6 +99,7 @@ describe('applyKnowledge', () => {
     expect(reg.CONSOLE_URL['Demo']).toBe('https://demo.example/console')
     expect(reg.SVC_STEPS['Demo']).toEqual(['1단계', '2단계'])
     expect(reg.SVC_PREREQ['Demo']).toBe('앱 먼저 생성')
+    expect(reg.SVC_DISAMBIG['Demo']).toBe('위치로 구분')
   })
 
   it('딥링크(GUIDE-1 B): ID면 치환·아니면 폴백·화이트리스트 강제', () => {

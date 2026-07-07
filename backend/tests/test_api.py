@@ -54,6 +54,9 @@ def test_knowledge_exposes_security_grade():
     assert js["exposure"] == "public"  # 웹 노출 허용 키
     # 필드는 모든 종류에 존재(하위호환)
     assert "exposure" in js and "security_tip" in admin
+    # 종류 구분법(GUIDE-2): 노션은 UUID 3종 판별 힌트 노출
+    notion = next(s for s in services if s["service"] == "notion")
+    assert notion["disambiguation"] and "Database ID" in notion["disambiguation"]
 
 
 def test_analyze():

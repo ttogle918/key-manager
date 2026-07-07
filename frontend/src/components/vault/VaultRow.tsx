@@ -180,6 +180,22 @@ export function VaultRow({ it }: { it: VaultItem }) {
                   {exp.expired ? '만료됨 — 회전하세요' : exp.days + '일 남음'}
                 </span>
               )}
+              {/* 만료 임박·만료 → 재발급 바로가기(GUIDE-2 TRUST-2 연동) */}
+              {exp &&
+                (exp.expired || exp.urgent) &&
+                (() => {
+                  const url = resolveIssueUrl(cur?.issueUrl || CONSOLE_URL[it.service], it.project)
+                  return url ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-[6px] border border-[rgba(227,179,65,.3)] bg-[rgba(227,179,65,.08)] px-[9px] py-[3px] text-[11px] font-semibold text-amber hover:brightness-110"
+                    >
+                      재발급 →
+                    </a>
+                  ) : null
+                })()}
             </Row>
             <Row label="검증">
               <button

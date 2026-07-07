@@ -11,6 +11,7 @@ steps:
   - "notion.so/my-integrations 접속 → + New integration"
   - "이름·워크스페이스 선택, 타입 Internal 로 생성"
   - "Internal Integration Secret → Show → Copy"
+disambiguation: "셋 다 같은 32자 UUID라 위치로 구분 — 공유 링크 ?v= 앞=Database ID, URL 끝 세그먼트=Page ID, DB의 Manage data sources=Data Source ID."
 credentials:
   - kind: api_key
     label: "API Key"

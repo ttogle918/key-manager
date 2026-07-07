@@ -59,6 +59,8 @@ class Service(BaseModel):
     console_url: Optional[str] = None  # 서비스 일반 콘솔(종류별 issue_url 폴백)
     steps: list[str] = Field(default_factory=list)  # 발급 단계 2~3줄 요약
     prereq: Optional[str] = None  # 사전조건(예: 프로젝트/앱 먼저 생성)
+    # 종류 구분법 (GUIDE-2) — 같은 형식(UUID 등)이 여러 종류로 갈릴 때 판별 힌트. 신호 충돌 카드에 표시.
+    disambiguation: Optional[str] = None
 
 
 # ── API 입출력 ──

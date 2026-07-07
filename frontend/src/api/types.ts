@@ -24,10 +24,11 @@ export interface KnowledgeCredential {
 export interface KnowledgeService {
   service: string
   display_name: string
-  // 발급 도움말 서비스 단위 (GUIDE-1)
+  // 발급 도움말 서비스 단위 (GUIDE-1) + 종류 구분법 (GUIDE-2)
   console_url?: string | null
   steps?: string[]
   prereq?: string | null
+  disambiguation?: string | null
   credentials: KnowledgeCredential[]
 }
 export interface KnowledgeResponse {

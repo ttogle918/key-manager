@@ -47,7 +47,7 @@ SPDX-License-Identifier: MIT
 - ✅ **KB 확장**: GCP 4종(api_key·OAuth id/secret·service_account_json)으로 확장 — 프론트 코드 0줄(=/knowledge 동적).
 - **남은 큰 항목**: **OSS-4**(3분 영상 + 결과보고서 + AI 명세서).
 - ✅ **키 발급 도움말**: **GUIDE-1 A·B 완료** — KB 도움말(9종)·`/knowledge` 노출·`KeyHelp`(발급받기/문서 링크·발급 방법). **B(딥링크)**: `{project}` 치환(ID 형태만, 아니면 안전 폴백) + 도메인 화이트리스트(`isAllowedUrl`)로 오픈리다이렉트 차단.
-- ✅ **키 보안 등급·연동**: **GUIDE-2 대부분 완료** — KB에 노출등급(public/secret)·유출 피해·보안 팁(22종), `ExposureBadge`(🔒 노출 금지), KeyHelp에 피해·팁, 상태 연동(검증 invalid→재발급, 회전 모달→발급). 잔여: TRUST-2 만료→재발급·충돌 카드 구분법(선택).
+- ✅ **키 보안 등급·연동**: **GUIDE-2 완료** — KB에 노출등급(public/secret)·유출 피해·보안 팁(22종)·구분법(Notion), `ExposureBadge`(🔒 노출 금지), KeyHelp에 피해·팁, 상태 연동(검증 invalid·만료 임박→재발급, 회전 모달→발급), 충돌 카드 구분법(💡).
 - **제안(후보)**: 없음(핵심 소진). stretch 3종(TRUST-1/2, SYNC-0) + GUIDE-1/2 전부 반영.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
 
@@ -180,7 +180,7 @@ SPDX-License-Identifier: MIT
 - **범위 밖(스코프 사수)**: 콘솔 자동 로그인·키 자동 발급(OAuth 대행) 등은 하지 않는다 — **안내(링크·설명)까지만**. 실제 발급은 사용자가 공식 콘솔에서 직접.
 - **관련**: 보안 등급·유출 대응·상태 연동은 → **GUIDE-2**.
 
-### GUIDE-2 🟡 키 보안 등급·재발급·상태 연동 (GUIDE-1 확장) — ✅ 대부분 완료
+### GUIDE-2 🟡 키 보안 등급·재발급·상태 연동 (GUIDE-1 확장) — ✅ 완료
 - **중요도**: 🟡 Medium(보안 실체) | **스프린트**: GUIDE-1 이후 | **의존성**: GUIDE-1, TRUST-1(검증)·TRUST-2(만료)·VAULT-2(회전)·CORE-2(충돌 카드) | **사이즈**: M
 - **배경**: GUIDE-1이 "어디서·어떻게 발급"이라면, GUIDE-2는 **"안전하게 다루고, 유출·만료 시 조치"**다. 같은 서비스라도 **공개 가능 키 vs 절대 노출 금지 키**가 갈리는데(Kakao JS vs REST/Admin, Stripe pk vs sk, Slack bot vs user), 이를 명시해 **유출을 예방**하고, 폐기/재발급 링크로 **사고에 대응**하며, 기존 기능(키 회전·유효성 검증·만료 알림)과 **행동으로 연결**한다.
 - **하위 할일**
@@ -193,10 +193,10 @@ SPDX-License-Identifier: MIT
   - [x] **[FE] "재발급 →" 링크** — 상태 연동에서(아래), `resolveIssueUrl`+화이트리스트(새 탭·noopener)
   - **[연동] 상태 → 액션 연결**
     - [x] TRUST-1 `invalid` → 보관함 검증줄에 **"재발급 →"** (빨간 링크)
-    - [ ] TRUST-2 만료 임박/만료 → "재발급 →" (잔여, 여유 시)
+    - [x] TRUST-2 만료 임박(≤3일)/만료 → 만료일 줄에 **"재발급 →"** (`resolveIssueUrl`+화이트리스트)
     - [x] 값 교체(회전) 모달 → **"먼저 새 키 발급 →"** 링크
   - [x] **[FE] 보안 팁·피해 문구 표시** — `impact`(유출 피해, 빨강)·`security_tip`(💡)를 KeyHelp 에 표시
-  - [ ] **[분류 이해 돕기] 신호 충돌 카드 "구분법"** — 잔여. (현재도 충돌 카드가 옵션별 evidence·신호 강약을 이미 보여줌 — 최소 커버됨)
+  - [x] **[분류 이해 돕기] 신호 충돌 카드 "구분법"** — `Service.disambiguation`(Notion: `?v=` 앞=Database ID / URL 끝=Page ID / Manage data sources=Data Source ID). `/knowledge` 노출 → 충돌 카드에 💡로 표시
 - **테스트 체크리스트**
   - [x] 🧪 `exposure` → 백엔드 `test_knowledge_exposes_security_grade`(admin=secret/js=public) · 프론트 레지스트리 흐름(`services.test`)
   - [x] ✅ 재발급 링크는 새 탭·`rel=noopener noreferrer`, `isAllowedUrl` 화이트리스트(오픈리다이렉트 방지)

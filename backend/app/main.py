@@ -77,10 +77,11 @@ def knowledge() -> dict:
             {
                 "service": s.service,
                 "display_name": s.display_name,
-                # 발급 도움말 서비스 단위 (GUIDE-1)
+                # 발급 도움말 서비스 단위 (GUIDE-1) + 종류 구분법 (GUIDE-2)
                 "console_url": s.console_url,
                 "steps": s.steps,
                 "prereq": s.prereq,
+                "disambiguation": s.disambiguation,
                 "credentials": [
                     {
                         "kind": c.kind,

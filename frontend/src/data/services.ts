@@ -66,6 +66,8 @@ export let SERVICE_BY_ID: Record<string, string> = {
 export let CONSOLE_URL: Record<string, string | null> = {}
 export let SVC_STEPS: Record<string, string[]> = {}
 export let SVC_PREREQ: Record<string, string | null> = {}
+/** 종류 구분법 (GUIDE-2) — 신호 충돌 카드에 표시. */
+export let SVC_DISAMBIG: Record<string, string | null> = {}
 /** 발급/문서 링크로 허용되는 호스트(지식베이스가 선언한 도메인만). 오픈 리다이렉트 방지. */
 export let ALLOWED_HOSTS: Set<string> = new Set()
 
@@ -107,6 +109,7 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   const consoleUrl: Record<string, string | null> = {}
   const steps: Record<string, string[]> = {}
   const prereq: Record<string, string | null> = {}
+  const disambig: Record<string, string | null> = {}
   const hosts = new Set<string>()
   const addHost = (u?: string | null) => {
     if (!u) return
@@ -140,6 +143,7 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
     consoleUrl[name] = s.console_url ?? null
     steps[name] = s.steps ?? []
     prereq[name] = s.prereq ?? null
+    disambig[name] = s.disambiguation ?? null
   }
   const rank = (id: string) => {
     const i = CURATED_ORDER.indexOf(id)
@@ -159,6 +163,7 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   CONSOLE_URL = consoleUrl
   SVC_STEPS = steps
   SVC_PREREQ = prereq
+  SVC_DISAMBIG = disambig
   ALLOWED_HOSTS = hosts
 }
 

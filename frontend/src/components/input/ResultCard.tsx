@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import { CONF_META, SVC_META, TYPE_MAP } from '@/data/services'
+import { CONF_META, SVC_DISAMBIG, SVC_META, TYPE_MAP } from '@/data/services'
 import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
 import { useKeylens } from '@/store/keylensStore'
 import type { AnalysisResult } from '@/types'
@@ -137,6 +137,13 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
           <div className="mb-[2px] mt-[5px] text-[12px] leading-[1.5] text-muted">
             맥락 신호를 확인하고 종류를 직접 선택해 주세요.
           </div>
+          {/* 구분법(GUIDE-2) — 같은 형식을 어떻게 판별하는지 */}
+          {SVC_DISAMBIG[r.service] && (
+            <div className="mb-1 mt-[7px] flex items-start gap-[6px] rounded-md border border-[rgba(143,163,191,.22)] bg-[rgba(143,163,191,.06)] px-[9px] py-[6px] text-[11.5px] leading-[1.5] text-muted-2">
+              <span className="flex-none">💡</span>
+              <span>{SVC_DISAMBIG[r.service]}</span>
+            </div>
+          )}
           {(r.options || []).map((o) => {
             const sel = r.typeKey === o.k
             return (
