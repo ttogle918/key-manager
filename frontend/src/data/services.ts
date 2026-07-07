@@ -66,6 +66,8 @@ export let SERVICE_BY_ID: Record<string, string> = {
 export let CONSOLE_URL: Record<string, string | null> = {}
 export let SVC_STEPS: Record<string, string[]> = {}
 export let SVC_PREREQ: Record<string, string | null> = {}
+/** 발급/문서 링크로 허용되는 호스트(지식베이스가 선언한 도메인만). 오픈 리다이렉트 방지. */
+export let ALLOWED_HOSTS: Set<string> = new Set()
 
 // 알려진 서비스의 큐레이션된 외양(id 기준). 없으면 autoMeta 로 자동 생성.
 const CURATED_META: Record<string, SvcMeta> = {
@@ -105,8 +107,22 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   const consoleUrl: Record<string, string | null> = {}
   const steps: Record<string, string[]> = {}
   const prereq: Record<string, string | null> = {}
+  const hosts = new Set<string>()
+  const addHost = (u?: string | null) => {
+    if (!u) return
+    try {
+      hosts.add(new URL(u).host)
+    } catch {
+      /* 파싱 불가 URL은 허용 목록에 넣지 않음 */
+    }
+  }
   for (const s of payload.services) {
     const name = s.display_name
+    addHost(s.console_url)
+    for (const c of s.credentials) {
+      addHost(c.issue_url)
+      addHost(c.docs_url)
+    }
     typeMap[name] = s.credentials.map((c) => ({
       v: c.kind,
       label: c.label,
@@ -140,6 +156,59 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   CONSOLE_URL = consoleUrl
   SVC_STEPS = steps
   SVC_PREREQ = prereq
+  ALLOWED_HOSTS = hosts
+}
+
+// ── GUIDE-1 B: 발급 링크 딥링크 해석(플레이스홀더 치환) + 도메인 화이트리스트 ──
+
+// 프로젝트/앱 ID 로 인정할 형태(공백·한글 라벨은 제외 → 치환하지 않고 폴백).
+const ID_LIKE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$/
+const PLACEHOLDER = /\{[a-z_]+\}/i
+
+/** https + 지식베이스 선언 호스트만 허용(javascript:·외부 도메인 차단). */
+export function isAllowedUrl(u: string | null | undefined): boolean {
+  if (!u) return false
+  try {
+    const url = new URL(u)
+    return url.protocol === 'https:' && ALLOWED_HOSTS.has(url.host)
+  } catch {
+    return false
+  }
+}
+
+/** 플레이스홀더가 남은 쿼리 파라미터를 제거(치환 못 하면 깨진 링크 대신 기본 콘솔로). */
+function stripPlaceholders(u: string): string {
+  try {
+    const url = new URL(u)
+    const keep = new URLSearchParams()
+    url.searchParams.forEach((v, k) => {
+      if (!PLACEHOLDER.test(v)) keep.set(k, v)
+    })
+    url.search = keep.toString()
+    // 경로에 남은 플레이스홀더가 있으면 콘솔 루트로 안전 폴백
+    return PLACEHOLDER.test(url.pathname) ? url.origin + '/' : url.toString()
+  } catch {
+    return u.split('?')[0]
+  }
+}
+
+/**
+ * 발급 URL 을 항목 컨텍스트로 해석한다.
+ * - `project` 가 ID 형태면 `{project}`/`{project_id}`/`{app_id}` 를 치환해 **딥링크**
+ * - 아니면 플레이스홀더를 제거해 **기본 콘솔**로 폴백(깨진 링크 방지)
+ * - 최종 URL 이 화이트리스트(https + 선언 호스트)를 통과할 때만 반환, 아니면 null
+ */
+export function resolveIssueUrl(
+  url: string | null | undefined,
+  project?: string | null,
+): string | null {
+  if (!url) return null
+  let out = url
+  if (project && ID_LIKE.test(project)) {
+    out = out.replace(/\{(project|project_id|app_id)\}/gi, encodeURIComponent(project))
+  }
+  if (PLACEHOLDER.test(out)) out = stripPlaceholders(out)
+  return isAllowedUrl(out) ? out : null
 }
 
 export interface ConfStyle {

@@ -8,7 +8,7 @@
 # 포맷 출처: Google Cloud 공식 문서(자격증명 종류).
 service: gcp
 display_name: Google Cloud
-console_url: "https://console.cloud.google.com/apis/credentials"
+console_url: "https://console.cloud.google.com/apis/credentials?project={project}"
 prereq: "GCP 프로젝트 생성(필요 시 결제 활성화) 먼저"
 steps:
   - "Cloud Console → API 및 서비스 → 사용자 인증 정보"
@@ -68,6 +68,6 @@ credentials:
     value_regex: null
     official_env_name: GOOGLE_APPLICATION_CREDENTIALS
     role: "서비스 계정 개인키가 담긴 JSON. 서버 전용·최고 민감, 다운로드 1회만 가능"
-    issue_url: "https://console.cloud.google.com/iam-admin/serviceaccounts"
+    issue_url: "https://console.cloud.google.com/iam-admin/serviceaccounts?project={project}"
     docs_url: "https://cloud.google.com/iam/docs/keys-create-delete"
     expiry_known: false

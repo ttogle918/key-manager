@@ -92,4 +92,40 @@ describe('applyKnowledge', () => {
     expect(reg.SVC_STEPS['Demo']).toEqual(['1단계', '2단계'])
     expect(reg.SVC_PREREQ['Demo']).toBe('앱 먼저 생성')
   })
+
+  it('딥링크(GUIDE-1 B): ID면 치환·아니면 폴백·화이트리스트 강제', () => {
+    reg.applyKnowledge({
+      services: [
+        {
+          service: 'gcp',
+          display_name: 'GCP',
+          console_url: 'https://console.cloud.google.com/apis/credentials?project={project}',
+          credentials: [
+            { ...cred('api_key', 'API Key', 'GOOGLE_API_KEY'), docs_url: 'https://cloud.google.com/docs' },
+          ],
+        },
+      ],
+    })
+    const base = 'https://console.cloud.google.com/apis/credentials?project={project}'
+    // ID 형태 → 치환(딥링크)
+    expect(reg.resolveIssueUrl(base, 'my-proj-123')).toBe(
+      'https://console.cloud.google.com/apis/credentials?project=my-proj-123',
+    )
+    // 한글·공백 라벨 → 치환 안 함, 플레이스홀더 쿼리 제거(기본 콘솔)
+    expect(reg.resolveIssueUrl(base, '블로그 자동화')).toBe(
+      'https://console.cloud.google.com/apis/credentials',
+    )
+    // 값 없어도 안전 폴백
+    expect(reg.resolveIssueUrl(base, null)).toBe(
+      'https://console.cloud.google.com/apis/credentials',
+    )
+    // 화이트리스트: 선언 호스트·https 만
+    expect(reg.isAllowedUrl('https://console.cloud.google.com/x')).toBe(true)
+    expect(reg.isAllowedUrl('https://cloud.google.com/docs')).toBe(true)
+    expect(reg.isAllowedUrl('https://evil.example/x')).toBe(false)
+    expect(reg.isAllowedUrl('http://console.cloud.google.com/x')).toBe(false)
+    expect(reg.isAllowedUrl('javascript:alert(1)')).toBe(false)
+    // 미선언 호스트 URL 은 resolveIssueUrl 도 null
+    expect(reg.resolveIssueUrl('https://evil.example/x', 'id')).toBeNull()
+  })
 })

@@ -118,7 +118,11 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
       {/* 키 발급 도움말(GUIDE-1) — 종류가 정해졌을 때만 */}
       {cur && (
         <div className="mx-4 mt-[10px]">
-          <KeyHelp service={r.service} typeKey={r.typeKey} />
+          <KeyHelp
+            service={r.service}
+            typeKey={r.typeKey}
+            project={(r.meta?.['gcp_project'] as string) || r.project}
+          />
         </div>
       )}
 

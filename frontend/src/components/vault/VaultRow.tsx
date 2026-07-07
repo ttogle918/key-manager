@@ -196,6 +196,7 @@ export function VaultRow({ it }: { it: VaultItem }) {
             <KeyHelp
               service={it.service}
               typeKey={TYPE_MAP[it.service]?.find((t) => t.var === it.varName)?.v ?? ''}
+              project={it.project}
             />
             <Row label="이력">
               <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-muted-2">
