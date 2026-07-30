@@ -24,6 +24,9 @@ def _normalize_path(path: str) -> str:
     실제 파일시스템 경로가 아닐 수 있어(테스트의 `/repo/blog` 등) abspath 는
     테스트 실행 cwd 기준으로 잘못 해석될 수 있다. normpath+normcase 는
     상대성은 건드리지 않고 표기 차이만 정규화한다.
+
+    주의: `os.path.normcase`는 POSIX에서는 아무 것도 하지 않는 no-op이다(대소문자
+    구분 파일시스템 전제) — 대소문자 폴딩은 실질적으로 Windows에서만 일어난다.
     """
     return os.path.normcase(os.path.normpath(path))
 
@@ -149,20 +152,29 @@ def entries_for_env(conn: sqlite3.Connection, key: bytes, project: str) -> dict[
 
     이름이 겹치면 project 전용 키가 우선(override), 겹치지 않으면 합집합.
     official_name이 없는 항목(unknown 등)은 환경변수로 쓸 수 없으니 제외한다.
+
+    두 단계로 나눠 처리한다: 먼저 이름별로 "이길" 행 하나만 골라내고(복호화 없음),
+    그다음 이긴 행만 복호화한다 — override로 가려지는 전역 항목까지 불필요하게
+    평문으로 만들지 않기 위함(메모리에 남는 불필요한 평문 최소화).
     """
     from . import crypto
 
     rows = conn.execute(
         "SELECT official_name, nonce, ciphertext FROM entries"
         " WHERE project IS NULL OR project = '' OR project = ?"
-        " ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END",
+        " ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END, id",
         (project, project),
     ).fetchall()
-    result: dict[str, str] = {}
+    winners: dict[str, sqlite3.Row] = {}
     for r in rows:
         name = r["official_name"]
         if not name:
             continue
+        winners[name] = r  # 순서상 project 전용 행이 나중에 와서 전역 행을 덮어씀
+    result: dict[str, str] = {}
+    for name, r in winners.items():
+        # AAD는 vault_repo._aad(official_name)과 동일한 계산을 의도적으로 중복한다
+        # (vault_repo._aad는 비공개라 import 대신 여기서 직접 재현) — 두 곳을 함께 바꿔야 한다.
         aad = name.encode("utf-8")
         result[name] = crypto.decrypt(key, r["nonce"], r["ciphertext"], aad)
     return result
@@ -176,10 +188,10 @@ def entry_ids_for_names(conn: sqlite3.Connection, project: str, names: list[str]
         return {}
     placeholders = ",".join("?" for _ in names)
     rows = conn.execute(
-        f"SELECT id, official_name FROM entries"
+        "SELECT id, official_name FROM entries"
         f" WHERE official_name IN ({placeholders})"
-        f" AND (project IS NULL OR project = '' OR project = ?)"
-        f" ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END, id",
+        " AND (project IS NULL OR project = '' OR project = ?)"
+        " ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END, id",
         [*names, project, project],
     ).fetchall()
     return {r["official_name"]: int(r["id"]) for r in rows}

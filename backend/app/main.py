@@ -329,6 +329,8 @@ def sdk_env(body: SdkEnvRequest) -> SdkEnvResponse:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     except SdkApprovalPending as e:
         raise HTTPException(status_code=403, detail=str(e)) from None
+    except crypto.DecryptError:
+        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
     return SdkEnvResponse(values=values)
 
 
@@ -344,9 +346,7 @@ def sdk_list_dirs(project: str) -> list[SdkProjectDir]:
 
 @app.post("/sdk/projects/{project}/directories", response_model=SdkProjectDir)
 def sdk_add_dir(project: str, body: SdkAddDirRequest) -> SdkProjectDir:
-    created = VAULT.add_project_dir(project, body.path)
-    dirs = VAULT.list_project_dirs(project)
-    return next(SdkProjectDir(**d) for d in dirs if d["id"] == created["id"])
+    return SdkProjectDir(**VAULT.add_project_dir(project, body.path))
 
 
 @app.delete("/sdk/projects/{project}/directories/{dir_id}")

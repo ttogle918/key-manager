@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import sqlite3
 from datetime import datetime, timezone
 
@@ -105,16 +106,18 @@ def _ensure_path_norm_column(conn: sqlite3.Connection, table: str) -> None:
     vault_repo가 sdk_repo를 import하지 않는다).
     """
     cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
-    if "path_norm" in cols:
-        return
-    conn.execute(f"ALTER TABLE {table} ADD COLUMN path_norm TEXT NOT NULL DEFAULT ''")
-    import os
-
-    rows = conn.execute(f"SELECT id, path FROM {table}").fetchall()
-    for r in rows:
-        norm = os.path.normcase(os.path.normpath(r["path"]))
-        conn.execute(f"UPDATE {table} SET path_norm = ? WHERE id = ?", (norm, r["id"]))
-    conn.commit()
+    if "path_norm" not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN path_norm TEXT NOT NULL DEFAULT ''")
+        rows = conn.execute(f"SELECT id, path FROM {table}").fetchall()
+        for r in rows:
+            norm = os.path.normcase(os.path.normpath(r["path"]))
+            conn.execute(f"UPDATE {table} SET path_norm = ? WHERE id = ?", (norm, r["id"]))
+        conn.commit()
+    # 이 브랜치의 중간 스키마(5컬럼, path_norm 없음)를 거친 DB는 테이블 레벨
+    # UNIQUE(project, path_norm) 제약이 없다 — 인덱스로 동등한 보호를 준다(RUNTIME-1 3차 리뷰).
+    conn.execute(
+        f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table}_project_path_norm ON {table}(project, path_norm)"
+    )
 
 
 def connect(path: str) -> sqlite3.Connection:

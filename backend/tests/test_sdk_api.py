@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
-"""RUNTIME-1 /sdk/* 엔드포인트 상태코드 매핑 테스트 — 라우트 함수 직접 호출."""
+"""RUNTIME-1 /sdk/* 엔드포인트 상태코드 매핑 + 응답 값 테스트 — 라우트 함수 직접 호출."""
 import pytest
 from fastapi import HTTPException
 
@@ -86,12 +86,12 @@ def test_sdk_list_projects_reflects_entries(vault):
     assert any(p.project == "사이드프로젝트" and p.key_count == 1 for p in projects)
 
 
-def test_sdk_add_dir_after_approval_refetches_source(vault):
-    """sdk_add_dir는 자체 합성 dict가 아니라 list_project_dirs 재조회 결과를 반환해야 한다.
+def test_sdk_add_dir_after_approval_returns_actual_stored_source(vault):
+    """VaultService.add_project_dir는 자체 합성 dict가 아니라 실제 저장된 행을 반환해야 한다.
 
-    같은 (project, path)가 이미 승인(source="approved")으로 등록돼 있으면,
-    VaultService.add_project_dir가 반환하는 합성 dict는 source="manual"을 주장하지만
-    (그리고 created_at도 없다), 라우트는 반드시 재조회한 실제 row를 사용해야 한다.
+    같은 (project, path)가 이미 승인(source="approved")으로 등록돼 있으면, 호출자가 넘긴
+    인자로 합성한 dict는 source="manual"을 잘못 주장하게 된다(그리고 created_at도 없다) —
+    서비스 레이어가 삽입 후 실제 행을 재조회해서 돌려줘야 한다(라우트는 그 값을 그대로 씀).
     """
     with pytest.raises(HTTPException) as e:
         main.sdk_env(SdkEnvRequest(project="블로그", path="/repo/blog"))
