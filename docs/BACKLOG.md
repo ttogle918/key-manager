@@ -27,7 +27,7 @@ SPDX-License-Identifier: MIT
 | **S2** | 7/7–7/20 | **맥락 기반 분류(차별점)** | ✅CORE-2, ✅CORE-3(OCR), ✅DEMO-1 | 1 (CORE-2) |
 | **S3** | 7/21–8/3 | 금고 + 인증 + 조회 | ✅VAULT-1, ✅VAULT-2, ✅UI-2 | 1 (VAULT-1) |
 | **S4** | 8/4–8/17 | 신뢰 기능 + 안정화 | ✅CORE-5, ✅TRUST-1, ✅TRUST-2, ✅SYNC-0, ✅OSS-1 | 0 |
-| **제출** | 8/18–8/27 | 제출물 + 재현성 | ✅OSS-2, 🔄OSS-3, OSS-4 | 0 |
+| **제출** | 8/18–8/27 | 제출물 + 재현성 | ✅OSS-2, ✅OSS-3, 🔄OSS-4 | 0 |
 
 > **⚠️ 용량 점검(솔로)**: 배치 원칙 상 L은 스프린트당 최대 1개로 잡았다(S2·S3 각 1개). S4 이후는 신규 L 없이 **안정화·신뢰 기능·제출물**로만 채워, 막판 과적을 방지한다. TRUST 계열(validity/expiry)과 SYNC-0은 **stretch**로 표시 — S4에서 시간이 부족하면 가장 먼저 잘라낼 후보다(잘라도 MVP는 성립).
 
@@ -37,8 +37,8 @@ SPDX-License-Identifier: MIT
 - ✅ **확장성 실체화**: 프론트가 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 **동적 구성** → 새 서비스는 YAML 하나로 백엔드·프론트 양쪽 자동 반영(코드 수정 0). GitHub/AWS/Slack/Stripe 4종을 프론트 코드 0줄로 추가해 증명.
 - ✅ **금고(보안 실체)**: VAULT-1(Argon2id + AES-256-GCM + SQLite 암호문만)·VAULT-2(세션 인증·자동잠금·실패지연·감사이력·값 교체) 완료 — **브라우저 E2E 검증 통과**.
 - ✅ **연결·UI**: INTEG-1(프론트↔백엔드 실연결)·UI-1/UI-2(실 금고·인증 연결)·CORE-5(.env 내보내기) 완료.
-- ✅ **제출 준비**: OSS-2(라이선스 카피레프트 0·reuse lint 통과·SBOM)·OSS-3(dev 스크립트·README, 새VM 검증만 잔여) 대부분 완료.
-- ✅ **보안 감사**(SECURITY_REVIEW.md): 상·중·하 실행 가능 항목 전부 해소(허위 보안표시·마스킹·감사이력·회전 등). ⏳ 남은 건 제출주간 성격(새 VM·포털 도구)뿐.
+- ✅ **제출 준비**: OSS-2(라이선스 카피레프트 0·reuse lint 통과·SBOM)·**OSS-3(dev 스크립트·README + 깨끗한 컨테이너 재현 검증까지 완료, 2026-07-30)**.
+- ✅ **보안 감사**(SECURITY_REVIEW.md): 상·중·하 실행 가능 항목 전부 해소(허위 보안표시·마스킹·감사이력·회전 등). ⏳ 남은 건 제출주간 성격(포털 도구)뿐.
 - ✅ **신뢰 기능(stretch 선반영)**: TRUST-1(키 유효성 검증 — read-only 1회 호출 → active/invalid/unknown, KB `verify:` 확장형)·TRUST-2(만료일 수동 입력 + JWT exp 자동 추출 + 임박 상단 정렬) 완료.
 - ✅ **멀티 기기(stretch 선반영)**: SYNC-0(암호화 금고 번들 내보내기/가져오기 — 교체·병합, 제로 널리지 유지) 완료. 서버리스 멀티 기기의 최소 단위 확보.
 - ✅ **배포·데스크톱**: 배포/설치 온보딩 문서 강화(git clone·요구사항·트러블슈팅)·CONTRIBUTING.md, **데스크톱 앱**(PyWebView `desktop/app.py` — 네이티브 창, API+SPA same-origin 서빙, 100% 로컬), **실행 파일 패키징**(`desktop/setup.py` cx_Freeze=permissive; app.py frozen 감지 + `KEYLENS_KNOWLEDGE_DIR` env) 완료 — **`KeyLens.exe` 빌드 실증**(번들 KB 9종·SPA·분류까지 정상 서빙 확인). **최신 코드로 재빌드 후 실기기(Windows 11) 네이티브 창 시각 확인까지 완료(2026-07-30)** — 마스터 비밀번호 화면·레이아웃·폰트 정상. 데스크톱 패키징 항목 전부 마무리.
@@ -414,7 +414,7 @@ SPDX-License-Identifier: MIT
   - [x] ✅ 헤더 누락 0건 (reuse lint 102/102)
   - [x] ✅ SBOM 표에 누락 라이브러리 0건(직접 의존성 기준)
 
-### OSS-3 🔴 README + 재현 가능한 빌드 — 🔄 실행 형태·스크립트·README 완료(깨끗VM 검증만 남음)
+### OSS-3 🔴 README + 재현 가능한 빌드 — ✅ 완료(깨끗한 컨테이너 검증까지 통과)
 - **중요도**: 🔴 Critical | **스프린트**: 제출주간 | **의존성**: 전체 | **사이즈**: M
 - **배경**: 2차 기능테스트는 **남의 환경에서** 돌린다. "내 컴퓨터에서만 됨"이면 0점.
 - **하위 할일**
@@ -422,9 +422,9 @@ SPDX-License-Identifier: MIT
   - [x] 의존성 버전 고정(requirements.txt / package-lock.json) + `node scripts/dev.mjs` 한 명령 실행.
   - [x] README: 설치(처음 한 번)·실행(한 번에/수동)·빠른 체험·보안 설계 — 실제 상태(암호화 금고)와 일치하게 정합.
   - [x] **배포·온보딩 문서 강화**: `git clone`부터의 전체 절차 + 요구사항 표(버전 확인·설치 링크) + 문제 해결(PowerShell 실행정책·포트충돌·python3 등) + 데이터 저장 위치 안내 + "배포=각자 로컬 실행" 섹션(호스팅 아님) + `CONTRIBUTING.md`(새 서비스 추가법).
-  - [ ] ⏳ **깨끗한 환경(새 VM/컨테이너)에서 README대로 처음부터 실행 검증** — 현 세션은 로컬 재현(venv 재생성 → pytest 80 → dev.mjs 200)까지 확인. 새 VM 검증은 제출주간에.
+  - [x] **깨끗한 환경(컨테이너)에서 README대로 처음부터 실행 검증(2026-07-30)** — `git clone`(로컬 커밋 상태) → Docker `nikolaik/python-nodejs:python3.11-nodejs20`(요구사항표와 동일 버전: Python 3.11.15·Node 20.20.2, node_modules·venv·vendored 자산 전혀 없는 새 컨테이너) → README 그대로 `pip install -r requirements.txt`·`npm ci`·`node scripts/dev.mjs`. 결과: tesseract/폰트 벤더링이 네트워크에서 새로 받아짐(로컬 캐시 의존 없음 확인) → 백엔드 :8003·프론트 :5173 정상 기동 → `/health`(services:9)·`/knowledge`·`/analyze`(더미 `sk-` 값 → `OPENAI_API_KEY` high 분류) 정상 응답 → `frontend/`가 문서 안내대로 `localhost:5173`으로 정상 서빙(`127.0.0.1`은 Node/Vite가 IPv6 우선 바인딩이라 안 됨 — README가 이미 `localhost`로 안내 중이라 실사용에 영향 없음, 참고 메모만 남김) → 같은 venv에서 `pytest -q` **149 passed**.
 - **테스트 체크리스트**
-  - [~] ✅ 로컬에서 문서만 보고 실행 성공(venv 재생성·dev 스크립트). 새 VM은 제출주간.
+  - [x] ✅ 새 컨테이너(요구사항 버전 동일)에서 README 문서만 보고 설치·기동·분류까지 성공 (2026-07-30)
   - [x] ✅ 데모용 더미 데이터로 즉시 체험 가능(`docs/demo/*.png`)
 
 ### OSS-4 🔴 3분 시연영상 + 결과보고서 — 🔄 문서 3종 완료(영상 녹화만 작성자 몫)
