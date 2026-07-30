@@ -52,6 +52,21 @@ CREATE TABLE IF NOT EXISTS access_log (
     at       TEXT NOT NULL,
     FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS sdk_project_dirs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project    TEXT NOT NULL,
+    path       TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(project, path)
+);
+CREATE TABLE IF NOT EXISTS sdk_pending_requests (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    project      TEXT NOT NULL,
+    path         TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    UNIQUE(project, path)
+);
 """
 
 # 감사 이력 이벤트 코드 → 표시 라벨(누가/언제/무엇을 열람·복사·내보냈는지 — SECURITY_REVIEW 3-4).
@@ -62,6 +77,7 @@ EVENT_LABELS = {
     "export": ".env 내보내기",
     "rotate": "키 교체",
     "verify": "유효성 검증",
+    "sdk_fetch": "SDK 조회",
 }
 
 # 값 복호화 없이 노출 가능한 메타데이터 컬럼(평문). 잠금 상태에서도 안전.
