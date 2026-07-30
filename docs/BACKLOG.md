@@ -41,7 +41,7 @@ SPDX-License-Identifier: MIT
 - ✅ **보안 감사**(SECURITY_REVIEW.md): 상·중·하 실행 가능 항목 전부 해소(허위 보안표시·마스킹·감사이력·회전 등). ⏳ 남은 건 제출주간 성격(새 VM·포털 도구)뿐.
 - ✅ **신뢰 기능(stretch 선반영)**: TRUST-1(키 유효성 검증 — read-only 1회 호출 → active/invalid/unknown, KB `verify:` 확장형)·TRUST-2(만료일 수동 입력 + JWT exp 자동 추출 + 임박 상단 정렬) 완료.
 - ✅ **멀티 기기(stretch 선반영)**: SYNC-0(암호화 금고 번들 내보내기/가져오기 — 교체·병합, 제로 널리지 유지) 완료. 서버리스 멀티 기기의 최소 단위 확보.
-- ✅ **배포·데스크톱**: 배포/설치 온보딩 문서 강화(git clone·요구사항·트러블슈팅)·CONTRIBUTING.md, **데스크톱 앱**(PyWebView `desktop/app.py` — 네이티브 창, API+SPA same-origin 서빙, 100% 로컬), **실행 파일 패키징**(`desktop/setup.py` cx_Freeze=permissive; app.py frozen 감지 + `KEYLENS_KNOWLEDGE_DIR` env) 완료 — **`KeyLens.exe` 빌드 실증**(번들 KB 9종·SPA·분류까지 정상 서빙 확인). GUI 창 시각 확인만 실기기 몫.
+- ✅ **배포·데스크톱**: 배포/설치 온보딩 문서 강화(git clone·요구사항·트러블슈팅)·CONTRIBUTING.md, **데스크톱 앱**(PyWebView `desktop/app.py` — 네이티브 창, API+SPA same-origin 서빙, 100% 로컬), **실행 파일 패키징**(`desktop/setup.py` cx_Freeze=permissive; app.py frozen 감지 + `KEYLENS_KNOWLEDGE_DIR` env) 완료 — **`KeyLens.exe` 빌드 실증**(번들 KB 9종·SPA·분류까지 정상 서빙 확인). **최신 코드로 재빌드 후 실기기(Windows 11) 네이티브 창 시각 확인까지 완료(2026-07-30)** — 마스터 비밀번호 화면·레이아웃·폰트 정상. 데스크톱 패키징 항목 전부 마무리.
 - ✅ **호스팅 로드맵**: 결과보고서에 "왜 로컬인가 / 웹 호스팅하려면 클라이언트 E2E 암호화 선행 / 랜딩 페이지는 안전" 설계 근거(§8.5) 추가.
 - ✅ **CI(GitHub Actions)**: push/PR마다 백엔드 pytest·프론트 build/vitest/oxlint·**reuse lint·카피레프트 0(pip-licenses/license-checker, clean 런타임 env)**·취약점(pip-audit/npm audit) 자동 실행 + README 배지. 대회 2차 검증(라이선스·재현·테스트·보안)을 자동화·상시화.
 - ✅ **KB 확장**: GCP 4종(api_key·OAuth id/secret·service_account_json)으로 확장 — 프론트 코드 0줄(=/knowledge 동적).
