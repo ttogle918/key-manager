@@ -53,6 +53,11 @@ docs/CHECKPOINT.md
 # --- Claude Design 프로토타입 export (로컬 참고용 — React 이식 완료, 커밋 금지) ---
 KeyLens 자격증명 관리 도구/
 
+# --- 대회 제출용 문서(개인 서명·접수번호 포함, 리포에 커밋 금지) ---
+*.docx
+*.hwp
+*.hwpx
+
 # --- OCR 모델 캐시(용량 크고 재생성 가능) ---
 *.traineddata
 .cache/
