@@ -20,6 +20,12 @@ from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
     HealthResponse,
+    SdkAddDirRequest,
+    SdkEnvRequest,
+    SdkEnvResponse,
+    SdkPendingRequest,
+    SdkProject,
+    SdkProjectDir,
     VaultChangePassword,
     VaultEntryCreate,
     VaultEntryMeta,
@@ -34,7 +40,7 @@ from .models import (
     VaultValue,
     VaultVerifyResult,
 )
-from .vault_session import VaultLocked, VaultRateLimited, VaultService
+from .vault_session import SdkApprovalPending, VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
 
@@ -307,6 +313,69 @@ def vault_change_password(body: VaultChangePassword) -> VaultStatus:
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return VaultStatus(**VAULT.status())
+
+
+# ── RUNTIME-1: SDK 접근 관리 ──
+# keylens-env SDK가 프로젝트별로 어떤 디렉토리에서 값을 가져갈 수 있는지 관리한다.
+# /sdk/env 는 실제 값을 반환하므로 인증(잠금 해제) 필수 — 그 외 관리 엔드포인트는
+# 프로젝트명·경로 문자열(비밀 아님)만 다루므로 잠금 상태에서도 접근을 막지 않는다.
+
+
+@app.post("/sdk/env", response_model=SdkEnvResponse)
+def sdk_env(body: SdkEnvRequest) -> SdkEnvResponse:
+    try:
+        values = VAULT.sdk_env(body.project, body.path)
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+    except SdkApprovalPending as e:
+        raise HTTPException(status_code=403, detail=str(e)) from None
+    return SdkEnvResponse(values=values)
+
+
+@app.get("/sdk/projects", response_model=list[SdkProject])
+def sdk_list_projects() -> list[SdkProject]:
+    return [SdkProject(**p) for p in VAULT.list_projects()]
+
+
+@app.get("/sdk/projects/{project}/directories", response_model=list[SdkProjectDir])
+def sdk_list_dirs(project: str) -> list[SdkProjectDir]:
+    return [SdkProjectDir(**d) for d in VAULT.list_project_dirs(project)]
+
+
+@app.post("/sdk/projects/{project}/directories", response_model=SdkProjectDir)
+def sdk_add_dir(project: str, body: SdkAddDirRequest) -> SdkProjectDir:
+    created = VAULT.add_project_dir(project, body.path)
+    dirs = VAULT.list_project_dirs(project)
+    return next(SdkProjectDir(**d) for d in dirs if d["id"] == created["id"])
+
+
+@app.delete("/sdk/projects/{project}/directories/{dir_id}")
+def sdk_remove_dir(project: str, dir_id: int) -> dict:
+    ok = VAULT.remove_project_dir(project, dir_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="디렉토리를 찾을 수 없습니다")
+    return {"removed": True}
+
+
+@app.get("/sdk/pending", response_model=list[SdkPendingRequest])
+def sdk_list_pending() -> list[SdkPendingRequest]:
+    return [SdkPendingRequest(**p) for p in VAULT.list_pending()]
+
+
+@app.post("/sdk/pending/{pending_id}/approve")
+def sdk_approve_pending(pending_id: int) -> dict:
+    ok = VAULT.approve_pending(pending_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="대기 중인 요청을 찾을 수 없습니다")
+    return {"approved": True}
+
+
+@app.post("/sdk/pending/{pending_id}/deny")
+def sdk_deny_pending(pending_id: int) -> dict:
+    ok = VAULT.deny_pending(pending_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="대기 중인 요청을 찾을 수 없습니다")
+    return {"denied": True}
 
 
 # 로컬 기본 포트 8003 (흔한 8000 회피). `python -m app.main` 으로 실행 가능.
