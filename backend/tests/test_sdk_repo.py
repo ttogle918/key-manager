@@ -322,3 +322,21 @@ def test_entry_ids_for_names_prefers_project_specific_row(conn):
 
 def test_entry_ids_for_names_empty_list_returns_empty_dict(conn):
     assert sdk_repo.entry_ids_for_names(conn, "블로그", []) == {}
+
+
+def test_entry_ids_for_names_ignores_unrelated_project_row(conn):
+    """다른 프로젝트에 동일 이름 항목이 (더 낮은 id로) 먼저 있어도,
+    전역 항목이 있으면 반드시 전역 항목의 id를 반환해야 한다 — 다른 프로젝트
+    항목을 후보에서 배제하지 않으면 감사 로그에 엉뚱한 항목이 기록된다."""
+    key = vault_repo.unlock(conn, MASTER)
+    other_project_id = vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-other-project", project="다른프로젝트",
+    )
+    global_id = vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-global", project=None,
+    )
+    ids = sdk_repo.entry_ids_for_names(conn, "블로그", ["OPENAI_API_KEY"])
+    assert ids["OPENAI_API_KEY"] == global_id
+    assert ids["OPENAI_API_KEY"] != other_project_id

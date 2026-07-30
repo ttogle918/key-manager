@@ -169,18 +169,17 @@ def entries_for_env(conn: sqlite3.Connection, key: bytes, project: str) -> dict[
 
 
 def entry_ids_for_names(conn: sqlite3.Connection, project: str, names: list[str]) -> dict[str, int]:
-    """official_name → entry id. entries_for_env와 같은 우선순위(project 전용이 이김) —
+    """official_name → entry id. entries_for_env와 같은 우선순위(project 전용이 이김,
+    전역·project만 후보 — 다른 프로젝트의 동일 이름 항목은 후보에서 아예 제외) —
     감사 로그에 "실제로 값을 내려준 항목"을 정확히 기록하기 위함."""
     if not names:
         return {}
     placeholders = ",".join("?" for _ in names)
     rows = conn.execute(
-        f"SELECT id, official_name, project FROM entries WHERE official_name IN ({placeholders})",
-        names,
+        f"SELECT id, official_name FROM entries"
+        f" WHERE official_name IN ({placeholders})"
+        f" AND (project IS NULL OR project = '' OR project = ?)"
+        f" ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END, id",
+        [*names, project, project],
     ).fetchall()
-    result: dict[str, int] = {}
-    for r in rows:
-        name = r["official_name"]
-        if name not in result or r["project"] == project:
-            result[name] = int(r["id"])
-    return result
+    return {r["official_name"]: int(r["id"]) for r in rows}
