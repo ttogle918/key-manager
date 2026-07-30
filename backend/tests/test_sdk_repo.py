@@ -128,6 +128,112 @@ def test_is_path_approved_rejects_other_path_in_nonempty_table(conn):
     assert sdk_repo.is_path_approved(conn, "블로그", "/repo/other") is False
 
 
+def test_connect_backfills_missing_path_norm_column_project_dirs(tmp_path):
+    """3차 리뷰 반영: path_norm 컬럼이 없는 구버전(5컬럼) sdk_project_dirs를 가진 vault.db를
+    재연결하면, CREATE TABLE IF NOT EXISTS로는 컬럼을 추가할 수 없으므로 connect()가
+    ALTER TABLE + 백필로 path_norm을 채워 넣어야 한다.
+    """
+    path = str(tmp_path / "vault.db")
+    old_conn = vault_repo.connect(path)
+    vault_repo.init_vault(old_conn, MASTER)
+    # "구버전" 상태 시뮬레이션: path_norm 없는 5컬럼 스키마로 되돌린다.
+    old_conn.execute("DROP TABLE sdk_project_dirs")
+    old_conn.execute(
+        """
+        CREATE TABLE sdk_project_dirs (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            project    TEXT NOT NULL,
+            path       TEXT NOT NULL,
+            source     TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    # add_project_dir()는 이제 path_norm 존재를 전제하므로, raw SQL로 직접 삽입한다.
+    old_conn.execute(
+        "INSERT INTO sdk_project_dirs (project, path, source, created_at)"
+        " VALUES (?,?,?,?)",
+        ("블로그", "/repo/blog/", "manual", "2026-01-01T00:00:00+00:00"),
+    )
+    old_conn.commit()
+    old_conn.close()
+
+    new_conn = vault_repo.connect(path)
+    try:
+        dirs = sdk_repo.list_project_dirs(new_conn, "블로그")
+        assert len(dirs) == 1
+        assert dirs[0]["path"] == "/repo/blog/"  # 원본 path는 그대로 보존
+        # 백필된 path_norm이 실제로 매칭에 쓰일 수 있어야 한다.
+        assert sdk_repo.is_path_approved(new_conn, "블로그", "/repo/blog/") is True
+    finally:
+        new_conn.close()
+
+
+def test_connect_backfills_missing_path_norm_column_pending_requests(tmp_path):
+    """sdk_pending_requests에 대해서도 동일한 컬럼 백필 마이그레이션이 동작해야 한다."""
+    path = str(tmp_path / "vault.db")
+    old_conn = vault_repo.connect(path)
+    vault_repo.init_vault(old_conn, MASTER)
+    old_conn.execute("DROP TABLE sdk_pending_requests")
+    old_conn.execute(
+        """
+        CREATE TABLE sdk_pending_requests (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            project      TEXT NOT NULL,
+            path         TEXT NOT NULL,
+            requested_at TEXT NOT NULL
+        )
+        """
+    )
+    old_conn.execute(
+        "INSERT INTO sdk_pending_requests (project, path, requested_at)"
+        " VALUES (?,?,?)",
+        ("블로그", "/repo/blog/", "2026-01-01T00:00:00+00:00"),
+    )
+    old_conn.commit()
+    old_conn.close()
+
+    new_conn = vault_repo.connect(path)
+    try:
+        pending = sdk_repo.list_pending_requests(new_conn)
+        assert len(pending) == 1
+        assert pending[0]["path"] == "/repo/blog/"
+        pid = pending[0]["id"]
+        assert sdk_repo.get_pending(new_conn, pid)["path"] == "/repo/blog/"
+        # approve_pending()이 정상 동작(path_norm이 있어야 add_project_dir 내부 조회가 성공)
+        assert sdk_repo.approve_pending(new_conn, pid) is True
+        assert sdk_repo.is_path_approved(new_conn, "블로그", "/repo/blog/") is True
+    finally:
+        new_conn.close()
+
+
+def test_add_project_dir_preserves_trailing_slash_verbatim(conn):
+    """플랫폼 무관 원본 보존 검증(3차 리뷰): normpath는 POSIX·Windows 모두에서
+    트레일링 슬래시를 제거하므로, 이 입력은 정규화가 저장 전에 새어 들어가면
+    어느 플랫폼에서든 실패한다(기존 "/repo/blog" 테스트는 POSIX에서 공허했다).
+    """
+    sdk_repo.add_project_dir(conn, "블로그", "/repo/blog/", source="manual")
+    dirs = sdk_repo.list_project_dirs(conn, "블로그")
+    assert len(dirs) == 1
+    assert dirs[0]["path"] == "/repo/blog/"
+
+
+def test_pending_request_preserves_trailing_slash_verbatim(conn):
+    """대기 요청도 path를 원본 그대로 보존해야 한다(플랫폼 무관 검증)."""
+    pid = sdk_repo.add_pending_request(conn, "블로그", "/repo/blog/")
+    assert sdk_repo.get_pending(conn, pid)["path"] == "/repo/blog/"
+    assert sdk_repo.list_pending_requests(conn)[0]["path"] == "/repo/blog/"
+
+
+def test_approve_pending_preserves_trailing_slash_verbatim(conn):
+    """대기→승인 전체 생명주기에서도 원본 path(트레일링 슬래시 포함)가 유지돼야 한다."""
+    pending_id = sdk_repo.add_pending_request(conn, "블로그", "/repo/blog/")
+    assert sdk_repo.approve_pending(conn, pending_id) is True
+    dirs = sdk_repo.list_project_dirs(conn, "블로그")
+    assert len(dirs) == 1
+    assert dirs[0]["path"] == "/repo/blog/"
+
+
 def test_list_sdk_projects_groups_by_project(conn):
     key = vault_repo.unlock(conn, MASTER)
     vault_repo.add_entry(

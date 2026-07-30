@@ -95,6 +95,28 @@ def _aad(official_name: str | None) -> bytes:
     return (official_name or "").encode("utf-8")
 
 
+def _ensure_path_norm_column(conn: sqlite3.Connection, table: str) -> None:
+    """구버전 vault.db에 path_norm 컬럼이 없으면 추가하고, 기존 행의 값을 채운다(RUNTIME-1).
+
+    CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양은 손대지 않으므로,
+    이 브랜치의 중간 커밋 시점(path_norm 없는 5컬럼 스키마)을 거친 vault.db를 위한
+    보강 마이그레이션이다. os.path.normcase(os.path.normpath(...))로 채운다
+    (sdk_repo._normalize_path와 동일한 계산이지만, 계층 분리를 위해 여기서 직접 계산한다 —
+    vault_repo가 sdk_repo를 import하지 않는다).
+    """
+    cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if "path_norm" in cols:
+        return
+    conn.execute(f"ALTER TABLE {table} ADD COLUMN path_norm TEXT NOT NULL DEFAULT ''")
+    import os
+
+    rows = conn.execute(f"SELECT id, path FROM {table}").fetchall()
+    for r in rows:
+        norm = os.path.normcase(os.path.normpath(r["path"]))
+        conn.execute(f"UPDATE {table} SET path_norm = ? WHERE id = ?", (norm, r["id"]))
+    conn.commit()
+
+
 def connect(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
@@ -105,6 +127,11 @@ def connect(path: str) -> sqlite3.Connection:
     # is_initialized() 판단(= "아직 초기화 안 됨")을 건드리면 안 되기 때문.
     if is_initialized(conn):
         conn.executescript(_SCHEMA)
+        # CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양을 바꾸지 않는다 —
+        # path_norm 없는 구버전 sdk_project_dirs/sdk_pending_requests(5컬럼)를 위한
+        # 컬럼 레벨 보강 마이그레이션(3차 리뷰 반영).
+        _ensure_path_norm_column(conn, "sdk_project_dirs")
+        _ensure_path_norm_column(conn, "sdk_pending_requests")
     return conn
 
 
