@@ -185,11 +185,12 @@ def test_connect_backfills_missing_path_norm_column_pending_requests(tmp_path):
         )
         """
     )
-    old_conn.execute(
+    cur = old_conn.execute(
         "INSERT INTO sdk_pending_requests (project, path, requested_at)"
         " VALUES (?,?,?)",
         ("블로그", "/repo/blog/", "2026-01-01T00:00:00+00:00"),
     )
+    old_pending_id = cur.lastrowid
     old_conn.commit()
     old_conn.close()
 
@@ -200,6 +201,10 @@ def test_connect_backfills_missing_path_norm_column_pending_requests(tmp_path):
         assert pending[0]["path"] == "/repo/blog/"
         pid = pending[0]["id"]
         assert sdk_repo.get_pending(new_conn, pid)["path"] == "/repo/blog/"
+        # path_norm이 실제로 백필됐는지 검증: add_pending_request의 기존 행 조회는
+        # path_norm으로 매칭하므로, 컬럼이 없으면 OperationalError가, 백필이 안 됐으면
+        # 매칭 실패로 새 행이 생겨 다른 id가 반환된다. 백필이 맞았을 때만 기존 id 그대로 반환.
+        assert sdk_repo.add_pending_request(new_conn, "블로그", "/repo/blog/") == old_pending_id
         # approve_pending()이 정상 동작(path_norm이 있어야 add_project_dir 내부 조회가 성공)
         assert sdk_repo.approve_pending(new_conn, pid) is True
         assert sdk_repo.is_path_approved(new_conn, "블로그", "/repo/blog/") is True
