@@ -142,3 +142,45 @@ def list_sdk_projects(conn: sqlite3.Connection) -> list[dict]:
         " WHERE project IS NOT NULL AND project != '' GROUP BY project ORDER BY project"
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def entries_for_env(conn: sqlite3.Connection, key: bytes, project: str) -> dict[str, str]:
+    """project 전용 키 + 전역(project 미지정) 키를 복호화해 official_name→값으로 병합.
+
+    이름이 겹치면 project 전용 키가 우선(override), 겹치지 않으면 합집합.
+    official_name이 없는 항목(unknown 등)은 환경변수로 쓸 수 없으니 제외한다.
+    """
+    from . import crypto
+
+    rows = conn.execute(
+        "SELECT official_name, nonce, ciphertext FROM entries"
+        " WHERE project IS NULL OR project = '' OR project = ?"
+        " ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END",
+        (project, project),
+    ).fetchall()
+    result: dict[str, str] = {}
+    for r in rows:
+        name = r["official_name"]
+        if not name:
+            continue
+        aad = name.encode("utf-8")
+        result[name] = crypto.decrypt(key, r["nonce"], r["ciphertext"], aad)
+    return result
+
+
+def entry_ids_for_names(conn: sqlite3.Connection, project: str, names: list[str]) -> dict[str, int]:
+    """official_name → entry id. entries_for_env와 같은 우선순위(project 전용이 이김) —
+    감사 로그에 "실제로 값을 내려준 항목"을 정확히 기록하기 위함."""
+    if not names:
+        return {}
+    placeholders = ",".join("?" for _ in names)
+    rows = conn.execute(
+        f"SELECT id, official_name, project FROM entries WHERE official_name IN ({placeholders})",
+        names,
+    ).fetchall()
+    result: dict[str, int] = {}
+    for r in rows:
+        name = r["official_name"]
+        if name not in result or r["project"] == project:
+            result[name] = int(r["id"])
+    return result

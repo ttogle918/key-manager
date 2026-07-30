@@ -255,3 +255,70 @@ def test_list_sdk_projects_groups_by_project(conn):
     )
     projects = sdk_repo.list_sdk_projects(conn)
     assert projects == [{"project": "블로그", "key_count": 2}]
+
+
+def test_entries_for_env_merges_global_and_project(conn):
+    key = vault_repo.unlock(conn, MASTER)
+    vault_repo.add_entry(
+        conn, key, service="github", kind="api_key", official_name="GITHUB_TOKEN",
+        value="ghp_global", project=None,
+    )
+    vault_repo.add_entry(
+        conn, key, service="notion", kind="api_key", official_name="NOTION_API_KEY",
+        value="secret_blog", project="블로그",
+    )
+    env = sdk_repo.entries_for_env(conn, key, "블로그")
+    assert env == {"GITHUB_TOKEN": "ghp_global", "NOTION_API_KEY": "secret_blog"}
+
+
+def test_entries_for_env_project_overrides_global_on_name_conflict(conn):
+    key = vault_repo.unlock(conn, MASTER)
+    vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-global", project=None,
+    )
+    vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-project-specific", project="블로그",
+    )
+    env = sdk_repo.entries_for_env(conn, key, "블로그")
+    assert env["OPENAI_API_KEY"] == "sk-project-specific"
+
+
+def test_entries_for_env_other_project_not_included(conn):
+    key = vault_repo.unlock(conn, MASTER)
+    vault_repo.add_entry(
+        conn, key, service="notion", kind="api_key", official_name="NOTION_API_KEY",
+        value="secret_other", project="다른프로젝트",
+    )
+    env = sdk_repo.entries_for_env(conn, key, "블로그")
+    assert "NOTION_API_KEY" not in env
+
+
+def test_entries_for_env_skips_entries_without_official_name(conn):
+    key = vault_repo.unlock(conn, MASTER)
+    vault_repo.add_entry(
+        conn, key, service=None, kind=None, official_name=None,
+        value="unknown-value", project="블로그",
+    )
+    env = sdk_repo.entries_for_env(conn, key, "블로그")
+    assert env == {}
+
+
+def test_entry_ids_for_names_prefers_project_specific_row(conn):
+    key = vault_repo.unlock(conn, MASTER)
+    global_id = vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-global", project=None,
+    )
+    project_id = vault_repo.add_entry(
+        conn, key, service="openai", kind="api_key", official_name="OPENAI_API_KEY",
+        value="sk-project", project="블로그",
+    )
+    ids = sdk_repo.entry_ids_for_names(conn, "블로그", ["OPENAI_API_KEY"])
+    assert ids["OPENAI_API_KEY"] == project_id
+    assert ids["OPENAI_API_KEY"] != global_id
+
+
+def test_entry_ids_for_names_empty_list_returns_empty_dict(conn):
+    assert sdk_repo.entry_ids_for_names(conn, "블로그", []) == {}
