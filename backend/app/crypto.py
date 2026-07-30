@@ -31,6 +31,33 @@ class DecryptError(Exception):
     """복호화 실패 — 틀린 비밀번호이거나 데이터 변조(GCM 태그 불일치)."""
 
 
+class WeakPasswordError(ValueError):
+    """마스터 비밀번호가 비밀번호 작성규칙을 충족하지 못함."""
+
+
+def check_password_strength(password: str) -> None:
+    """개인정보보호위원회 '개인정보의 안전성 확보조치 기준' 비밀번호 작성규칙을 강제한다.
+
+    영문·숫자·특수문자 중 3종류 이상을 조합하면 8자 이상, 2종류만 조합하면 10자 이상이어야
+    한다(1종류만 쓰면 길이와 무관하게 거부). 기존 min_length=8 pydantic 제약은 절대 하한일
+    뿐이고, 조합이 2종류면 이 함수가 10자 이상을 추가로 요구한다.
+    """
+    kinds = sum(
+        [
+            any(c.isalpha() for c in password),
+            any(c.isdigit() for c in password),
+            any(not c.isalnum() for c in password),
+        ]
+    )
+    if kinds < 2:
+        raise WeakPasswordError("비밀번호는 영문·숫자·특수문자 중 2종류 이상을 섞어야 해요.")
+    min_len = 8 if kinds >= 3 else 10
+    if len(password) < min_len:
+        raise WeakPasswordError(
+            f"영문·숫자·특수문자를 {'모두' if kinds >= 3 else '2종류'} 섞었다면 {min_len}자 이상이어야 해요."
+        )
+
+
 @dataclass(frozen=True)
 class KdfParams:
     """금고에 저장되는 키 유도 파라미터(비밀 아님). 같은 비밀번호+같은 파라미터 → 같은 키."""

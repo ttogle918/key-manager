@@ -45,6 +45,8 @@ export function SetupScreen() {
           값은 마스터 비밀번호에서 Argon2id로 유도한 키로 AES-256-GCM 암호화되어
           <br />
           이 기기에만 저장됩니다. 비밀번호·키는 디스크에 남지 않습니다.
+          <br />
+          영문·숫자·특수문자를 모두 섞으면 8자 이상, 2종류만 섞으면 10자 이상이어야 해요.
         </div>
 
         <input
@@ -52,7 +54,7 @@ export function SetupScreen() {
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           onKeyDown={onKey}
-          placeholder="마스터 비밀번호 (8자 이상)"
+          placeholder="마스터 비밀번호 (영문·숫자·특수문자 조합)"
           className="mt-[22px] w-full rounded-[9px] border border-border bg-surface px-[13px] py-[11px] text-[13.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
         />
 

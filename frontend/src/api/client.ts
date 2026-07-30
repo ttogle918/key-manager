@@ -49,15 +49,15 @@ export async function analyzeApi(
       if (res.status === 413 || res.status === 422) {
         throw new ApiError('입력이 너무 크거나 형식이 올바르지 않아요 — 줄여서 다시 시도하세요')
       }
-      throw new ApiError(`백엔드 오류 (${res.status})`)
+      throw new ApiError(`문제가 발생했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`)
     }
     return (await res.json()) as AnalyzeApiResponse
   } catch (e) {
     if (e instanceof ApiError) throw e
     if (e instanceof DOMException && e.name === 'AbortError') {
-      throw new ApiError('백엔드 응답 시간 초과')
+      throw new ApiError('응답이 너무 늦어요 — 다시 시도해 보세요.')
     }
-    throw new ApiError('백엔드에 연결할 수 없습니다')
+    throw new ApiError('KeyLens에 연결할 수 없어요 — 잠시 후 다시 시도하거나 재시작해 보세요.')
   } finally {
     clearTimeout(timer)
   }
@@ -69,11 +69,11 @@ export async function fetchKnowledge(timeoutMs = 5000): Promise<KnowledgeRespons
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {
     const res = await fetch(`${API_BASE}/knowledge`, { signal: ctrl.signal })
-    if (!res.ok) throw new ApiError(`지식베이스 로드 실패 (${res.status})`)
+    if (!res.ok) throw new ApiError(`서비스 목록을 불러오지 못했어요 (오류 ${res.status})`)
     return (await res.json()) as KnowledgeResponse
   } catch (e) {
     if (e instanceof ApiError) throw e
-    throw new ApiError('지식베이스에 연결할 수 없습니다')
+    throw new ApiError('KeyLens에 연결할 수 없어요 — 잠시 후 다시 시도하거나 재시작해 보세요.')
   } finally {
     clearTimeout(timer)
   }
@@ -100,13 +100,20 @@ async function vreq<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
     })
   } catch {
-    throw new VaultApiError(0, '백엔드에 연결할 수 없습니다')
+    throw new VaultApiError(0, 'KeyLens에 연결할 수 없어요 — 잠시 후 다시 시도하거나 재시작해 보세요.')
   }
   if (!res.ok) {
-    let detail = `금고 오류 (${res.status})`
+    let detail = `문제가 발생했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`
     try {
-      const body = (await res.json()) as { detail?: string }
-      if (body.detail) detail = body.detail
+      const body = (await res.json()) as { detail?: unknown }
+      // FastAPI 자체 검증 오류(예: 비밀번호 8자 미만)는 detail 이 문자열이 아니라
+      // [{loc, msg, type}] 배열로 온다 — 그대로 쓰면 토스트에 이상한 값이 뜨니 msg 만 뽑아 쓴다.
+      if (typeof body.detail === 'string') {
+        detail = body.detail
+      } else if (Array.isArray(body.detail) && body.detail.length) {
+        const first = body.detail[0] as { msg?: string }
+        if (typeof first?.msg === 'string') detail = first.msg
+      }
     } catch {
       /* 본문 없음 */
     }

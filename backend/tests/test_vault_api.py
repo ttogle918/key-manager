@@ -60,6 +60,37 @@ def test_init_weak_password_rejected(vault):
         VaultInit(password="short")  # 5자 < 8
 
 
+def test_init_single_char_type_rejected(vault):
+    """개인정보보호위원회 비밀번호 작성규칙: 8자 이상이어도 문자 종류가 1개뿐이면 거부."""
+    with pytest.raises(HTTPException) as e:
+        main.vault_init(VaultInit(password="alllowercase"))
+    assert e.value.status_code == 422
+
+
+def test_init_two_kinds_needs_ten_chars(vault):
+    """영문+숫자 2종류 조합이면 10자 미만은 거부, 10자 이상은 통과."""
+    with pytest.raises(HTTPException) as e:
+        main.vault_init(VaultInit(password="abc12345"))  # 2종류, 8자 < 10
+    assert e.value.status_code == 422
+    st = main.vault_init(VaultInit(password="abcdefgh12"))  # 2종류, 10자
+    assert st.initialized is True
+
+
+def test_init_three_kinds_eight_chars_ok(vault):
+    """영문+숫자+특수문자 3종류 조합이면 8자로도 통과."""
+    st = main.vault_init(VaultInit(password="Abcd12!@"))
+    assert st.initialized is True
+
+
+def test_change_password_weak_new_password_rejected(vault):
+    main.vault_init(VaultInit(password=MASTER))
+    with pytest.raises(HTTPException) as e:
+        main.vault_change_password(
+            VaultChangePassword(old_password=MASTER, new_password="alllowercase")
+        )
+    assert e.value.status_code == 422
+
+
 def test_add_and_get_value_flow(vault):
     main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(

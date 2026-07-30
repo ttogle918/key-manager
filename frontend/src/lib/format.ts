@@ -71,6 +71,23 @@ export function jwtExp(value: string): string | null {
   }
 }
 
+/**
+ * 개인정보보호위원회 '개인정보의 안전성 확보조치 기준' 비밀번호 작성규칙.
+ * 영문·숫자·특수문자 중 3종류 이상 조합 시 8자 이상, 2종류만 조합 시 10자 이상이어야 한다
+ * (1종류만 쓰면 길이와 무관하게 거부). 백엔드(`crypto.check_password_strength`)와 동일 규칙 —
+ * 여기서는 제출 전에 미리 막아 왕복을 줄이는 용도이고, 최종 판단은 백엔드가 한다.
+ */
+export function passwordPolicyError(pw: string): string | null {
+  const kinds =
+    Number(/[A-Za-z]/.test(pw)) + Number(/\d/.test(pw)) + Number(/[^A-Za-z0-9]/.test(pw))
+  if (kinds < 2) return '비밀번호는 영문·숫자·특수문자 중 2종류 이상을 섞어야 해요.'
+  const minLen = kinds >= 3 ? 8 : 10
+  if (pw.length < minLen) {
+    return `영문·숫자·특수문자를 ${kinds >= 3 ? '모두' : '2종류'} 섞었다면 ${minLen}자 이상이어야 해요.`
+  }
+  return null
+}
+
 /** 마스터 비밀번호 강도 (0=빈값 ~ 4=강함). */
 export function strengthLevel(pw: string): number {
   if (!pw.length) return 0

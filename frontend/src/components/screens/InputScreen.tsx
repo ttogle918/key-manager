@@ -67,6 +67,11 @@ export function InputScreen() {
         스크린샷·URL·텍스트를 함께 던지면 맥락으로 정체를 판별해 공식 환경변수명에 매핑합니다.
         <br />
         모든 분석은 이 기기 안에서만 일어납니다.
+        <br />
+        <span className="text-dim-2">
+          스크린샷은 라벨·URL로 &ldquo;어떤 키인지&rdquo; 판별하는 용도예요 — 값 자체가 화면에서
+          마스킹(••••)돼 있으면 인식할 수 없으니, 실제 키 값은 꼭 아래 텍스트 붙여넣기에 넣어주세요.
+        </span>
       </p>
 
       {firstRun && (
@@ -146,7 +151,10 @@ export function InputScreen() {
                 className="w-full rounded-lg border border-border bg-surface px-3 py-[10px] font-mono text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
               />
             </Field>
-            <Field label="텍스트 붙여넣기" hint="(선택 — 스크린샷에 안 나온 키를 여기에)">
+            <Field
+              label="텍스트 붙여넣기"
+              hint="(실제 키 값은 꼭 여기에 — 스크린샷 속 값은 마스킹돼 있을 수 있어요)"
+            >
               <textarea
                 value={textVal}
                 onChange={(e) => s.setText(e.target.value)}
@@ -213,7 +221,7 @@ export function InputScreen() {
       {analyzed && apiError && (
         <div className="mb-3 flex items-center gap-[10px] rounded-[10px] border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.05)] px-[14px] py-3 text-[12.5px] text-amber-soft [animation:klFade_.2s]">
           <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />
-          {apiError} — 아래는 샘플 목업입니다. 백엔드(:8003)를 켜면 실제 분류로 동작해요.
+          {apiError} — 아래는 샘플 목업입니다. 서버가 켜져 있으면 실제 분류로 동작해요.
         </div>
       )}
 

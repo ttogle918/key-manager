@@ -5,7 +5,7 @@
  * 모든 토큰은 더미이며 서명 검증은 하지 않는다(만료일 표기만 목적).
  */
 import { describe, expect, it } from 'vitest'
-import { jwtExp } from './format'
+import { jwtExp, passwordPolicyError } from './format'
 
 /** base64url payload로 더미 JWT를 만든다(header/signature는 형식만 맞춘 더미). */
 function makeJwt(payload: Record<string, unknown>): string {
@@ -47,5 +47,26 @@ describe('jwtExp', () => {
     expect(
       jwtExp('abcdef0123456789abcdef0123456789.DummyOllamaSuffix1234567'),
     ).toBeNull()
+  })
+})
+
+describe('passwordPolicyError', () => {
+  // 개인정보보호위원회 '개인정보의 안전성 확보조치 기준': 3종류 조합 8자 / 2종류 조합 10자.
+  it('문자 종류가 1개뿐이면 길이와 무관하게 거부', () => {
+    expect(passwordPolicyError('alllowercase')).not.toBeNull()
+    expect(passwordPolicyError('12345678901234')).not.toBeNull()
+  })
+
+  it('2종류 조합은 10자 미만이면 거부, 10자 이상이면 통과', () => {
+    expect(passwordPolicyError('abc12345')).not.toBeNull() // 8자 < 10
+    expect(passwordPolicyError('abcdefgh12')).toBeNull() // 정확히 10자
+  })
+
+  it('3종류(영문+숫자+특수문자) 조합은 8자면 통과', () => {
+    expect(passwordPolicyError('Abcd12!@')).toBeNull()
+  })
+
+  it('3종류 조합이어도 8자 미만이면 거부', () => {
+    expect(passwordPolicyError('Ab1!')).not.toBeNull()
   })
 })

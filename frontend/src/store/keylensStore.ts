@@ -11,7 +11,7 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { applyKnowledge, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
-import { envText, jwtExp, today } from '@/lib/format'
+import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -21,6 +21,22 @@ import type {
   VaultItem,
   View,
 } from '@/types'
+
+/**
+ * VaultApiError면 실제 사유(detail — 네트워크 단절일 때도 vreq가 이미 적절한 문구를 담아 던진다)를
+ * 그대로 보여주고, VaultApiError가 아닌 알 수 없는 오류일 때만 fallback을 쓴다.
+ * "서버가 응답은 했는데 연결을 확인하라"는 오해를 만들지 않기 위함.
+ * 사용자에게는 항상 이해하기 쉬운 문구만 보여주되, 실제 원인(상태 코드·원본 오류)은
+ * 개발자 콘솔에 남겨 디버깅이 가능하게 한다.
+ */
+function vaultErrorText(e: unknown, fallback: string): string {
+  if (e instanceof VaultApiError) {
+    console.error(`[KeyLens] 금고 요청 실패 (HTTP ${e.status}):`, e.message)
+    return e.message
+  }
+  console.error('[KeyLens] 예상치 못한 오류:', e)
+  return fallback
+}
 
 /** 분석 시뮬레이션 시간(초). 실제 앱에선 백엔드 응답 시간으로 대체. */
 const ANALYZE_SECONDS = 1.4
@@ -279,10 +295,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
         } else {
           set({ screen: 'lock', locked: true })
         }
-      } catch {
+      } catch (e) {
         // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
+        console.error('[KeyLens] 부팅 시 금고 상태 조회 실패:', e)
         set({ screen: 'setup' })
-        get().showToast('백엔드(:8003) 미연결 — 금고 기능은 백엔드를 켜야 동작해요')
+        get().showToast('금고 기능을 쓰려면 KeyLens 서버가 켜져 있어야 해요 — 잠시 후 다시 시도해 보세요')
       }
     },
     loadVault: async () => {
@@ -320,8 +337,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
     setPw2: (v) => set({ pw2: v, setupErr: '' }),
     createVault: async () => {
       const { pw, pw2 } = get()
-      if (pw.length < 8) {
-        set({ setupErr: '비밀번호는 8자 이상이어야 해요.' })
+      const policyErr = passwordPolicyError(pw)
+      if (policyErr) {
+        set({ setupErr: policyErr })
         return
       }
       if (pw !== pw2) {
@@ -340,7 +358,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           unlocking: false,
           setupErr: conflict
             ? '이미 금고가 있어요 — 잠금 해제로 진행하세요.'
-            : '금고 생성 실패 — 백엔드(:8003)가 켜져 있는지 확인하세요.',
+            : vaultErrorText(e, '금고 생성 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.'),
         })
         if (conflict) set({ screen: 'lock', locked: true })
       }
@@ -362,7 +380,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         // 해제 후에도 값은 마스킹 유지 — 항목별 클릭 시에만 4초간 표시(일괄 노출 금지).
         get().showToast('잠금 해제됨 — 값은 항목을 클릭하면 4초간 표시됩니다')
       } catch (e) {
-        let msg = '잠금 해제 실패 — 백엔드 연결을 확인하세요.'
+        let msg = vaultErrorText(e, '잠금 해제 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
         if (e instanceof VaultApiError) {
           if (e.status === 401) msg = '마스터 비밀번호가 올바르지 않아요.'
           else if (e.status === 429)
@@ -477,8 +495,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
       } catch (e) {
         if (!get().analyzing) return
         // 백엔드 미연결 → 데모가 끊기지 않게 샘플 목업으로 폴백.
+        if (!(e instanceof ApiError)) console.error('[KeyLens] 분석 요청 실패:', e)
         const results = freshResults().map((r) => ({ ...r, memo, project }))
-        const msg = e instanceof ApiError ? e.message : '백엔드 연결 실패'
+        const msg = e instanceof ApiError ? e.message : 'KeyLens에 연결할 수 없어요'
         set({ analyzing: false, analyzed: true, results, unknowns: [], apiError: msg })
         get().showToast(`${msg} — 샘플 결과로 시연합니다`)
       }
@@ -512,7 +531,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     save: async (id, force = false) => {
       // 백엔드 장애 폴백(샘플 목업) 결과는 진짜 분류가 아니다 — 보관함 오염 방지.
       if (get().apiError) {
-        get().showToast('백엔드 미연결 — 샘플 목업 결과는 저장할 수 없어요')
+        get().showToast('지금은 샘플 결과라 저장할 수 없어요 — 서버를 켜고 다시 분석해 주세요')
         return
       }
       const r = get().results.find((x) => x.id === id)
@@ -550,7 +569,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ dupTarget: null })
           get().showToast('금고가 잠겨 저장할 수 없어요 — 잠금을 해제하세요')
         } else {
-          get().showToast('저장 실패 — 백엔드 연결을 확인하세요')
+          get().showToast(vaultErrorText(e, '저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         }
       }
     },
@@ -561,7 +580,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     cancelDup: () => set({ dupTarget: null }),
     saveAll: async () => {
       if (get().apiError) {
-        get().showToast('백엔드 미연결 — 샘플 목업 결과는 저장할 수 없어요')
+        get().showToast('지금은 샘플 결과라 저장할 수 없어요 — 서버를 켜고 다시 분석해 주세요')
         return
       }
       const savable = get().results.filter((r) =>
@@ -703,7 +722,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
             memo: cur.memo || null,
             expires_at: cur.expiresAt,
           })
-          .catch(() => get().showToast('메모 저장 실패 — 백엔드 연결을 확인하세요'))
+          .catch((e) => get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요')))
       }, 600)
     },
     openRotate: (it) => set({ rotateTarget: it }),
@@ -728,7 +747,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ locked: true })
           get().showToast('금고가 잠겨 교체할 수 없어요 — 잠금을 해제하세요')
         } else {
-          get().showToast('값 교체 실패 — 백엔드 연결을 확인하세요')
+          get().showToast(vaultErrorText(e, '값 교체 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         }
       }
     },
@@ -748,7 +767,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ locked: true })
           get().showToast('금고가 잠겨 삭제할 수 없어요 — 잠금을 해제하세요')
         } else {
-          get().showToast('삭제 실패 — 백엔드 연결을 확인하세요')
+          get().showToast(vaultErrorText(e, '삭제 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         }
       }
     },
@@ -783,7 +802,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           get().showToast('금고가 잠겨 검증할 수 없어요 — 잠금을 해제하세요')
         } else {
           patch({ status: 'unknown', detail: '검증 요청 실패' })
-          get().showToast('검증 실패 — 백엔드 연결을 확인하세요')
+          get().showToast(vaultErrorText(e, '검증 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         }
       }
     },
@@ -844,7 +863,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ locked: true })
           get().showToast('금고가 잠겨 내보낼 수 없어요 — 잠금을 해제하세요')
         } else {
-          get().showToast('내보내기 실패 — 백엔드 연결을 확인하세요')
+          get().showToast(vaultErrorText(e, '내보내기 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         }
       }
     },
@@ -870,9 +889,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return true
       } catch (e) {
         // 잘못된 비밀번호(401)·손상/버전(422)은 백엔드 메시지를 그대로 보여준다. 기존 금고는 무손상.
-        get().showToast(
-          e instanceof VaultApiError ? e.message : '가져오기 실패 — 백엔드 연결을 확인하세요',
-        )
+        get().showToast(vaultErrorText(e, '가져오기 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         return false
       }
     },

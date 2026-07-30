@@ -125,6 +125,10 @@ def vault_status() -> VaultStatus:
 def vault_init(body: VaultInit) -> VaultStatus:
     if VAULT.is_initialized():
         raise HTTPException(status_code=409, detail="이미 금고가 있습니다 — 잠금 해제하세요")
+    try:
+        crypto.check_password_strength(body.password)
+    except crypto.WeakPasswordError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     VAULT.init(body.password)
     return VaultStatus(**VAULT.status())
 
@@ -292,6 +296,10 @@ def vault_import(body: VaultImportRequest) -> VaultImportResult:
 
 @app.post("/vault/change-password", response_model=VaultStatus)
 def vault_change_password(body: VaultChangePassword) -> VaultStatus:
+    try:
+        crypto.check_password_strength(body.new_password)
+    except crypto.WeakPasswordError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     try:
         VAULT.change_password(body.old_password, body.new_password)
     except crypto.DecryptError:
