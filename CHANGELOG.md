@@ -9,7 +9,9 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
-정식 릴리스(0.1.0) 전 개발 중. 아래는 지금까지 축적된 기능·변경 요약입니다.
+## [0.1.0] - 2026-07-30
+
+첫 데스크톱 exe 릴리스. 아래는 지금까지 축적된 기능·변경 요약입니다.
 
 ### Added (기능)
 - **분류 엔진**: 값 기반(Stage1)·**맥락 기반(Stage2, 차별점)** 2단계 분류 — 라벨·URL 신호로
@@ -40,4 +42,5 @@ SPDX-License-Identifier: MIT
 - 라이선스 카피레프트 0건(reuse lint 통과·SBOM), 의존성 취약점(SCA) 전 영역 0건(pip-audit·npm audit).
 - 마스킹 노출 축소·감사 이력·잠금 정책 등 [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) 항목 해소.
 
-[Unreleased]: https://github.com/ttogle918/key-manager/commits/main
+[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.1.0...main
+[0.1.0]: https://github.com/ttogle918/key-manager/releases/tag/v0.1.0
