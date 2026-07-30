@@ -229,3 +229,42 @@ class VaultImportResult(BaseModel):
     imported: int
     skipped: int
     mode: str
+
+
+# ── RUNTIME-1: SDK 접근 관리 ──
+
+
+class SdkEnvRequest(BaseModel):
+    """keylens-env SDK가 값을 요청할 때 보내는 요청 — 프로젝트명 + 호출 디렉토리 경로."""
+
+    project: str = Field(min_length=1, max_length=200)
+    path: str = Field(min_length=1, max_length=4096)
+
+
+class SdkEnvResponse(BaseModel):
+    """env 변수명 → 값. 승인된 디렉토리에서만 채워진다(값 있음 — 응답 로깅 금지)."""
+
+    values: dict[str, str]
+
+
+class SdkProject(BaseModel):
+    project: str
+    key_count: int
+
+
+class SdkProjectDir(BaseModel):
+    id: int
+    path: str
+    source: Literal["manual", "approved"]
+    created_at: str
+
+
+class SdkAddDirRequest(BaseModel):
+    path: str = Field(min_length=1, max_length=4096)
+
+
+class SdkPendingRequest(BaseModel):
+    id: int
+    project: str
+    path: str
+    requested_at: str
