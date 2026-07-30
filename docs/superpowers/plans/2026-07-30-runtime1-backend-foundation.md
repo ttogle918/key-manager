@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+-->
+
 # RUNTIME-1 백엔드 기반(SDK 접근 관리) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -17,6 +22,8 @@
 - 에러는 항상 `HTTPException(status_code, detail=<사람이 읽을 수 있는 한국어 문자열>)`로 — 기존 `main.py` 관례(예: `raise HTTPException(status_code=401, detail="...") from None`) 그대로 따른다.
 - 테스트는 기존 3계층 파일 관례를 그대로 따른다 — repo 레벨(`test_vault.py` 참고), 세션 레벨(`test_vault_session.py` 참고), API 레벨(`test_vault_api.py` 참고, 라우트 함수 직접 호출).
 - SYNC-0(번들 내보내기/가져오기)는 이 플랜 범위 밖 — 프로젝트-디렉토리 허용목록은 기기 단위 신뢰 결정이라 번들에 담지 않는다(다른 기기로 이식하면 안 됨).
+
+> **읽는 법(전체 브랜치 리뷰 반영, 사후 기재):** 각 태스크의 예상 테스트 개수(9/15/9/9 등)는 이후 리뷰 라운드에서 테스트가 추가되며 실제로는 더 늘어났다 — 최소 하한으로 읽을 것.
 
 ---
 
@@ -109,6 +116,10 @@ EVENT_LABELS = {
     "sdk_fetch": "SDK 조회",
 }
 ```
+
+> **사후 정정(전체 브랜치 리뷰):** 위 스키마·CRUD 샘플은 `path` 원본 문자열에 직접 매칭한다(`UNIQUE(project, path)`, `WHERE path = ?`). **구현 중 리뷰로 발견**: 경로를 정규화해서 저장하면 사용자가 보는 표시값이 훼손된다(구분자·대소문자·트레일링 슬래시 차이를 그대로 남겨야 사용자가 등록한 원본을 재확인할 수 있다) — 실제 구현은 `path`(원본, 표시용) / `path_norm`(정규화된 매칭 키) 두 컬럼으로 분리했다(`sdk_repo._normalize_path`, `UNIQUE(project, path_norm)`). 새 스키마를 참고하는 후속 작업은 이 분리를 따라야 한다.
+>
+> **마이그레이션 경로도 필요하다**: 이 브랜치 히스토리상 이미 예전 스키마(테이블 자체가 없거나, `path_norm` 없는 5컬럼 버전)로 초기화된 vault.db가 있을 수 있다. 테이블 레벨(`CREATE TABLE IF NOT EXISTS`를 `connect()`가 이미 초기화된 금고에도 매번 재실행)과 컬럼 레벨(`ALTER TABLE ADD COLUMN` + 기존 행 백필, `IF NOT EXISTS`로는 기존 테이블에 없는 컬럼을 추가할 수 없으므로) 두 단계 마이그레이션이 모두 필요하다. 실제 구현은 `vault_repo.connect()`가 둘 다 수행한다(`_ensure_path_norm_column` 호출 참고).
 
 - [ ] **Step 2: `backend/app/sdk_repo.py` 생성**
 
@@ -482,6 +493,26 @@ def entry_ids_for_names(conn: sqlite3.Connection, project: str, names: list[str]
     return result
 ```
 
+> **사후 정정(전체 브랜치 리뷰):** 이 함수 초안은 프로젝트 필터가 빠져 있어 실제 구현에서 리뷰로 발견·수정됨 — 아래는 수정된 버전. 원본 초안은 `WHERE official_name IN (...)`에 project 필터가 전혀 없어, 다른 프로젝트의 동일 이름 항목 id를 잘못 골라 감사 로그에 남길 수 있는 실제 버그였다(전역/이 프로젝트가 아닌 제3의 프로젝트 항목까지 후보에 들어가 `r["project"] == project` 비교 순서에 따라 오귀속 가능).
+>
+> ```python
+> def entry_ids_for_names(conn: sqlite3.Connection, project: str, names: list[str]) -> dict[str, int]:
+>     """official_name → entry id. entries_for_env와 같은 우선순위(project 전용이 이김,
+>     전역·project만 후보 — 다른 프로젝트의 동일 이름 항목은 후보에서 아예 제외) —
+>     감사 로그에 "실제로 값을 내려준 항목"을 정확히 기록하기 위함."""
+>     if not names:
+>         return {}
+>     placeholders = ",".join("?" for _ in names)
+>     rows = conn.execute(
+>         f"SELECT id, official_name FROM entries"
+>         f" WHERE official_name IN ({placeholders})"
+>         f" AND (project IS NULL OR project = '' OR project = ?)"
+>         f" ORDER BY CASE WHEN project = ? THEN 1 ELSE 0 END, id",
+>         [*names, project, project],
+>     ).fetchall()
+>     return {r["official_name"]: int(r["id"]) for r in rows}
+> ```
+
 - [ ] **Step 4: 테스트 실행 → 전체 통과 확인**
 
 Run: `cd backend && .venv/Scripts/python.exe -m pytest tests/test_sdk_repo.py -v`
@@ -610,10 +641,15 @@ def test_remove_project_dir_and_relist(vault):
 
 
 def test_list_projects_delegates_to_repo(vault):
-    vault.add_entry(official_name="OPENAI_API_KEY", value="sk-dummy", project="사이드")
+    vault.add_entry(
+        service=None, kind=None, official_name="OPENAI_API_KEY", value="sk-dummy",
+        project="사이드",
+    )
     projects = vault.list_projects()
     assert any(p["project"] == "사이드" for p in projects)
 ```
+
+> **사후 정정(전체 브랜치 리뷰):** 원본 샘플은 `vault.add_entry(official_name=..., value=..., project=...)`처럼 `service`/`kind`를 생략했는데, `VaultService.add_entry`는 이 둘을 키워드 전용 필수 인자로 요구해(기본값 없음) 그대로 실행하면 `TypeError`가 난다. 위 샘플은 `service=None, kind=None,`을 넣어 수정된 버전이다.
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
