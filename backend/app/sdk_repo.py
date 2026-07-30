@@ -32,16 +32,20 @@ def add_project_dir(conn: sqlite3.Connection, project: str, path: str, source: s
     """프로젝트에 허용 디렉토리 등록. source: 'manual'(사전 등록) | 'approved'(승인 프롬프트).
 
     이미 등록된 (project, path) 조합이면 새로 만들지 않고 기존 id를 반환한다(idempotent).
+
+    `path`는 호출자가 넘긴 원본 문자열 그대로 저장한다(표시용) — 정규화된 값은
+    `path_norm` 컬럼에 별도로 저장해 매칭·중복 판정에만 쓴다.
     """
-    path = _normalize_path(path)
+    norm = _normalize_path(path)
     row = conn.execute(
-        "SELECT id FROM sdk_project_dirs WHERE project = ? AND path = ?", (project, path)
+        "SELECT id FROM sdk_project_dirs WHERE project = ? AND path_norm = ?", (project, norm)
     ).fetchone()
     if row is not None:
         return int(row["id"])
     cur = conn.execute(
-        "INSERT INTO sdk_project_dirs (project, path, source, created_at) VALUES (?,?,?,?)",
-        (project, path, source, _now()),
+        "INSERT INTO sdk_project_dirs (project, path, path_norm, source, created_at)"
+        " VALUES (?,?,?,?,?)",
+        (project, path, norm, source, _now()),
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -68,24 +72,29 @@ def list_project_dirs(conn: sqlite3.Connection, project: str) -> list[dict]:
 
 def is_path_approved(conn: sqlite3.Connection, project: str, path: str) -> bool:
     """path가 project에 등록돼 있는지."""
-    path = _normalize_path(path)
+    norm = _normalize_path(path)
     row = conn.execute(
-        "SELECT 1 FROM sdk_project_dirs WHERE project = ? AND path = ?", (project, path)
+        "SELECT 1 FROM sdk_project_dirs WHERE project = ? AND path_norm = ?", (project, norm)
     ).fetchone()
     return row is not None
 
 
 def add_pending_request(conn: sqlite3.Connection, project: str, path: str) -> int:
-    """미등록 경로의 최초 요청을 대기열에 등록. 이미 대기 중이면 새로 만들지 않는다(idempotent)."""
-    path = _normalize_path(path)
+    """미등록 경로의 최초 요청을 대기열에 등록. 이미 대기 중이면 새로 만들지 않는다(idempotent).
+
+    `path`는 원본 문자열 그대로 저장하고, 매칭은 `path_norm`으로 한다(add_project_dir와 동일 패턴).
+    """
+    norm = _normalize_path(path)
     row = conn.execute(
-        "SELECT id FROM sdk_pending_requests WHERE project = ? AND path = ?", (project, path)
+        "SELECT id FROM sdk_pending_requests WHERE project = ? AND path_norm = ?",
+        (project, norm),
     ).fetchone()
     if row is not None:
         return int(row["id"])
     cur = conn.execute(
-        "INSERT INTO sdk_pending_requests (project, path, requested_at) VALUES (?,?,?)",
-        (project, path, _now()),
+        "INSERT INTO sdk_pending_requests (project, path, path_norm, requested_at)"
+        " VALUES (?,?,?,?)",
+        (project, path, norm, _now()),
     )
     conn.commit()
     return int(cur.lastrowid)

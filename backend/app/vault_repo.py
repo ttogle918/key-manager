@@ -56,16 +56,18 @@ CREATE TABLE IF NOT EXISTS sdk_project_dirs (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     project    TEXT NOT NULL,
     path       TEXT NOT NULL,
+    path_norm  TEXT NOT NULL,
     source     TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    UNIQUE(project, path)
+    UNIQUE(project, path_norm)
 );
 CREATE TABLE IF NOT EXISTS sdk_pending_requests (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     project      TEXT NOT NULL,
     path         TEXT NOT NULL,
+    path_norm    TEXT NOT NULL,
     requested_at TEXT NOT NULL,
-    UNIQUE(project, path)
+    UNIQUE(project, path_norm)
 );
 """
 

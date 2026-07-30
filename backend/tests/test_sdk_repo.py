@@ -20,8 +20,9 @@ def test_add_and_list_project_dir(conn):
     sdk_repo.add_project_dir(conn, "블로그", "/repo/blog", source="manual")
     dirs = sdk_repo.list_project_dirs(conn, "블로그")
     assert len(dirs) == 1
-    # 저장 시 경로가 정규화된다(구분자/대소문자 통일) — 리터럴이 아닌 정규화 결과와 비교.
-    assert dirs[0]["path"] == sdk_repo._normalize_path("/repo/blog")
+    # path는 호출자가 넘긴 원본 문자열 그대로 저장돼야 한다 — 정규화는 내부 매칭용
+    # path_norm 컬럼에서만 일어나고, 사용자에게 보이는 값(path)은 절대 변형되지 않는다.
+    assert dirs[0]["path"] == "/repo/blog"
     assert dirs[0]["source"] == "manual"
 
 
@@ -108,6 +109,23 @@ def test_add_project_dir_idempotent_under_normalization(conn):
     id2 = sdk_repo.add_project_dir(conn, "블로그", "/repo/blog/", source="manual")
     assert id1 == id2
     assert len(sdk_repo.list_project_dirs(conn, "블로그")) == 1
+
+
+def test_normalize_path_collapses_equal_inputs():
+    """트레일링 슬래시만 다른 두 경로는 정규화 후 같은 값이어야 한다(독립 오라클)."""
+    assert sdk_repo._normalize_path("/repo/blog/") == sdk_repo._normalize_path("/repo/blog")
+
+
+def test_normalize_path_keeps_distinct_inputs_distinct():
+    """서로 다른 경로는 정규화 후에도 여전히 달라야 한다(과도한 뭉뚱그림 방지)."""
+    assert sdk_repo._normalize_path("/repo/a") != sdk_repo._normalize_path("/repo/b")
+
+
+def test_is_path_approved_rejects_other_path_in_nonempty_table(conn):
+    """허용 목록에 다른 경로가 등록돼 있어도, 등록되지 않은 경로는 여전히 거부돼야 한다
+    (빈 테이블에서 그냥 False가 나오는 게 아니라 실제로 값을 구분한다는 증거)."""
+    sdk_repo.add_project_dir(conn, "블로그", "/repo/blog", source="manual")
+    assert sdk_repo.is_path_approved(conn, "블로그", "/repo/other") is False
 
 
 def test_list_sdk_projects_groups_by_project(conn):
