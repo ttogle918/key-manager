@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import datetime, timezone
 
@@ -16,11 +17,23 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _normalize_path(path: str) -> str:
+    """허용 목록 비교용 경로 정규화 — 구분자·대소문자·트레일링 슬래시 차이를 흡수한다.
+
+    `os.path.abspath` 대신 `os.path.normpath`를 쓴다: 이 모듈이 다루는 경로는
+    실제 파일시스템 경로가 아닐 수 있어(테스트의 `/repo/blog` 등) abspath 는
+    테스트 실행 cwd 기준으로 잘못 해석될 수 있다. normpath+normcase 는
+    상대성은 건드리지 않고 표기 차이만 정규화한다.
+    """
+    return os.path.normcase(os.path.normpath(path))
+
+
 def add_project_dir(conn: sqlite3.Connection, project: str, path: str, source: str) -> int:
     """프로젝트에 허용 디렉토리 등록. source: 'manual'(사전 등록) | 'approved'(승인 프롬프트).
 
     이미 등록된 (project, path) 조합이면 새로 만들지 않고 기존 id를 반환한다(idempotent).
     """
+    path = _normalize_path(path)
     row = conn.execute(
         "SELECT id FROM sdk_project_dirs WHERE project = ? AND path = ?", (project, path)
     ).fetchone()
@@ -55,6 +68,7 @@ def list_project_dirs(conn: sqlite3.Connection, project: str) -> list[dict]:
 
 def is_path_approved(conn: sqlite3.Connection, project: str, path: str) -> bool:
     """path가 project에 등록돼 있는지."""
+    path = _normalize_path(path)
     row = conn.execute(
         "SELECT 1 FROM sdk_project_dirs WHERE project = ? AND path = ?", (project, path)
     ).fetchone()
@@ -63,6 +77,7 @@ def is_path_approved(conn: sqlite3.Connection, project: str, path: str) -> bool:
 
 def add_pending_request(conn: sqlite3.Connection, project: str, path: str) -> int:
     """미등록 경로의 최초 요청을 대기열에 등록. 이미 대기 중이면 새로 만들지 않는다(idempotent)."""
+    path = _normalize_path(path)
     row = conn.execute(
         "SELECT id FROM sdk_pending_requests WHERE project = ? AND path = ?", (project, path)
     ).fetchone()

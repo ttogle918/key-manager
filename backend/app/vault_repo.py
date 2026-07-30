@@ -97,6 +97,12 @@ def connect(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # 이미 초기화된 금고(= meta 테이블 존재)라면, 이후 버전에서 _SCHEMA 에 추가된
+    # 새 테이블(CREATE TABLE IF NOT EXISTS)을 이 연결 시점에 채워 넣는다 — 마이그레이션.
+    # 초기화되지 않은 빈 파일에는 실행하지 않는다: init_vault() 의
+    # is_initialized() 판단(= "아직 초기화 안 됨")을 건드리면 안 되기 때문.
+    if is_initialized(conn):
+        conn.executescript(_SCHEMA)
     return conn
 
 
