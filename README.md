@@ -194,12 +194,12 @@ KeyLens는 **각 사용자가 자기 기기에서 실행**하는 로컬 앱입�
 
 - **소스 배포**: 위 설치 절차대로 `git clone` → 실행. 개발자라면 이걸로 충분합니다.
 - **데스크톱 앱**: 브라우저·터미널 없이 **네이티브 창 하나**로 실행 — `python desktop/app.py`(PyWebView). 여전히 100% 로컬. 사용법은 [`desktop/README.md`](./desktop/README.md).
-- **더블클릭 설치 파일(예정)**: 위 데스크톱 앱을 단일 실행 파일(.exe/.app)로 패키징해 [GitHub Releases](https://github.com/ttogle918/key-manager/releases)에 배포. 랜딩 페이지·블로그에서 그 Releases로 링크하면 됩니다(다운로드 페이지는 정적 파일만 제공 — 사용자 키를 만지지 않으므로 안전).
+- **더블클릭 설치 파일**: 위 데스크톱 앱을 실행 파일로 패키징해 [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에 배포 중(Windows). 압축을 풀고 `KeyLens.exe`를 실행하면 됩니다 — 별도 설치 불필요. 랜딩 페이지·블로그에서 그 Releases로 링크하면 됩니다(다운로드 페이지는 정적 파일만 제공 — 사용자 키를 만지지 않으므로 안전).
 
 ## 로드맵
 
 - ✅ **암호화 금고 내보내기/가져오기**(구현 완료): 암호문 번들 파일을 개인 클라우드·USB로 옮겨 다른 기기에서 마스터 비밀번호로 열기 — 서버 없는 멀티 기기
-- ✅ **데스크톱 앱**(PyWebView, `desktop/app.py`): 네이티브 창으로 로컬 실행 — 완료. 남은 건 단일 실행 파일(.exe/.app) 패키징(permissive 패키저로)뿐
+- ✅ **데스크톱 앱**(PyWebView, `desktop/app.py`): 네이티브 창으로 로컬 실행 + 실행 파일 패키징(cx_Freeze, Windows) 완료 — [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에서 다운로드. macOS/Linux 패키징은 후속
 - **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드. 복호화 열쇠는 항상 로컬의 마스터 비밀번호이며, 자체 서버는 만들지 않음
 - **DOM 기반 자동 캡처**(브라우저 확장): 권한 모델·프라이버시 설계 검증 후 도입
 - 더 많은 서비스 지식베이스, 런타임 주입(SDK)
