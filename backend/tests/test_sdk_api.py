@@ -84,3 +84,36 @@ def test_sdk_list_projects_reflects_entries(vault):
     )
     projects = main.sdk_list_projects()
     assert any(p.project == "사이드프로젝트" and p.key_count == 1 for p in projects)
+
+
+def test_sdk_add_dir_after_approval_refetches_source(vault):
+    """sdk_add_dir는 자체 합성 dict가 아니라 list_project_dirs 재조회 결과를 반환해야 한다.
+
+    같은 (project, path)가 이미 승인(source="approved")으로 등록돼 있으면,
+    VaultService.add_project_dir가 반환하는 합성 dict는 source="manual"을 주장하지만
+    (그리고 created_at도 없다), 라우트는 반드시 재조회한 실제 row를 사용해야 한다.
+    """
+    with pytest.raises(HTTPException) as e:
+        main.sdk_env(SdkEnvRequest(project="블로그", path="/repo/blog"))
+    assert e.value.status_code == 403
+    pending = main.sdk_list_pending()
+    assert len(pending) == 1
+    result = main.sdk_approve_pending(pending[0].id)
+    assert result == {"approved": True}
+
+    added = main.sdk_add_dir("블로그", SdkAddDirRequest(path="/repo/blog"))
+    assert added.source == "approved"
+
+
+def test_sdk_list_dirs_returns_added_directory(vault):
+    main.sdk_add_dir("블로그", SdkAddDirRequest(path="/repo/blog"))
+    dirs = main.sdk_list_dirs("블로그")
+    assert any(d.path == "/repo/blog" for d in dirs)
+
+
+def test_sdk_remove_dir_success_path(vault):
+    added = main.sdk_add_dir("블로그", SdkAddDirRequest(path="/repo/blog"))
+    result = main.sdk_remove_dir("블로그", added.id)
+    assert result == {"removed": True}
+    dirs = main.sdk_list_dirs("블로그")
+    assert all(d.id != added.id for d in dirs)
