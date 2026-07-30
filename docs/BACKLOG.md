@@ -52,6 +52,7 @@ SPDX-License-Identifier: MIT
 - **로드맵 추가(2026-07-30)**: SYNC-2(Supabase 계정 로그인 기반 서버 동기화, 옵트인) 설계 확정·백로그 등재. 데스크톱 앱 exe 패키징 마무리 후 착수 예정 — 결정 근거는 `docs/memo/2026-07-30-sync2-server-sync-decisions.md`.
 - **로드맵 추가(2026-07-30)**: RUNTIME-1(`keylens-env` — dotenv 대체 런타임 SDK, Python 우선) 설계 확정·백로그 등재. 프로젝트 그룹 단위 접근범위(기본 키는 전역, 충돌 시 프로젝트 우선) + 디렉토리 사전등록/승인 프롬프트.
 - **상시화**: OSS-2 라이선스 검증은 의존성 추가 때마다 수행(`certifi`=MPL 제거, `lightningcss`=MPL 재분류 등 상시 해소).
+- ✅ **첫 배포(2026-07-30)**: `v0.1.0` 태그 + GitHub Releases에 Windows 데스크톱 exe(zip) 게시 — [릴리스](https://github.com/ttogle918/key-manager/releases/tag/v0.1.0). 같은 날 비밀번호 작성규칙(개인정보보호위원회 기준) 강제·오류 메시지 사용자 친화화도 반영.
 
 ---
 
