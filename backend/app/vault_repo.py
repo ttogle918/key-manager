@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import sqlite3
 from datetime import datetime, timezone
 
@@ -52,6 +53,23 @@ CREATE TABLE IF NOT EXISTS access_log (
     at       TEXT NOT NULL,
     FOREIGN KEY (entry_id) REFERENCES entries(id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS sdk_project_dirs (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    project    TEXT NOT NULL,
+    path       TEXT NOT NULL,
+    path_norm  TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE(project, path_norm)
+);
+CREATE TABLE IF NOT EXISTS sdk_pending_requests (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    project      TEXT NOT NULL,
+    path         TEXT NOT NULL,
+    path_norm    TEXT NOT NULL,
+    requested_at TEXT NOT NULL,
+    UNIQUE(project, path_norm)
+);
 """
 
 # 감사 이력 이벤트 코드 → 표시 라벨(누가/언제/무엇을 열람·복사·내보냈는지 — SECURITY_REVIEW 3-4).
@@ -62,6 +80,7 @@ EVENT_LABELS = {
     "export": ".env 내보내기",
     "rotate": "키 교체",
     "verify": "유효성 검증",
+    "sdk_fetch": "SDK 조회",
 }
 
 # 값 복호화 없이 노출 가능한 메타데이터 컬럼(평문). 잠금 상태에서도 안전.
@@ -77,10 +96,45 @@ def _aad(official_name: str | None) -> bytes:
     return (official_name or "").encode("utf-8")
 
 
+def _ensure_path_norm_column(conn: sqlite3.Connection, table: str) -> None:
+    """구버전 vault.db에 path_norm 컬럼이 없으면 추가하고, 기존 행의 값을 채운다(RUNTIME-1).
+
+    CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양은 손대지 않으므로,
+    이 브랜치의 중간 커밋 시점(path_norm 없는 5컬럼 스키마)을 거친 vault.db를 위한
+    보강 마이그레이션이다. os.path.normcase(os.path.normpath(...))로 채운다
+    (sdk_repo._normalize_path와 동일한 계산이지만, 계층 분리를 위해 여기서 직접 계산한다 —
+    vault_repo가 sdk_repo를 import하지 않는다).
+    """
+    cols = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if "path_norm" not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN path_norm TEXT NOT NULL DEFAULT ''")
+        rows = conn.execute(f"SELECT id, path FROM {table}").fetchall()
+        for r in rows:
+            norm = os.path.normcase(os.path.normpath(r["path"]))
+            conn.execute(f"UPDATE {table} SET path_norm = ? WHERE id = ?", (norm, r["id"]))
+        conn.commit()
+    # 이 브랜치의 중간 스키마(5컬럼, path_norm 없음)를 거친 DB는 테이블 레벨
+    # UNIQUE(project, path_norm) 제약이 없다 — 인덱스로 동등한 보호를 준다(RUNTIME-1 3차 리뷰).
+    conn.execute(
+        f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table}_project_path_norm ON {table}(project, path_norm)"
+    )
+
+
 def connect(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # 이미 초기화된 금고(= meta 테이블 존재)라면, 이후 버전에서 _SCHEMA 에 추가된
+    # 새 테이블(CREATE TABLE IF NOT EXISTS)을 이 연결 시점에 채워 넣는다 — 마이그레이션.
+    # 초기화되지 않은 빈 파일에는 실행하지 않는다: init_vault() 의
+    # is_initialized() 판단(= "아직 초기화 안 됨")을 건드리면 안 되기 때문.
+    if is_initialized(conn):
+        conn.executescript(_SCHEMA)
+        # CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양을 바꾸지 않는다 —
+        # path_norm 없는 구버전 sdk_project_dirs/sdk_pending_requests(5컬럼)를 위한
+        # 컬럼 레벨 보강 마이그레이션(3차 리뷰 반영).
+        _ensure_path_norm_column(conn, "sdk_project_dirs")
+        _ensure_path_norm_column(conn, "sdk_pending_requests")
     return conn
 
 

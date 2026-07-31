@@ -13,7 +13,7 @@ from __future__ import annotations
 import time
 from typing import Callable
 
-from . import crypto, vault_repo
+from . import crypto, sdk_repo, vault_repo
 
 AUTO_LOCK_SECONDS = 300  # 5분 무활동 시 자동 잠금 (기본값)
 FAIL_FREE = 2  # 이 횟수까지의 연속 실패는 지연 없음 (기본값)
@@ -30,6 +30,10 @@ class VaultRateLimited(Exception):
     def __init__(self, retry_after: float) -> None:
         super().__init__(f"인증 시도가 많습니다 — {retry_after}s 후 다시 시도하세요")
         self.retry_after = retry_after
+
+
+class SdkApprovalPending(Exception):
+    """미승인 디렉토리 — 요청이 대기열에 등록되고 승인 대기 중(RUNTIME-1)."""
 
 
 class VaultService:
@@ -129,10 +133,11 @@ class VaultService:
         self._key = key
         self._last_activity = self._clock()
 
-    def _require_key(self) -> bytes:
+    def _require_key(self, refresh: bool = True) -> bytes:
         if not self._is_unlocked():
             raise VaultLocked()
-        self._last_activity = self._clock()
+        if refresh:
+            self._last_activity = self._clock()
         assert self._key is not None
         return self._key
 
@@ -283,3 +288,82 @@ class VaultService:
         finally:
             conn.close()
         self.lock()  # 변경 후 재인증 요구
+
+    # ── RUNTIME-1: SDK 접근 관리 ──
+    def sdk_env(self, project: str, path: str) -> dict[str, str]:
+        """keylens-env SDK 진입점. path가 project에 대해 승인되지 않았으면 대기열에 등록하고
+        SdkApprovalPending을 던진다. 승인됐으면 값을 복호화해 반환하고, 반환한 각 키를
+        감사 이력에 'sdk_fetch'로 남긴다. 잠금 상태면 VaultLocked(값은 절대 안 나감).
+
+        SDK 조회는 자동 잠금 타이머를 갱신하지 않는다 — 자리를 비운 사용자를 보호하기 위함.
+        """
+        key = self._require_key(refresh=False)
+        conn = self._conn()
+        try:
+            if not sdk_repo.is_path_approved(conn, project, path):
+                sdk_repo.add_pending_request(conn, project, path)
+                raise SdkApprovalPending(
+                    f"'{path}'가 '{project}' 프로젝트 키를 요청했어요 — KeyLens에서 허용해 주세요"
+                )
+            env = sdk_repo.entries_for_env(conn, key, project)
+            ids = sdk_repo.entry_ids_for_names(conn, project, list(env.keys()))
+            for entry_id in ids.values():
+                vault_repo.log_access(conn, entry_id, "sdk_fetch")
+            return env
+        finally:
+            conn.close()
+
+    def add_project_dir(self, project: str, path: str) -> dict:
+        """설정 화면에서 디렉토리 사전 등록(source='manual'). 값을 다루지 않아 잠금 상태에서도 가능.
+
+        이미 등록된 경로면 실제 저장된 행(예: source='approved')을 그대로 돌려준다 —
+        호출자가 넘긴 인자를 그대로 되돌려주지 않는다(멱등 재등록 시 잘못된 값을 보고하지 않기 위함).
+        """
+        conn = self._conn()
+        try:
+            dir_id = sdk_repo.add_project_dir(conn, project, path, source="manual")
+            return next(d for d in sdk_repo.list_project_dirs(conn, project) if d["id"] == dir_id)
+        finally:
+            conn.close()
+
+    def remove_project_dir(self, project: str, dir_id: int) -> bool:
+        conn = self._conn()
+        try:
+            return sdk_repo.remove_project_dir(conn, project, dir_id)
+        finally:
+            conn.close()
+
+    def list_projects(self) -> list[dict]:
+        conn = self._conn()
+        try:
+            return sdk_repo.list_sdk_projects(conn)
+        finally:
+            conn.close()
+
+    def list_project_dirs(self, project: str) -> list[dict]:
+        conn = self._conn()
+        try:
+            return sdk_repo.list_project_dirs(conn, project)
+        finally:
+            conn.close()
+
+    def list_pending(self) -> list[dict]:
+        conn = self._conn()
+        try:
+            return sdk_repo.list_pending_requests(conn)
+        finally:
+            conn.close()
+
+    def approve_pending(self, pending_id: int) -> bool:
+        conn = self._conn()
+        try:
+            return sdk_repo.approve_pending(conn, pending_id)
+        finally:
+            conn.close()
+
+    def deny_pending(self, pending_id: int) -> bool:
+        conn = self._conn()
+        try:
+            return sdk_repo.deny_pending(conn, pending_id)
+        finally:
+            conn.close()
