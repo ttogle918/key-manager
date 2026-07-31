@@ -9,6 +9,19 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-31
+
+### Added (기능)
+- **직접 입력 탭**: 새 자격증명 분석 화면에 "직접 입력" 모드 추가. `NAME=VALUE` 붙여넣고
+  Enter를 누르면 이름·값 두 칸으로 즉시 분리되고, 지식베이스와 정확히 일치하는 이름이면
+  서비스·노출등급을 참고로 보여준다. 이름 칸은 cmd 스타일 Tab 자동완성(고스트 텍스트 +
+  후보 순환)을 지원하고, 값을 채우면 새 행이 자동으로 추가된다.
+
+### Fixed (수정)
+- 자동 분류 결과가 "값만으로 판별 불가"만 있고 정상 결과가 하나도 없을 때 뒤로 갈 방법이
+  없던 문제 — 해당 카드에 "새로 분석" 버튼을 추가하고, 사이드바 홈 탭(분석·입력)을 눌러도
+  항상 빠져나올 수 있게 했다.
+
 ## [0.1.0] - 2026-07-30
 
 첫 데스크톱 exe 릴리스. 아래는 지금까지 축적된 기능·변경 요약입니다.
@@ -42,5 +55,6 @@ SPDX-License-Identifier: MIT
 - 라이선스 카피레프트 0건(reuse lint 통과·SBOM), 의존성 취약점(SCA) 전 영역 0건(pip-audit·npm audit).
 - 마스킹 노출 축소·감사 이력·잠금 정책 등 [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) 항목 해소.
 
-[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.1.0...main
+[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.1.1...main
+[0.1.1]: https://github.com/ttogle918/key-manager/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ttogle918/key-manager/releases/tag/v0.1.0
