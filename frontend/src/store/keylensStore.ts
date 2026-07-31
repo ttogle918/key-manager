@@ -9,13 +9,16 @@ import { create } from 'zustand'
 import { analyzeApi, ApiError, fetchKnowledge, vaultApi, VaultApiError } from '@/api/client'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
-import { applyKnowledge, TYPE_MAP } from '@/data/services'
+import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
+import { splitKeyValue } from '@/lib/autocomplete'
 import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
 import type {
   AnalysisResult,
   DeleteTarget,
   DupTarget,
+  InputMode,
+  ManualRow,
   Screen,
   UnknownItem,
   VaultItem,
@@ -36,6 +39,16 @@ function vaultErrorText(e: unknown, fallback: string): string {
   }
   console.error('[KeyLens] 예상치 못한 오류:', e)
   return fallback
+}
+
+/**
+ * 직접 입력 탭 — 방금 수정한 행이 배열의 마지막 행이고 이름·값이 둘 다 채워졌으면
+ * 빈 행을 하나 더 붙인다("하나 채우면 자동으로 다음 행 생김"). 그 외엔 그대로 반환.
+ */
+function ensureTrailingEmptyRow(rows: ManualRow[], editedId: string): ManualRow[] {
+  const last = rows[rows.length - 1]
+  if (last.id !== editedId || !last.name.trim() || !last.value.trim()) return rows
+  return [...rows, { id: crypto.randomUUID(), name: '', value: '' }]
 }
 
 /** 분석 시뮬레이션 시간(초). 실제 앱에선 백엔드 응답 시간으로 대체. */
@@ -76,6 +89,10 @@ interface KeylensState {
   projVal: string
   attachedImage: string | null
   attachedName: string
+
+  // 직접 입력 탭 — 자동 분류 없이 이름=값을 바로 선언(RUNTIME-1과 무관, UI 전용)
+  inputMode: InputMode
+  manualRows: ManualRow[]
 
   // 분석
   analyzing: boolean
@@ -146,6 +163,15 @@ interface KeylensState {
   handlePasteImage: (dataUrl: string) => void
   startAnalyze: () => void
   resetResults: () => void
+
+  // 직접 입력 탭
+  setInputMode: (m: InputMode) => void
+  setManualField: (id: string, field: 'name' | 'value', v: string) => void
+  /** 해당 행의 field 칸에 "NAME=VALUE" 형태가 있으면 이름/값 두 칸으로 분리(Enter 시 호출). */
+  splitManualField: (id: string, field: 'name' | 'value') => void
+  addManualRow: () => void
+  removeManualRow: (id: string) => void
+  saveManualRows: () => void
 
   patchResult: (id: string, patch: Partial<AnalysisResult>) => void
   pickOption: (id: string, k: string) => void
@@ -237,6 +263,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     projVal: '',
     attachedImage: null,
     attachedName: '',
+    inputMode: 'auto',
+    manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
     analyzing: false,
     ocrProgress: null,
     analyzed: false,
@@ -271,7 +299,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
       Object.values(revealTimers).forEach(clearTimeout)
     },
 
-    goInput: () => set({ view: 'input' }),
+    goInput: () => {
+      // 분석 결과·판독불가 화면에 갇힌 상태로 홈 탭을 눌러도 항상 빠져나올 수 있어야 한다.
+      if (get().analyzed) get().resetResults()
+      set({ view: 'input' })
+    },
     goVault: () => set({ view: 'vault' }),
 
     // ── 부팅 / 금고 로딩 ──
@@ -518,6 +550,81 @@ export const useKeylens = create<KeylensState>((set, get) => {
         memoVal: '',
         projVal: '',
       }),
+
+    // ── 직접 입력 탭 ──
+    setInputMode: (m) => set({ inputMode: m }),
+    setManualField: (id, field, v) => {
+      set((s) => {
+        const rows = s.manualRows.map((r) => (r.id === id ? { ...r, [field]: v } : r))
+        return { manualRows: ensureTrailingEmptyRow(rows, id) }
+      })
+    },
+    splitManualField: (id, field) => {
+      const row = get().manualRows.find((r) => r.id === id)
+      if (!row) return
+      const parsed = splitKeyValue(row[field])
+      if (!parsed) return
+      set((s) => {
+        const rows = s.manualRows.map((r) =>
+          r.id === id ? { ...r, name: parsed.name, value: parsed.value } : r,
+        )
+        return { manualRows: ensureTrailingEmptyRow(rows, id) }
+      })
+    },
+    addManualRow: () =>
+      set((s) => ({
+        manualRows: [...s.manualRows, { id: crypto.randomUUID(), name: '', value: '' }],
+      })),
+    removeManualRow: (id) =>
+      set((s) => ({
+        manualRows: s.manualRows.length <= 1 ? s.manualRows : s.manualRows.filter((r) => r.id !== id),
+      })),
+    saveManualRows: async () => {
+      const rows = get().manualRows.filter((r) => r.name.trim() && r.value.trim())
+      if (!rows.length) {
+        get().showToast('저장할 키/값을 먼저 입력해 주세요')
+        return
+      }
+      const project = (get().projVal || '').trim() || null
+      const memo = get().memoVal || null
+      let saved = 0
+      const savedIds: string[] = []
+      for (const r of rows) {
+        const name = r.name.trim()
+        const value = r.value.trim()
+        const found = findServiceByVarName(name)
+        try {
+          await vaultApi.add({
+            service: found ? SERVICE_TO_ID[found.service] : null,
+            kind: found ? found.type.v : null,
+            official_name: name,
+            value,
+            label: found ? found.type.label : null,
+            project,
+            memo,
+            expires_at: jwtExp(value),
+          })
+          saved++
+          savedIds.push(r.id)
+        } catch (e) {
+          if (e instanceof VaultApiError && e.status === 401) {
+            get().showToast('금고가 잠겨 저장할 수 없어요 — 잠금을 해제하세요')
+            break
+          }
+          get().showToast(vaultErrorText(e, `${name} 저장 실패 — 잠시 후 다시 시도해 보세요`))
+        }
+      }
+      if (saved) {
+        set((s) => {
+          const remaining = s.manualRows.filter((r) => !savedIds.includes(r.id))
+          return {
+            manualRows: remaining.length ? remaining : [{ id: crypto.randomUUID(), name: '', value: '' }],
+          }
+        })
+        await get().loadVault()
+        get().showToast(`${saved}개 저장됨 — AES-256-GCM 암호화`)
+      }
+    },
 
     // ── 결과 카드 ──
     patchResult: (id, patch) =>

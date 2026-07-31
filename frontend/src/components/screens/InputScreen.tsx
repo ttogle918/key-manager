@@ -3,6 +3,7 @@
 import type { DragEvent, ReactNode } from 'react'
 import { TYPE_MAP } from '@/data/services'
 import { useKeylens } from '@/store/keylensStore'
+import { ManualEntryTab } from '@/components/input/ManualEntryTab'
 import { ResultCard } from '@/components/input/ResultCard'
 
 /** 화면 1: 새 자격증명 분석 입력. */
@@ -10,6 +11,7 @@ export function InputScreen() {
   const s = useKeylens()
   const {
     vault,
+    inputMode,
     analyzed,
     analyzing,
     ocrProgress,
@@ -30,6 +32,7 @@ export function InputScreen() {
   const showStage = !analyzing && !analyzed
   const showResults = analyzed && results.length > 0
   const showUnknowns = analyzed && unknowns.length > 0
+  const unknownsOnly = showUnknowns && results.length === 0
   const showDone = analyzed && results.length === 0 && unknowns.length === 0
   const hasRealImg = !!(attachedImage && attachedImage !== 'sample')
   const hasSampleImg = attachedImage === 'sample'
@@ -74,14 +77,39 @@ export function InputScreen() {
         </span>
       </p>
 
-      {firstRun && (
+      <div className="mb-5 flex gap-[6px]">
+        <button
+          type="button"
+          onClick={() => s.setInputMode('auto')}
+          className={
+            'cursor-pointer rounded-[8px] border-none px-[14px] py-[8px] text-[12.5px] font-bold ' +
+            (inputMode === 'auto' ? 'bg-[#191F26] text-fg' : 'bg-transparent text-muted')
+          }
+        >
+          자동 분류
+        </button>
+        <button
+          type="button"
+          onClick={() => s.setInputMode('manual')}
+          className={
+            'cursor-pointer rounded-[8px] border-none px-[14px] py-[8px] text-[12.5px] font-bold ' +
+            (inputMode === 'manual' ? 'bg-[#191F26] text-fg' : 'bg-transparent text-muted')
+          }
+        >
+          직접 입력
+        </button>
+      </div>
+
+      {inputMode === 'auto' && firstRun && (
         <div className="mb-5 flex items-center gap-[10px] rounded-[10px] border border-[rgba(62,207,142,.25)] bg-[rgba(62,207,142,.06)] px-[14px] py-3 text-[13px] text-mint-pale">
           <span className="size-[7px] flex-none rounded-full bg-mint" />
           처음이시네요 — 아래에 스크린샷을 던져보세요. 무엇인지 알아서 알아봅니다.
         </div>
       )}
 
-      {showStage && (
+      {inputMode === 'manual' && <ManualEntryTab />}
+
+      {inputMode === 'auto' && showStage && (
         <div className="overflow-hidden rounded-[14px] border border-line-2 bg-surface-2">
           {/* 첨부 영역 */}
           <div className="px-[14px] pt-[14px]">
@@ -255,8 +283,19 @@ export function InputScreen() {
 
       {showUnknowns && (
         <div className="mt-3 rounded-[12px] border border-[rgba(227,179,65,.28)] bg-[rgba(227,179,65,.04)] p-[14px] [animation:klFadeUp_.3s_ease]">
-          <div className="flex items-center gap-2 text-[13px] font-bold text-amber">
-            <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />값만으로 판별 불가 — {unknowns.length}건
+          <div className="flex items-center gap-[10px]">
+            <div className="flex flex-1 items-center gap-2 text-[13px] font-bold text-amber">
+              <span className="inline-block size-[7px] flex-none rotate-45 bg-amber" />값만으로 판별 불가 — {unknowns.length}건
+            </div>
+            {unknownsOnly && (
+              <button
+                type="button"
+                onClick={s.resetResults}
+                className="flex-none cursor-pointer rounded-lg border border-border bg-none px-3 py-[7px] text-[12px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+              >
+                새로 분석
+              </button>
+            )}
           </div>
           <div className="mb-[10px] mt-[5px] text-[12px] leading-[1.5] text-muted">
             형식이 같은 종류가 여럿이라 값만으론 못 가립니다. 맥락 기반 분류(Stage2)에서 라벨·URL로 구분할 예정이에요.

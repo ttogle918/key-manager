@@ -13,6 +13,16 @@ export type Screen = 'setup' | 'lock' | 'app'
 /** 앱 셸 내부 뷰. */
 export type View = 'input' | 'vault'
 
+/** 분석·입력 화면의 두 입력 모드 — 자동 분류(기존) vs 직접 입력(신규). */
+export type InputMode = 'auto' | 'manual'
+
+/** 직접 입력 탭의 한 행(저장 전 이름=값 쌍). */
+export interface ManualRow {
+  id: string
+  name: string
+  value: string
+}
+
 /** 분류 신뢰도. */
 export type Confidence = 'high' | 'mid' | 'low'
 

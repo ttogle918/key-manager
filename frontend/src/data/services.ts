@@ -32,6 +32,18 @@ export let TYPE_MAP: Record<string, TypeOption[]> = {
   Ollama: [{ v: 'api_key', label: 'API Key', var: 'OLLAMA_API_KEY' }],
 }
 
+/**
+ * 환경변수명이 지식베이스의 official_env_name과 정확히 일치하는 서비스·종류를 찾는다(직접 입력
+ * 탭 전용 — 문맥 추론 없이 이름만으로 자동 인식). 일치하는 게 없으면 null(커스텀 키로 취급).
+ */
+export function findServiceByVarName(name: string): { service: string; type: TypeOption } | null {
+  for (const [service, types] of Object.entries(TYPE_MAP)) {
+    const type = types.find((t) => t.var === name)
+    if (type) return { service, type }
+  }
+  return null
+}
+
 /** 서비스 타일(약자 + 색). 알려진 서비스는 큐레이션 값을, 새 서비스는 자동 생성한다. */
 export let SVC_META: Record<string, SvcMeta> = {
   Notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
