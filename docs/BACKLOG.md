@@ -397,7 +397,7 @@ SPDX-License-Identifier: MIT
 ### RUNTIME-1 ⚪ `keylens-env` — dotenv 대체 런타임 SDK (Python 우선, post-MVP)
 - **중요도**: ⚪ Roadmap | **스프린트**: 대회 이후 | **의존성**: VAULT-1/2(인증 게이트), CORE-5(공식 env 변수명) | **사이즈**: L
 - **배경**: 지금은 `.env` 내보내기(CORE-5)로 평문 파일을 만들어 쓴다 — 결국 디스크에 평문이 남는 건 똑같다. `keylens-env`는 `dotenv`처럼 코드에서 한 줄로 값을 불러오되, 실제로는 **실행 중이고 잠금 해제된 KeyLens 로컬 백엔드**에서 그때그때 값을 받아 `os.environ`에 주입한다 — 디스크에 평문 `.env` 파일이 남지 않는다.
-- **진행 상황(날짜는 이 파일을 수정하는 시점 기준):** 백엔드 기반(레포/서비스/모델/`/sdk/*` API) 구현 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`, 별도 브랜치(`worktree-runtime1-backend`)에서 진행 중, main 미병합. 남은 3개 하위 플랜(프론트 설정 화면, `keylens-env` 패키지 자체, 데스크톱 알림)은 아직 시작 전.
+- **진행 상황(날짜는 이 파일을 수정하는 시점 기준):** 백엔드 기반(레포/서비스/모델/`/sdk/*` API) 구현 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`, main에 병합 완료(커밋 `6341f3d`). 남은 3개 하위 플랜(프론트 설정 화면, `keylens-env` 패키지 자체, 데스크톱 알림) 중 **데스크톱 알림**은 설계 확정 — `docs/superpowers/specs/2026-08-07-runtime1-desktop-notification-design.md`(사용자 액션 시퀀스 다이어그램 포함, 토스트 클릭 콜백 대신 도착 즉시 자동 화면전환 방식 + 최소 승인 대기 화면을 스코프에 포함하기로 결정). 구현은 착수 전. 나머지 2개(프론트 설정 화면, `keylens-env` 패키지)는 아직 시작 전.
 - **범위**: v1은 **Python 패키지만**(PyPI, `python-dotenv`와 유사한 API). Node.js/npm 버전은 로드맵으로 남기고 이번엔 만들지 않는다.
 - **핵심 설계**
   - [x] **실행 전제**: SDK는 자체 암호화·인증 로직을 두지 않는다 — KeyLens 앱(로컬 백엔드 127.0.0.1:8003)이 **켜져있고 잠금 해제된 상태**에서만 동작. 꺼져있거나 잠겨있으면 `load_env()`가 "KeyLens를 켜고 잠금 해제하세요" 같은 명확한 에러를 던진다(조용히 실패·빈 값 반환 금지).
