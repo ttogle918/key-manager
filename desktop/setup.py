@@ -32,7 +32,7 @@ include_files = [
 build_exe_options = {
     "packages": [
         "app", "uvicorn", "fastapi", "starlette", "pydantic", "pydantic_core",
-        "cryptography", "yaml", "webview", "anyio", "click", "h11",
+        "cryptography", "yaml", "webview", "anyio", "click", "h11", "plyer",
     ],
     "include_files": include_files,
     "excludes": ["tkinter", "unittest", "pytest", "test"],

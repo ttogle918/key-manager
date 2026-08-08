@@ -6,3 +6,5 @@
 pywebview==6.2.1      # BSD-3-Clause; OS 내장 웹뷰(Windows=WebView2, macOS=WebKit, Linux=GTK/Qt)
 # 전이 의존성(전부 permissive): pythonnet(MIT)·clr-loader(MIT)·bottle(MIT)·proxy_tools(MIT).
 # WebView2 런타임은 Windows 11 기본 포함 시스템 구성요소(파이썬 의존성 아님).
+plyer==2.1.0          # MIT; OS 네이티브 토스트(RUNTIME-1). 전이 의존성 없음(license-auditor 확인,
+                       # Windows 경로는 plyer/platforms/win/libs/balloontip.py가 순수 stdlib ctypes만 사용)
