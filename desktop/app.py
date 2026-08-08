@@ -43,7 +43,7 @@ if FROZEN:
 else:
     sys.path.insert(0, str(_BASE / "backend"))
 
-from app.main import app  # noqa: E402 — 경로·환경 설정 후 임포트
+from app.main import app, VAULT  # noqa: E402 — 경로·환경 설정 후 임포트
 
 
 def mount_spa() -> None:
@@ -84,14 +84,17 @@ def _wait_ready(timeout: float = 20.0) -> bool:
 def main() -> None:
     import webview  # 지연 임포트 — 서버 검증(mount/serve)은 pywebview 없이도 돈다.
 
+    import notify  # 지연 임포트 — 같은 이유(GUI 의존 없이 mount_spa/serve만 쓰는 경로 보호)
+
     mount_spa()
     threading.Thread(target=serve, daemon=True).start()
     if not _wait_ready():
         raise SystemExit("백엔드가 제때 기동하지 못했습니다.")
     # localhost 로 로드 → 페이지 오리진과 상대경로 API 요청이 같은 오리진(same-origin).
-    webview.create_window(
+    window = webview.create_window(
         "KeyLens", f"http://localhost:{PORT}", width=1120, height=780, min_size=(900, 620)
     )
+    VAULT.set_pending_hook(notify.build_notifier(window))
     webview.start()
 
 
