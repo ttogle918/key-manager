@@ -44,12 +44,14 @@ class VaultService:
         fail_free: int = FAIL_FREE,
         max_delay: int = MAX_DELAY,
         clock: Callable[[], float] = time.time,
+        on_pending: Callable[[str, str], None] | None = None,
     ) -> None:
         self.db_path = db_path
         self.auto_lock_seconds = auto_lock_seconds
         self.fail_free = fail_free
         self.max_delay = max_delay
         self._clock = clock
+        self._on_pending = on_pending
         self._key: bytes | None = None
         self._last_activity = 0.0
         self._fail_count = 0
@@ -296,12 +298,17 @@ class VaultService:
         감사 이력에 'sdk_fetch'로 남긴다. 잠금 상태면 VaultLocked(값은 절대 안 나감).
 
         SDK 조회는 자동 잠금 타이머를 갱신하지 않는다 — 자리를 비운 사용자를 보호하기 위함.
+        새로 대기열에 등록되는 요청에 한해 on_pending 훅을 1회 호출한다(이미 대기 중인
+        경로의 재요청은 다시 호출하지 않는다 — idempotent).
         """
         key = self._require_key(refresh=False)
         conn = self._conn()
         try:
             if not sdk_repo.is_path_approved(conn, project, path):
+                already_pending = sdk_repo.is_pending(conn, project, path)
                 sdk_repo.add_pending_request(conn, project, path)
+                if not already_pending and self._on_pending is not None:
+                    self._on_pending(project, path)
                 raise SdkApprovalPending(
                     f"'{path}'가 '{project}' 프로젝트 키를 요청했어요 — KeyLens에서 허용해 주세요"
                 )
@@ -312,6 +319,10 @@ class VaultService:
             return env
         finally:
             conn.close()
+
+    def set_pending_hook(self, fn: Callable[[str, str], None] | None) -> None:
+        """승인 대기 발생 시 호출할 콜백을 등록(데스크톱 알림용, RUNTIME-1). None이면 해제(no-op)."""
+        self._on_pending = fn
 
     def add_project_dir(self, project: str, path: str) -> dict:
         """설정 화면에서 디렉토리 사전 등록(source='manual'). 값을 다루지 않아 잠금 상태에서도 가능.

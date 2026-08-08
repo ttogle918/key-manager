@@ -340,3 +340,18 @@ def test_entry_ids_for_names_ignores_unrelated_project_row(conn):
     ids = sdk_repo.entry_ids_for_names(conn, "블로그", ["OPENAI_API_KEY"])
     assert ids["OPENAI_API_KEY"] == global_id
     assert ids["OPENAI_API_KEY"] != other_project_id
+
+
+def test_is_pending_false_initially(conn):
+    assert sdk_repo.is_pending(conn, "블로그", "/repo/blog") is False
+
+
+def test_is_pending_true_after_add(conn):
+    sdk_repo.add_pending_request(conn, "블로그", "/repo/blog")
+    assert sdk_repo.is_pending(conn, "블로그", "/repo/blog") is True
+
+
+def test_is_pending_false_after_approve(conn):
+    pid = sdk_repo.add_pending_request(conn, "블로그", "/repo/blog")
+    sdk_repo.approve_pending(conn, pid)
+    assert sdk_repo.is_pending(conn, "블로그", "/repo/blog") is False

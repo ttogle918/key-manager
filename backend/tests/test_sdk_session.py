@@ -163,3 +163,46 @@ def test_management_endpoints_available_while_locked(vault):
     assert vault.deny_pending(pending_ids[1]) is True
     assert isinstance(vault.list_projects(), list)
     assert vault.list_pending() == []
+
+
+def test_set_pending_hook_called_once_for_new_request(vault):
+    calls = []
+    vault.set_pending_hook(lambda project, path: calls.append((project, path)))
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/repo/blog")
+    assert calls == [("블로그", "/repo/blog")]
+
+
+def test_set_pending_hook_not_called_again_for_duplicate_request(vault):
+    calls = []
+    vault.set_pending_hook(lambda project, path: calls.append((project, path)))
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/repo/blog")
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/repo/blog")
+    assert len(calls) == 1
+
+
+def test_pending_hook_defaults_to_noop(tmp_path):
+    svc = VaultService(str(tmp_path / "vault.db"), auto_lock_seconds=60)
+    svc.init(MASTER)
+    with pytest.raises(SdkApprovalPending):
+        svc.sdk_env("블로그", "/repo/blog")  # 훅 미등록이어도 예외 없이 정상 동작(no-op)
+
+
+def test_pending_hook_not_called_when_path_already_approved(vault):
+    calls = []
+    vault.set_pending_hook(lambda project, path: calls.append((project, path)))
+    vault.add_project_dir("블로그", "/repo/blog")
+    env = vault.sdk_env("블로그", "/repo/blog")
+    assert env == {}
+    assert calls == []
+
+
+def test_set_pending_hook_can_be_cleared(vault):
+    calls = []
+    vault.set_pending_hook(lambda project, path: calls.append((project, path)))
+    vault.set_pending_hook(None)
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/repo/blog")
+    assert calls == []

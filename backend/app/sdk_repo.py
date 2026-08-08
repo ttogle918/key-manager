@@ -82,6 +82,16 @@ def is_path_approved(conn: sqlite3.Connection, project: str, path: str) -> bool:
     return row is not None
 
 
+def is_pending(conn: sqlite3.Connection, project: str, path: str) -> bool:
+    """path가 project에 대해 이미 대기열에 올라와 있는지."""
+    norm = _normalize_path(path)
+    row = conn.execute(
+        "SELECT 1 FROM sdk_pending_requests WHERE project = ? AND path_norm = ?",
+        (project, norm),
+    ).fetchone()
+    return row is not None
+
+
 def add_pending_request(conn: sqlite3.Connection, project: str, path: str) -> int:
     """미등록 경로의 최초 요청을 대기열에 등록. 이미 대기 중이면 새로 만들지 않는다(idempotent).
 
