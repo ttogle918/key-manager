@@ -25,12 +25,19 @@ def test_flash_taskbar_noop_on_non_windows(monkeypatch):
     notify._flash_taskbar()  # 예외 없이 조용히 반환
 
 
-def test_flash_taskbar_absorbs_exception(monkeypatch):
+# 이 테스트 호스트는 실제 Windows라서, sys.platform만 win32로 바꿔도 FindWindowW가
+# 정상 호출되어 "KeyLens"라는 제목의 창이 없으므로 hwnd=0 → 조용한 조기 반환 경로만
+# 타고, try 블록 안의 except Exception이 전혀 실행되지 않는다. except 분기를 실제로
+# 검증하려면 ctypes.windll.user32.FindWindowW 자체가 예외를 던지도록 강제해야 한다.
+def test_flash_taskbar_absorbs_exception_from_win32_api(monkeypatch):
     monkeypatch.setattr(sys, "platform", "win32")
-    # 이 테스트 호스트가 실제 Windows가 아니면 ctypes.windll 자체가 없어 AttributeError가
-    # 나지만, try/except로 흡수되어 예외가 밖으로 새면 안 된다(실제 Windows에서는 창을
-    # 못 찾아 hwnd=0 → 조용히 반환하는 경로를 탄다 — 두 경우 모두 예외 없이 끝나야 함).
-    notify._flash_taskbar()
+    import ctypes
+
+    def boom(*args, **kwargs):
+        raise OSError("boom")
+
+    monkeypatch.setattr(ctypes.windll.user32, "FindWindowW", boom, raising=False)
+    notify._flash_taskbar()  # 예외 없이 조용히 반환 — FindWindowW 실패도 흡수돼야 한다
 
 
 def test_show_toast_absorbs_exception_when_plyer_missing(monkeypatch):
