@@ -81,6 +81,7 @@ SPDX-License-Identifier: MIT
 | 구성요소 | 버전 | 라이선스 | 출처·비고 |
 |---|---|---|---|
 | pywebview | 6.2.1 | BSD-3-Clause | https://github.com/r0x0r/pywebview — 네이티브 창. 전이 pythonnet·clr-loader·bottle·proxy_tools(전부 MIT) |
+| plyer | 2.1.0 | MIT | https://github.com/kivy/plyer — OS 네이티브 토스트 알림(RUNTIME-1). 전이 의존성 없음, Windows 경로는 순수 stdlib `ctypes`만 사용 |
 | cx_Freeze | 8.x | PSF 계열 permissive | https://cx-freeze.readthedocs.io/en/latest/license.html — **빌드 도구**(실행 파일에 도구 코드 미포함) |
 
 - 실행 파일 패키징 기본 패키저는 **cx_Freeze(permissive)**. 대안 Nuitka(Apache-2.0).

@@ -73,5 +73,6 @@ cd desktop && python setup.py build
 ## 라이선스
 
 - `pywebview` 6.2.1 — BSD-3-Clause (permissive). 전이 `pythonnet`·`clr-loader`·`bottle`·`proxy_tools` = MIT.
+- `plyer` 2.1.0 — MIT (permissive). 전이 의존성 없음. OS 네이티브 토스트 알림(RUNTIME-1).
 - WebView2 런타임은 Windows 11 기본 포함 OS 구성요소(파이썬 의존성 아님).
 - 전부 카피레프트 없음. 상세는 루트 [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md)·[docs/SBOM.md](../docs/SBOM.md).

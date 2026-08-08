@@ -9,6 +9,7 @@ build_notifier()의 결과를 VaultService.set_pending_hook()에 그대로 연�
 from __future__ import annotations
 
 import sys
+import threading
 from typing import Callable, Protocol
 
 
@@ -82,11 +83,20 @@ def build_notifier(window: _Window, title: str = "KeyLens") -> Callable[[str, st
 
     반환한 함수는 무엇이 실패해도 절대 예외를 던지지 않는다 — 호출부인
     VaultService.sdk_env가 이 훅의 실패로 SDK 요청 자체를 깨뜨리면 안 되기 때문.
+
+    실제 알림 작업(_flash_taskbar/_show_toast/_goto_pending)은 짧게 사는 데몬 스레드에서
+    돌리고 즉시 반환한다 — _goto_pending의 evaluate_js가 실제 pywebview에서 웹뷰가 아직
+    준비되지 않았을 때 최대 ~20초까지 블로킹할 수 있는데, sdk_env()가 sqlite 연결을 쥔 채
+    요청 처리 스레드에서 이 훅을 동기 호출하므로, 여기서 블로킹하면 SDK 요청(POST /sdk/env)
+    자체가 그만큼 멎어버린다(플랜의 best-effort 원칙 위반).
     """
 
-    def notify(project: str, path: str) -> None:
+    def _run(project: str, path: str) -> None:
         _flash_taskbar(title)
         _show_toast(project, path)
         _goto_pending(window)
+
+    def notify(project: str, path: str) -> None:
+        threading.Thread(target=_run, args=(project, path), daemon=True).start()
 
     return notify

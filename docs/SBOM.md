@@ -125,6 +125,8 @@ SPDX-License-Identifier: MIT
   콘솔 스크린샷 더미 PNG와 README 히어로 GIF 생성에만 사용. 카피레프트 0.
 - **데스크톱 런처**(`desktop/`, 선택 실행 — 웹 배포물엔 미포함): **pywebview 6.2.1 (BSD-3-Clause)**.
   전이 pythonnet(MIT)·clr-loader(MIT)·bottle(MIT)·proxy_tools(MIT). WebView2 런타임은 Windows 기본 OS 구성요소. 카피레프트 0.
+- **데스크톱 알림**(`desktop/notify.py`, RUNTIME-1): **plyer 2.1.0 (MIT)**. 전이 의존성 없음, Windows 경로는
+  순수 stdlib `ctypes`만 사용(`plyer/platforms/win/libs/balloontip.py`). 카피레프트 0.
 - **데스크톱 패키저**(빌드 도구, 실행 파일에 도구 코드 미포함): **cx_Freeze**(PSF 계열 permissive) 기본 채택.
   대안 Nuitka(Apache-2.0). PyInstaller(GPL-2.0+예외)는 생성물이 GPL에 묶이지 않으나, permissive 기조상 기본은
   cx_Freeze. 어느 쪽이든 산출 실행 파일의 라이선스는 본 프로젝트 MIT + 의존성 라이선스만 따른다.

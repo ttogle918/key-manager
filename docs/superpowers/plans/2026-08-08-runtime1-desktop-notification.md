@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+-->
+
 # RUNTIME-1 데스크톱 승인 알림 + 최소 승인 대기 화면 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
