@@ -97,6 +97,9 @@ def build_notifier(window: _Window, title: str = "KeyLens") -> Callable[[str, st
         _goto_pending(window)
 
     def notify(project: str, path: str) -> None:
-        threading.Thread(target=_run, args=(project, path), daemon=True).start()
+        try:
+            threading.Thread(target=_run, args=(project, path), daemon=True).start()
+        except Exception:
+            pass  # 스레드 기동 자체가 실패해도(예: 스레드 고갈) SDK 요청은 계속 진행
 
     return notify
