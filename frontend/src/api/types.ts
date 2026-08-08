@@ -137,3 +137,11 @@ export interface VaultEntryMeta {
   created_at: string
   expires_at?: string | null
 }
+
+/** 승인 대기 요청 한 건(RUNTIME-1) — 값 없이 프로젝트·경로 문자열만. */
+export interface SdkPendingRequest {
+  id: number
+  project: string
+  path: string
+  requested_at: string
+}

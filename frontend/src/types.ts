@@ -11,7 +11,7 @@ export type Service = string
 export type Screen = 'setup' | 'lock' | 'app'
 
 /** 앱 셸 내부 뷰. */
-export type View = 'input' | 'vault'
+export type View = 'input' | 'vault' | 'pending'
 
 /** 분석·입력 화면의 두 입력 모드 — 자동 분류(기존) vs 직접 입력(신규). */
 export type InputMode = 'auto' | 'manual'
@@ -134,4 +134,12 @@ export interface DupTarget {
   resultId: string
   existing: VaultItem
   varName: string
+}
+
+/** 승인 대기 요청 한 건(RUNTIME-1, 프론트 내부 표현). */
+export interface PendingRequest {
+  id: number
+  project: string
+  path: string
+  requestedAt: string
 }

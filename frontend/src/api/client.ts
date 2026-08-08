@@ -5,6 +5,7 @@ import type {
   AnalyzeApiRequest,
   AnalyzeApiResponse,
   KnowledgeResponse,
+  SdkPendingRequest,
   VaultEntryCreate,
   VaultEntryMeta,
   VaultEntryUpdate,
@@ -159,4 +160,12 @@ export const vaultApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
+}
+
+// ── RUNTIME-1: SDK 접근 관리 — 승인 대기 목록만(디렉토리 등록 설정화면은 범위 밖) ──
+
+export const sdkApi = {
+  pending: () => vreq<SdkPendingRequest[]>('/sdk/pending'),
+  approve: (id: number) => vreq<{ approved: boolean }>(`/sdk/pending/${id}/approve`, { method: 'POST' }),
+  deny: (id: number) => vreq<{ denied: boolean }>(`/sdk/pending/${id}/deny`, { method: 'POST' }),
 }
