@@ -18,6 +18,8 @@ export function Sidebar() {
   const vaultCount = useKeylens((s) => s.vault.length)
   const goInput = useKeylens((s) => s.goInput)
   const goVault = useKeylens((s) => s.goVault)
+  const pendingCount = useKeylens((s) => s.pendingRequests.length)
+  const goPending = useKeylens((s) => s.goPending)
   const lockNow = useKeylens((s) => s.lockNow)
   const gotoLockScreen = useKeylens((s) => s.gotoLockScreen)
   const resetProto = useKeylens((s) => s.resetProto)
@@ -54,6 +56,15 @@ export function Sidebar() {
           <span className="rounded-[10px] bg-[#171C22] px-[7px] py-px text-[11px] font-semibold text-muted-2">
             {vaultCount}
           </span>
+        </button>
+        <button type="button" onClick={goPending} className={navBtn(view === 'pending')}>
+          <span className="block size-[15px] flex-none rounded-full border-[1.5px] border-current opacity-70" />
+          <span className="flex-1">승인 대기</span>
+          {pendingCount > 0 && (
+            <span className="rounded-[10px] bg-[#E3B341] px-[7px] py-px text-[11px] font-semibold text-[#07231A]">
+              {pendingCount}
+            </span>
+          )}
         </button>
       </nav>
 

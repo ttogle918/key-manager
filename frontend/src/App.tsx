@@ -1,12 +1,20 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import { useEffect } from 'react'
+
+declare global {
+  interface Window {
+    /** 데스크톱 알림(desktop/notify.py)이 evaluate_js로 호출하는 진입점 — 즉시 승인 대기 화면 전환. */
+    __keylensGoPending?: () => void
+  }
+}
 import { useKeylens } from '@/store/keylensStore'
 import { Sidebar } from '@/components/Sidebar'
 import { SetupScreen } from '@/components/screens/SetupScreen'
 import { LockScreen } from '@/components/screens/LockScreen'
 import { InputScreen } from '@/components/screens/InputScreen'
 import { VaultScreen } from '@/components/screens/VaultScreen'
+import { PendingScreen } from '@/components/screens/PendingScreen'
 import { DeleteModal, DupModal, EnvModal, RotateModal, SyncModal } from '@/components/modals/Modals'
 import { Toast } from '@/components/ui/Toast'
 import { ProjectsDatalist } from '@/components/ProjectsDatalist'
@@ -18,6 +26,14 @@ export default function App() {
   // 앱 시작 시 백엔드 금고 상태로 화면(설정/잠금/앱) 결정.
   useEffect(() => {
     useKeylens.getState().boot()
+  }, [])
+
+  // 데스크톱 알림이 evaluate_js로 호출할 진입점 등록(RUNTIME-1).
+  useEffect(() => {
+    window.__keylensGoPending = () => useKeylens.getState().goPending()
+    return () => {
+      delete window.__keylensGoPending
+    }
   }, [])
 
   // 전역 붙여넣기: 입력 화면에서 **이미지(스크린샷)만** 전역으로 첨부한다.
@@ -61,7 +77,9 @@ export default function App() {
           <ProjectsDatalist />
           <Sidebar />
           <main className="h-screen min-w-0 flex-1 overflow-y-auto">
-            {view === 'input' ? <InputScreen /> : <VaultScreen />}
+            {view === 'input' && <InputScreen />}
+            {view === 'vault' && <VaultScreen />}
+            {view === 'pending' && <PendingScreen />}
           </main>
         </div>
       )}
