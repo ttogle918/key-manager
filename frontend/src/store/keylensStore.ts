@@ -6,7 +6,7 @@
 // 목업 로직(seed 데이터, 가짜 분석·저장)은 그대로 유지하며,
 // 실제 백엔드(SPEC 5장: OCR·분류·암호화·SQLite)로 교체할 지점은 seed.ts / services.ts로 분리해 둔다.
 import { create } from 'zustand'
-import { analyzeApi, ApiError, fetchKnowledge, vaultApi, VaultApiError } from '@/api/client'
+import { analyzeApi, ApiError, fetchKnowledge, sdkApi, vaultApi, VaultApiError } from '@/api/client'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { runOcr } from '@/ocr/ocr'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
@@ -19,6 +19,7 @@ import type {
   DupTarget,
   InputMode,
   ManualRow,
+  PendingRequest,
   Screen,
   UnknownItem,
   VaultItem,
@@ -124,6 +125,8 @@ interface KeylensState {
   syncOpen: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
+  /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
+  pendingRequests: PendingRequest[]
   toast: string | null
 
   // ── 액션 ──
@@ -142,6 +145,14 @@ interface KeylensState {
 
   goInput: () => void
   goVault: () => void
+  /** 승인 대기 화면으로 전환하고 목록을 새로 불러온다(데스크톱 알림이 evaluate_js로 호출하는 경로). */
+  goPending: () => void
+  /** 승인 대기 목록을 백엔드에서 다시 불러온다(값 없음 — 잠금 상태에서도 동작). */
+  loadPending: () => Promise<void>
+  /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
+  approvePending: (id: number) => Promise<void>
+  /** 승인 대기 요청을 거부. */
+  denyPending: (id: number) => Promise<void>
 
   setPw: (v: string) => void
   setPw2: (v: string) => void
@@ -284,6 +295,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     envOpen: false,
     syncOpen: false,
     knowledgeReady: false,
+    pendingRequests: [],
     toast: null,
 
     showToast: (msg) => {
@@ -305,6 +317,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
       set({ view: 'input' })
     },
     goVault: () => set({ view: 'vault' }),
+    goPending: () => {
+      set({ view: 'pending' })
+      get().loadPending()
+    },
 
     // ── 부팅 / 금고 로딩 ──
     loadKnowledge: async () => {
@@ -327,6 +343,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         } else {
           set({ screen: 'lock', locked: true })
         }
+        get().loadPending()
       } catch (e) {
         // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
         console.error('[KeyLens] 부팅 시 금고 상태 조회 실패:', e)
@@ -361,6 +378,39 @@ export const useKeylens = create<KeylensState>((set, get) => {
         set((s) => ({ vault: s.vault.map((it) => (it.id === id ? { ...it, history: hist } : it)) }))
       } catch {
         /* 잠금/네트워크 실패는 무시(이력만 비어 보임) */
+      }
+    },
+    loadPending: async () => {
+      try {
+        const rows = await sdkApi.pending()
+        set({
+          pendingRequests: rows.map((r) => ({
+            id: r.id,
+            project: r.project,
+            path: r.path,
+            requestedAt: r.requested_at,
+          })),
+        })
+      } catch {
+        /* 목록 로딩 실패는 조용히 무시(뱃지·화면이 이전 상태 유지) */
+      }
+    },
+    approvePending: async (id) => {
+      try {
+        await sdkApi.approve(id)
+        await get().loadPending()
+        get().showToast('요청을 허용했어요 — 이후 자동으로 값을 받아갑니다')
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '허용 실패 — 잠시 후 다시 시도해 보세요'))
+      }
+    },
+    denyPending: async (id) => {
+      try {
+        await sdkApi.deny(id)
+        await get().loadPending()
+        get().showToast('요청을 거부했어요')
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '거부 실패 — 잠시 후 다시 시도해 보세요'))
       }
     },
 
@@ -1034,6 +1084,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         rotateTarget: null,
         envOpen: false,
         syncOpen: false,
+        pendingRequests: [],
       })
     },
   }
