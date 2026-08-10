@@ -53,7 +53,9 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5199",
     ],
-    allow_methods=["GET", "POST"],
+    # 프론트가 실제로 쓰는 메서드 전부 — dev 모드는 교차 오리진이라 DELETE·PATCH 도
+    # 프리플라이트를 타므로 여기서 빠지면 항목 삭제·메모 수정·디렉토리 해제가 실패한다.
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
