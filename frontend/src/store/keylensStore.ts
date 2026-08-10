@@ -21,6 +21,8 @@ import type {
   ManualRow,
   PendingRequest,
   Screen,
+  SdkDir,
+  SdkProjectSummary,
   UnknownItem,
   VaultItem,
   View,
@@ -127,6 +129,15 @@ interface KeylensState {
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
   pendingRequests: PendingRequest[]
+  // RUNTIME-1 — 프로젝트 접근 설정 화면
+  /** 금고에 프로젝트가 지정된 항목이 있는 프로젝트 목록. */
+  sdkProjects: SdkProjectSummary[]
+  /** 설정 화면에서 선택된 프로젝트(없으면 null). */
+  selectedSdkProject: string | null
+  /** 선택된 프로젝트의 허용 디렉토리 목록. */
+  sdkDirs: SdkDir[]
+  /** 디렉토리 추가 입력 필드 값. */
+  newDirPath: string
   toast: string | null
 
   // ── 액션 ──
@@ -153,6 +164,18 @@ interface KeylensState {
   approvePending: (id: number) => Promise<void>
   /** 승인 대기 요청을 거부. */
   denyPending: (id: number) => Promise<void>
+  /** 프로젝트 접근 설정 화면으로 전환하고 프로젝트 목록을 새로 불러온다. */
+  goProjectAccess: () => void
+  /** SDK 프로젝트 목록을 백엔드에서 다시 불러온다. */
+  loadSdkProjects: () => Promise<void>
+  /** 프로젝트를 선택하고 그 프로젝트의 허용 디렉토리 목록을 불러온다. */
+  selectSdkProject: (project: string) => void
+  /** 새 디렉토리 입력 필드 값 설정. */
+  setNewDirPath: (v: string) => void
+  /** 선택된 프로젝트에 디렉토리를 사전 등록(source=manual, 승인 팝업 없이 바로 통과). */
+  addSdkDir: () => void
+  /** 디렉토리 등록 해제. */
+  removeSdkDir: (dirId: number) => void
 
   setPw: (v: string) => void
   setPw2: (v: string) => void
@@ -296,6 +319,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     syncOpen: false,
     knowledgeReady: false,
     pendingRequests: [],
+    sdkProjects: [],
+    selectedSdkProject: null,
+    sdkDirs: [],
+    newDirPath: '',
     toast: null,
 
     showToast: (msg) => {
@@ -320,6 +347,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     goPending: () => {
       set({ view: 'pending' })
       get().loadPending()
+    },
+    goProjectAccess: () => {
+      set({ view: 'projectAccess' })
+      get().loadSdkProjects()
     },
 
     // ── 부팅 / 금고 로딩 ──
@@ -411,6 +442,59 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('요청을 거부했어요')
       } catch (e) {
         get().showToast(vaultErrorText(e, '거부 실패 — 잠시 후 다시 시도해 보세요'))
+      }
+    },
+    loadSdkProjects: async () => {
+      try {
+        const rows = await sdkApi.projects()
+        set({ sdkProjects: rows.map((p) => ({ project: p.project, keyCount: p.key_count })) })
+      } catch {
+        /* 목록 로딩 실패는 조용히 무시 */
+      }
+    },
+    selectSdkProject: async (project) => {
+      set({ selectedSdkProject: project, sdkDirs: [] })
+      try {
+        const rows = await sdkApi.dirs(project)
+        set({
+          sdkDirs: rows.map((d) => ({
+            id: d.id,
+            path: d.path,
+            source: d.source,
+            createdAt: d.created_at,
+          })),
+        })
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '디렉토리 목록을 불러오지 못했어요'))
+      }
+    },
+    setNewDirPath: (v) => set({ newDirPath: v }),
+    addSdkDir: async () => {
+      const project = get().selectedSdkProject
+      const path = get().newDirPath.trim()
+      if (!project) return
+      if (!path) {
+        get().showToast('등록할 디렉토리 경로를 입력해 주세요')
+        return
+      }
+      try {
+        await sdkApi.addDir(project, path)
+        set({ newDirPath: '' })
+        await get().selectSdkProject(project)
+        get().showToast('디렉토리를 등록했어요 — 이후 자동으로 값을 받아갑니다')
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '디렉토리 등록 실패 — 잠시 후 다시 시도해 보세요'))
+      }
+    },
+    removeSdkDir: async (dirId) => {
+      const project = get().selectedSdkProject
+      if (!project) return
+      try {
+        await sdkApi.removeDir(project, dirId)
+        await get().selectSdkProject(project)
+        get().showToast('디렉토리 등록을 해제했어요')
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '해제 실패 — 잠시 후 다시 시도해 보세요'))
       }
     },
 
@@ -1085,6 +1169,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
         envOpen: false,
         syncOpen: false,
         pendingRequests: [],
+        sdkProjects: [],
+        selectedSdkProject: null,
+        sdkDirs: [],
+        newDirPath: '',
       })
     },
   }
