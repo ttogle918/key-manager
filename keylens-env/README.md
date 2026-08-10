@@ -23,7 +23,7 @@ SPDX-License-Identifier: MIT
 pip install "git+https://github.com/ttogle918/key-manager.git#subdirectory=keylens-env"
 
 # 특정 버전(태그)으로 고정하고 싶다면
-pip install "git+https://github.com/ttogle918/key-manager.git@v0.1.1#subdirectory=keylens-env"
+pip install "git+https://github.com/ttogle918/key-manager.git@v0.2.0#subdirectory=keylens-env"
 ```
 
 `requirements.txt`에 넣을 때도 같은 줄을 그대로 쓰면 됩니다.
@@ -33,6 +33,11 @@ pip install "git+https://github.com/ttogle918/key-manager.git@v0.1.1#subdirector
 ```bash
 pip install -e keylens-env/
 ```
+
+> **패키지 버전은 KeyLens 앱 릴리스 태그와 별개입니다.** 이 패키지의 버전은 SDK 자체가 바뀔 때만
+> 올라가므로, 앱이 `v0.2.0`이어도 `keylens_env.__version__`은 `0.1.0`일 수 있습니다.
+> 그래서 `pip install --upgrade`는 패키지 버전이 그대로면 갱신을 건너뜁니다 — 최신 커밋으로 다시
+> 받으려면 `--force-reinstall`을 쓰거나 위처럼 태그를 명시해 고정하세요.
 
 > PyPI 배포는 나중에 추가할 수 있습니다. 그때도 위 git 설치 방식은 계속 동작합니다.
 
