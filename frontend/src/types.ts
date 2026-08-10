@@ -11,7 +11,7 @@ export type Service = string
 export type Screen = 'setup' | 'lock' | 'app'
 
 /** 앱 셸 내부 뷰. */
-export type View = 'input' | 'vault' | 'pending'
+export type View = 'input' | 'vault' | 'pending' | 'projectAccess'
 
 /** 분석·입력 화면의 두 입력 모드 — 자동 분류(기존) vs 직접 입력(신규). */
 export type InputMode = 'auto' | 'manual'
@@ -142,4 +142,18 @@ export interface PendingRequest {
   project: string
   path: string
   requestedAt: string
+}
+
+/** SDK 프로젝트 요약(RUNTIME-1, 프론트 내부 표현). */
+export interface SdkProjectSummary {
+  project: string
+  keyCount: number
+}
+
+/** SDK 허용 디렉토리 한 건(RUNTIME-1, 프론트 내부 표현). */
+export interface SdkDir {
+  id: number
+  path: string
+  source: 'manual' | 'approved'
+  createdAt: string
 }

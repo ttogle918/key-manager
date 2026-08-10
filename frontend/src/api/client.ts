@@ -6,6 +6,8 @@ import type {
   AnalyzeApiResponse,
   KnowledgeResponse,
   SdkPendingRequest,
+  SdkProject,
+  SdkProjectDir,
   VaultEntryCreate,
   VaultEntryMeta,
   VaultEntryUpdate,
@@ -162,10 +164,23 @@ export const vaultApi = {
     }),
 }
 
-// ── RUNTIME-1: SDK 접근 관리 — 승인 대기 목록만(디렉토리 등록 설정화면은 범위 밖) ──
+// ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 프로젝트별 디렉토리 사전등록 ──
 
 export const sdkApi = {
   pending: () => vreq<SdkPendingRequest[]>('/sdk/pending'),
   approve: (id: number) => vreq<{ approved: boolean }>(`/sdk/pending/${id}/approve`, { method: 'POST' }),
   deny: (id: number) => vreq<{ denied: boolean }>(`/sdk/pending/${id}/deny`, { method: 'POST' }),
+  projects: () => vreq<SdkProject[]>('/sdk/projects'),
+  dirs: (project: string) =>
+    vreq<SdkProjectDir[]>(`/sdk/projects/${encodeURIComponent(project)}/directories`),
+  addDir: (project: string, path: string) =>
+    vreq<SdkProjectDir>(`/sdk/projects/${encodeURIComponent(project)}/directories`, {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  removeDir: (project: string, dirId: number) =>
+    vreq<{ removed: boolean }>(
+      `/sdk/projects/${encodeURIComponent(project)}/directories/${dirId}`,
+      { method: 'DELETE' },
+    ),
 }

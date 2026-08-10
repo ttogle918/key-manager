@@ -145,3 +145,17 @@ export interface SdkPendingRequest {
   path: string
   requested_at: string
 }
+
+/** SDK 프로젝트 요약(RUNTIME-1) — 금고에 프로젝트가 지정된 항목이 있으면 자동으로 잡힌다. */
+export interface SdkProject {
+  project: string
+  key_count: number
+}
+
+/** SDK 허용 디렉토리 한 건(RUNTIME-1). source: 'manual'(사전 등록) | 'approved'(승인 프롬프트로 등록). */
+export interface SdkProjectDir {
+  id: number
+  path: string
+  source: 'manual' | 'approved'
+  created_at: string
+}
