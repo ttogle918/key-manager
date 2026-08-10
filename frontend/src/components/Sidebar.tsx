@@ -20,6 +20,7 @@ export function Sidebar() {
   const goVault = useKeylens((s) => s.goVault)
   const pendingCount = useKeylens((s) => s.pendingRequests.length)
   const goPending = useKeylens((s) => s.goPending)
+  const goProjectAccess = useKeylens((s) => s.goProjectAccess)
   const lockNow = useKeylens((s) => s.lockNow)
   const gotoLockScreen = useKeylens((s) => s.gotoLockScreen)
   const resetProto = useKeylens((s) => s.resetProto)
@@ -65,6 +66,10 @@ export function Sidebar() {
               {pendingCount}
             </span>
           )}
+        </button>
+        <button type="button" onClick={goProjectAccess} className={navBtn(view === 'projectAccess')}>
+          <span className="block size-[15px] flex-none rounded-[3px] border-[1.5px] border-current opacity-70" />
+          <span className="flex-1">프로젝트 접근</span>
         </button>
       </nav>
 

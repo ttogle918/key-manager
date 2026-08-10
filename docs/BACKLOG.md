@@ -394,14 +394,14 @@ SPDX-License-Identifier: MIT
 > README 로드맵의 "런타임 주입(SDK)" 항목을 구체화. `.env` 파일을 코드에 두는 대신, 실행 중인 KeyLens 금고에서
 > 그때그때 값을 받아오는 dotenv 대체재. SYNC-2와 마찬가지로 지금은 **설계만 확정하고 백로그에 등재** — 착수는 이후.
 
-### RUNTIME-1 ⚪ `keylens-env` — dotenv 대체 런타임 SDK (Python 우선, post-MVP)
+### RUNTIME-1 ✅ `keylens-env` — dotenv 대체 런타임 SDK (Python 우선) — 완료(데스크톱 채널)
 - **중요도**: ⚪ Roadmap | **스프린트**: 대회 이후 | **의존성**: VAULT-1/2(인증 게이트), CORE-5(공식 env 변수명) | **사이즈**: L
 - **배경**: 지금은 `.env` 내보내기(CORE-5)로 평문 파일을 만들어 쓴다 — 결국 디스크에 평문이 남는 건 똑같다. `keylens-env`는 `dotenv`처럼 코드에서 한 줄로 값을 불러오되, 실제로는 **실행 중이고 잠금 해제된 KeyLens 로컬 백엔드**에서 그때그때 값을 받아 `os.environ`에 주입한다 — 디스크에 평문 `.env` 파일이 남지 않는다.
-- **진행 상황(날짜는 이 파일을 수정하는 시점 기준):** 백엔드 기반(레포/서비스/모델/`/sdk/*` API) 구현 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`, main에 병합 완료(커밋 `6341f3d`). 남은 3개 하위 플랜(프론트 설정 화면, `keylens-env` 패키지 자체, 데스크톱 알림) 중 **데스크톱 알림(Windows)**은 설계 확정 후 구현 완료 — `docs/superpowers/plans/2026-08-08-runtime1-desktop-notification.md`(작업표시줄 깜빡임 + OS 토스트 + `PendingScreen` 자동 화면전환, `VaultService.on_pending` 훅). 나머지 2개(프론트 설정 화면, `keylens-env` 패키지)는 아직 시작 전.
+- **진행 상황(2026-08-09 기준):** 4개 서브플랜(백엔드 기반, 데스크톱 알림, `keylens-env` 패키지, 프론트 프로젝트 접근 설정 화면) 전부 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`(백엔드), `docs/superpowers/plans/2026-08-08-runtime1-desktop-notification.md`(데스크톱 알림), `docs/superpowers/plans/2026-08-09-keylens-env-package.md`(패키지+설정화면). 남은 건 브라우저 탭 알림 채널(개발 모드 전용 대체 수단, 스코프 하)과 실제 PyPI 업로드(계정 필요, 사용자 직접 진행)뿐이다.
 - **범위**: v1은 **Python 패키지만**(PyPI, `python-dotenv`와 유사한 API). Node.js/npm 버전은 로드맵으로 남기고 이번엔 만들지 않는다.
 - **핵심 설계**
   - [x] **실행 전제**: SDK는 자체 암호화·인증 로직을 두지 않는다 — KeyLens 앱(로컬 백엔드 127.0.0.1:8003)이 **켜져있고 잠금 해제된 상태**에서만 동작. 꺼져있거나 잠겨있으면 `load_env()`가 "KeyLens를 켜고 잠금 해제하세요" 같은 명확한 에러를 던진다(조용히 실패·빈 값 반환 금지).
-  - [ ] **프로젝트 식별**: 소비 레포 루트에 설정 파일(`.keylens.toml`, `project = "블로그"`)을 둔다. `load_env()`가 `python-dotenv`의 `.env` 탐색과 같은 방식으로 cwd에서 위로 탐색해 찾는다.
+  - [x] **프로젝트 식별**: 소비 레포 루트에 설정 파일(`.keylens.toml`, `project = "블로그"`)을 둔다. `load_env()`가 `python-dotenv`의 `.env` 탐색과 같은 방식으로 cwd에서 위로 탐색해 찾는다.
   - [x] **접근 범위(프로젝트 그룹 단위)**: 금고 항목의 기존 "프로젝트" 필드를 정식 그룹 단위로 승격한다.
     - 프로젝트가 지정된 키는 그 프로젝트에 **등록된 디렉토리에서만** 접근 가능
     - 프로젝트 **미지정("기본") 키는 모든 프로젝트에서 접근 가능**(전역 키 취급)
@@ -412,18 +412,18 @@ SPDX-License-Identifier: MIT
     - [ ] **브라우저 탭(`npm run dev` 개발 모드)**: 이 경로는 OS 알림을 못 만든다 — 최선은 브라우저 `Notification` Web API(권한 요청 필요, 탭이 백그라운드면 신뢰도 낮음)로 대체. 화면 안 배너(지금 목업의 "대기 중인 요청")는 항상 병행해 최후 안전망으로 남긴다.
     - 실제 배포 형태는 데스크톱 exe(OSS-3에서 이미 완료)를 전제로 하므로, 브라우저 알림은 어디까지나 개발 중 대체 수단이라는 점을 문서에 명시.
   - [x] **감사 로그**: 기존 VAULT-2 감사 이력에 SDK 경유 조회도 기록 — 어느 경로·프로젝트가 언제 무슨 키를 가져갔는지 남긴다.
-  - [ ] **보안 프레이밍(문서화 필수)**: 이 기능이 새 신뢰 경계를 만드는 게 아니라는 점을 README/위협모델에 명시한다 — 잠금 해제 상태에선 이미 로컬 프로세스가 vault API를 호출할 수 있었다(기존 위협모델 그대로). 이 기능이 실제로 추가하는 가치는 "전부 다 보임" 대신 **승인된 프로젝트 것만** 내려주는 최소 권한 스코핑이다.
-  - [ ] **신규 의존성**: PyPI 배포용 패키징(예: `hatchling`/`setuptools`, 둘 다 MIT/permissive) · 데스크톱 알림용 `plyer`(MIT) — 착수 시 license-check.
+  - [x] **보안 프레이밍(문서화 필수)**: 이 기능이 새 신뢰 경계를 만드는 게 아니라는 점을 README/위협모델에 명시한다 — 잠금 해제 상태에선 이미 로컬 프로세스가 vault API를 호출할 수 있었다(기존 위협모델 그대로). 이 기능이 실제로 추가하는 가치는 "전부 다 보임" 대신 **승인된 프로젝트 것만** 내려주는 최소 권한 스코핑이다.
+  - [x] **신규 의존성**: `keylens-env` 빌드 백엔드로 `setuptools`(PSF/BSD, 카피레프트 전이 의존성 없음 — hatchling은 전이 의존성 pathspec이 MPL-2.0이라 기각) · 데스크톱 알림용 `plyer`(MIT, 이미 완료).
 - **테스트 체크리스트(착수 시 작성)**
-  - [ ] 🧪 KeyLens 미실행/잠금 상태에서 `load_env()` → 명확한 에러(조용한 실패 없음)
-  - [ ] 🧪 미등록 디렉토리 최초 요청 → 승인 팝업 → 허용 후 값 주입, 거부 시 접근 안 됨
-  - [ ] 🧪 기본(전역) 키 + 프로젝트 키 이름 충돌 → 프로젝트 쪽이 우선, 비충돌 시 합집합
-  - [ ] 🧪 등록 안 된 다른 프로젝트 디렉토리에서는 해당 프로젝트 전용 키에 접근 불가
-  - [ ] 🧪 SDK 경유 조회가 감사 이력에 기록됨
+  - [x] 🧪 KeyLens 미실행/잠금 상태에서 `load_env()` → 명확한 에러(조용한 실패 없음) — `keylens-env/tests/test_load_env_integration.py`
+  - [x] 🧪 미등록 디렉토리 최초 요청 → 승인 팝업 → 허용 후 값 주입, 거부 시 접근 안 됨 — `backend/tests/test_sdk_session.py`(백엔드 기반 플랜에서 이미 커버)
+  - [x] 🧪 기본(전역) 키 + 프로젝트 키 이름 충돌 → 프로젝트 쪽이 우선, 비충돌 시 합집합 — `backend/tests/test_sdk_repo.py::test_entries_for_env_project_overrides_global_on_name_conflict`
+  - [x] 🧪 등록 안 된 다른 프로젝트 디렉토리에서는 해당 프로젝트 전용 키에 접근 불가 — `backend/tests/test_sdk_repo.py::test_entries_for_env_other_project_not_included`
+  - [x] 🧪 SDK 경유 조회가 감사 이력에 기록됨 — `backend/tests/test_sdk_session.py::test_sdk_env_logs_audit_history`
   - [ ] 🧪 데스크톱 앱에서 미등록 요청 발생 시 OS 토스트 + 작업표시줄 깜빡임 확인(Windows)
   - [ ] 🧪 브라우저 개발 모드에서는 Web Notification 권한 거부 시에도 화면 안 배너로 요청이 보이는지(안전망 확인)
 - **범위 밖(이번 설계에 안 넣음)**: Node.js/npm 패키지(로드맵), 여러 KeyLens 인스턴스/기기 간 동기화(SYNC-2와 별개 문제), 자동 승인·자동 재발급.
-- **착수 시점**: 사용자가 직접 지정.
+- **완료(2026-08-09)**: 데스크톱 채널 기준 RUNTIME-1 전체 완료. 남은 건 브라우저 탭 알림 채널과 실제 PyPI 업로드뿐(둘 다 스코프 밖 또는 사용자 직접 진행).
 
 ---
 
