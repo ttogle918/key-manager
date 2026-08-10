@@ -397,7 +397,7 @@ SPDX-License-Identifier: MIT
 ### RUNTIME-1 ✅ `keylens-env` — dotenv 대체 런타임 SDK (Python 우선) — 완료(데스크톱 채널)
 - **중요도**: ⚪ Roadmap | **스프린트**: 대회 이후 | **의존성**: VAULT-1/2(인증 게이트), CORE-5(공식 env 변수명) | **사이즈**: L
 - **배경**: 지금은 `.env` 내보내기(CORE-5)로 평문 파일을 만들어 쓴다 — 결국 디스크에 평문이 남는 건 똑같다. `keylens-env`는 `dotenv`처럼 코드에서 한 줄로 값을 불러오되, 실제로는 **실행 중이고 잠금 해제된 KeyLens 로컬 백엔드**에서 그때그때 값을 받아 `os.environ`에 주입한다 — 디스크에 평문 `.env` 파일이 남지 않는다.
-- **진행 상황(2026-08-09 기준):** 4개 서브플랜(백엔드 기반, 데스크톱 알림, `keylens-env` 패키지, 프론트 프로젝트 접근 설정 화면) 전부 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`(백엔드), `docs/superpowers/plans/2026-08-08-runtime1-desktop-notification.md`(데스크톱 알림), `docs/superpowers/plans/2026-08-09-keylens-env-package.md`(패키지+설정화면). 남은 건 브라우저 탭 알림 채널(개발 모드 전용 대체 수단, 스코프 하)과 실제 PyPI 업로드(계정 필요, 사용자 직접 진행)뿐이다.
+- **진행 상황(2026-08-09 기준):** 4개 서브플랜(백엔드 기반, 데스크톱 알림, `keylens-env` 패키지, 프론트 프로젝트 접근 설정 화면) 전부 완료 — `docs/superpowers/plans/2026-07-30-runtime1-backend-foundation.md`(백엔드), `docs/superpowers/plans/2026-08-08-runtime1-desktop-notification.md`(데스크톱 알림), `docs/superpowers/plans/2026-08-09-keylens-env-package.md`(패키지+설정화면). 남은 건 브라우저 탭 알림 채널(개발 모드 전용 대체 수단, 스코프 하)뿐이다. **배포 방식 결정(2026-08-10): PyPI 업로드는 하지 않고 git 설치(`pip install "git+https://github.com/ttogle918/key-manager.git#subdirectory=keylens-env"`)로 배포한다** — 별도 계정·토큰·배포 파이프라인이 필요 없고 레포 태그로 버전 고정이 되기 때문. PyPI 등록은 이후 선택지로 열어 둔다(git 설치 방식은 그대로 유지됨).
 - **범위**: v1은 **Python 패키지만**(PyPI, `python-dotenv`와 유사한 API). Node.js/npm 버전은 로드맵으로 남기고 이번엔 만들지 않는다.
 - **핵심 설계**
   - [x] **실행 전제**: SDK는 자체 암호화·인증 로직을 두지 않는다 — KeyLens 앱(로컬 백엔드 127.0.0.1:8003)이 **켜져있고 잠금 해제된 상태**에서만 동작. 꺼져있거나 잠겨있으면 `load_env()`가 "KeyLens를 켜고 잠금 해제하세요" 같은 명확한 에러를 던진다(조용히 실패·빈 값 반환 금지).
@@ -423,7 +423,7 @@ SPDX-License-Identifier: MIT
   - [ ] 🧪 데스크톱 앱에서 미등록 요청 발생 시 OS 토스트 + 작업표시줄 깜빡임 확인(Windows)
   - [ ] 🧪 브라우저 개발 모드에서는 Web Notification 권한 거부 시에도 화면 안 배너로 요청이 보이는지(안전망 확인)
 - **범위 밖(이번 설계에 안 넣음)**: Node.js/npm 패키지(로드맵), 여러 KeyLens 인스턴스/기기 간 동기화(SYNC-2와 별개 문제), 자동 승인·자동 재발급.
-- **완료(2026-08-09)**: 데스크톱 채널 기준 RUNTIME-1 전체 완료. 남은 건 브라우저 탭 알림 채널과 실제 PyPI 업로드뿐(둘 다 스코프 밖 또는 사용자 직접 진행).
+- **완료(2026-08-09)**: 데스크톱 채널 기준 RUNTIME-1 전체 완료. 남은 건 브라우저 탭 알림 채널뿐(스코프 밖). 배포는 git 설치 방식으로 확정(2026-08-10) — PyPI 미등록.
 
 ---
 

@@ -13,13 +13,28 @@ SPDX-License-Identifier: MIT
 - KeyLens 앱(데스크톱 exe 또는 `python desktop/app.py`)이 **켜져 있고 잠금 해제된 상태**여야 합니다.
 - Python 3.11 이상.
 
-## 설치 (로컬 개발용)
+## 설치
+
+**PyPI에 올리지 않습니다.** git 저장소에서 바로 설치하세요 — 이 패키지는 레포 안의
+`keylens-env/` 서브디렉토리에 있습니다.
+
+```bash
+# 다른 프로젝트에서 쓰기 (권장)
+pip install "git+https://github.com/ttogle918/key-manager.git#subdirectory=keylens-env"
+
+# 특정 버전(태그)으로 고정하고 싶다면
+pip install "git+https://github.com/ttogle918/key-manager.git@v0.1.1#subdirectory=keylens-env"
+```
+
+`requirements.txt`에 넣을 때도 같은 줄을 그대로 쓰면 됩니다.
+
+이 레포를 직접 클론해 개발 중이라면 편집 가능 설치:
 
 ```bash
 pip install -e keylens-env/
 ```
 
-(실제 PyPI 배포는 아직 하지 않았습니다 — 이 레포 안에서 개발 설치로만 씁니다.)
+> PyPI 배포는 나중에 추가할 수 있습니다. 그때도 위 git 설치 방식은 계속 동작합니다.
 
 ## 사용법
 

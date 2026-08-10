@@ -57,6 +57,8 @@ KeyLens 자격증명 관리 도구/
 *.docx
 *.hwp
 *.hwpx
+# 제출양식에 맞춰 채운 결과보고서 사본(개인정보 포함) — 원본 docs/RESULT_REPORT.md 는 커밋한다.
+docs/RESULT_REPORT_제출양식.md
 
 # --- OCR 모델 캐시(용량 크고 재생성 가능) ---
 *.traineddata
