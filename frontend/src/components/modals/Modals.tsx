@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { CONSOLE_URL, resolveIssueUrl, TYPE_MAP } from '@/data/services'
 import { envText, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
+import type { VaultItem } from '@/types'
 
 /** 삭제 확인 다이얼로그. */
 export function DeleteModal() {
@@ -288,9 +289,28 @@ export function EnvModal() {
   const close = useKeylens((s) => s.closeEnv)
   const copyAll = useKeylens((s) => s.envCopyAll)
   const download = useKeylens((s) => s.envDownload)
+  const loadPreview = useKeylens((s) => s.loadEnvPreview)
 
   const items = vault.filter((v) => !projFilter || (v.project || '') === projFilter)
-  const text = envText(items)
+
+  // 미리보기는 store.vault 의 마스킹된 값이 아니라 실제 복호화된 값을 보여줘야 하므로,
+  // 모달이 열릴 때마다 별도로 복호화해 로컬 상태에 담는다(클립보드 복사·다운로드와 동일한 값).
+  const [previewItems, setPreviewItems] = useState<VaultItem[] | null>(null)
+  useEffect(() => {
+    if (!envOpen) {
+      setPreviewItems(null)
+      return
+    }
+    let cancelled = false
+    loadPreview().then((resolved) => {
+      if (!cancelled) setPreviewItems(resolved)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [envOpen, projFilter, loadPreview])
+
+  const text = previewItems ? envText(previewItems) : '복호화하는 중…'
 
   return (
     <Modal open={envOpen} onClose={close} title=".env 내보내기" className="w-[540px] max-w-[90vw]">

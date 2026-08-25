@@ -236,6 +236,8 @@ interface KeylensState {
   envCopyAll: () => void
   envDownload: () => void
   envCopyGroup: (name: string) => void
+  /** .env 모달 미리보기용 — 선택 항목을 복호화해 반환(모달 렌더링 전용, 클립보드/다운로드와 별개 호출). */
+  loadEnvPreview: () => Promise<VaultItem[]>
 
   /** 암호화 금고 내보내기/가져오기(SYNC-0). */
   exportVault: () => void
@@ -1083,6 +1085,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const items = await withValues(envItems().filter((i) => i.service === name))
       get().copy(envText(items), name + ' 그룹 .env 복사됨')
     },
+    loadEnvPreview: () => withValues(envItems()),
 
     // ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
     exportVault: async () => {
