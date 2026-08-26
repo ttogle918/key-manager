@@ -67,19 +67,37 @@ def _line_key(box) -> tuple[float, float]:
     return (sum(ys) / len(ys), sum(xs) / len(xs))
 
 
-def run_ocr(image_bytes: bytes) -> str:
-    """이미지 바이트 → 줄 순서 보존 텍스트. 검출 결과가 없으면 빈 문자열."""
+def _recognize_lines(image_bytes: bytes) -> list[tuple[list, str]]:
+    """이미지 → (박스, 텍스트) 줄 목록. 위→아래, 왼→오 정렬, 노이즈 줄 제외."""
     engine = _get_engine()
     result = engine(image_bytes)
     if result is None or result.boxes is None or len(result.boxes) == 0:
-        return ""
+        return []
 
     rows = sorted(zip(result.boxes, result.txts), key=lambda r: _line_key(r[0]))
 
-    lines: list[str] = []
-    for _box, txt in rows:
+    lines: list[tuple[list, str]] = []
+    for box, txt in rows:
         t = txt.strip()
         if not t or t.lower() in _NOISE_LINES:
             continue
-        lines.append(t)
-    return "\n".join(lines)
+        lines.append((box, t))
+    return lines
+
+
+def run_ocr(image_bytes: bytes) -> str:
+    """이미지 바이트 → 줄 순서 보존 텍스트. 검출 결과가 없으면 빈 문자열."""
+    lines = _recognize_lines(image_bytes)
+    return "\n".join(t for _box, t in lines)
+
+
+def run_ocr_lines(image_bytes: bytes) -> list[dict]:
+    """이미지 바이트 → 줄 단위 {text, box} 목록(화면 설명 기능용 — 박스 좌표 보존).
+
+    box는 4점 폴리곤 [[x,y],[x,y],[x,y],[x,y]](RapidOCR 원본 좌표, 이미지 픽셀 단위).
+    """
+    lines = _recognize_lines(image_bytes)
+    return [
+        {"text": t, "box": [[float(x), float(y)] for x, y in box]}
+        for box, t in lines
+    ]
