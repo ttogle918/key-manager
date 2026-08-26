@@ -60,7 +60,9 @@ def send_bundle_email(config: SmtpConfig, destination_email: str, bundle_json: s
     msg["To"] = destination_email
     msg.set_content(
         "요청하신 KeyLens 금고 백업 파일을 첨부했습니다.\n\n"
-        "이 파일은 전부 암호문입니다 — 원래 금고의 마스터 비밀번호가 있어야만 열 수 있습니다.\n"
+        "비밀 값은 암호화되어 있어 원래 금고의 마스터 비밀번호가 있어야만 열 수 있습니다.\n"
+        "다만 서비스명·라벨·프로젝트명·메모 같은 메타데이터는 평문으로 포함되어 있어,\n"
+        "이 메일을 중계한 매니저와 그의 메일 제공자가 볼 수 있습니다.\n"
         "다른 기기의 KeyLens에서 '가져오기'로 이 첨부파일을 지정해 복원하세요."
     )
     msg.add_attachment(

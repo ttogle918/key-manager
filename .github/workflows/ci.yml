@@ -94,15 +94,17 @@ jobs:
           pip install "reuse==6.2.0"
           reuse lint
 
-      # 백엔드 런타임 의존성만 깐 clean 환경에서 카피레프트 검사(도구 의존성 오탐 회피).
-      # 강한 카피레프트(GPL/AGPL)는 예외 없이 차단. 약한 카피레프트(LGPL/MPL)는
-      # THIRD-PARTY-NOTICES.md에 근거(미수정 사용·재링크 가능 구조)를 남긴 승인 목록만 통과시킨다.
-      - name: 백엔드 라이선스 (pip-licenses, 카피레프트 검사)
+      # 백엔드+manager-relay 런타임 의존성을 함께 깐 clean 환경에서 카피레프트 검사(도구
+      # 의존성 오탐 회피). manager-relay/ 도 이 브랜치에서 추가된 별도 배포형 서비스라
+      # 같은 게이트를 통과해야 한다. 강한 카피레프트(GPL/AGPL)는 예외 없이 차단. 약한
+      # 카피레프트(LGPL/MPL)는 THIRD-PARTY-NOTICES.md에 근거(미수정 사용·재링크 가능 구조)를
+      # 남긴 승인 목록만 통과시킨다.
+      - name: 백엔드+manager-relay 라이선스 (pip-licenses, 카피레프트 검사)
         run: |
           python -m venv /tmp/rt
-          /tmp/rt/bin/pip install -q -r backend/requirements.txt pip-licenses
+          /tmp/rt/bin/pip install -q -r backend/requirements.txt -r manager-relay/requirements.txt pip-licenses
           /tmp/rt/bin/pip-licenses --format=csv > licenses-backend.csv
-          echo "--- 백엔드 런타임 라이선스 ---"; cat licenses-backend.csv
+          echo "--- 백엔드+manager-relay 런타임 라이선스 ---"; cat licenses-backend.csv
 
           if grep -iE '"[^"]*","[^"]*","[^"]*(A?GPL|GNU (Affero|General) Public)[^"]*"' licenses-backend.csv \
               | grep -viE 'LGPL|Lesser'; then

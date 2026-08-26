@@ -18,7 +18,11 @@ export class SyncRelayError extends Error {}
 export async function requestEmailExport(
   destinationEmail: string,
   bundle: unknown,
-  timeoutMs = 10000,
+  // 서버(manager-relay/app/mailer.py)의 SMTP 발송은 smtplib timeout=10(초) 로 연결을 시도한다.
+  // 여기에 연결/TLS/로그인 오버헤드까지 더하면 서버의 최악 케이스가 10초를 넘을 수 있으므로,
+  // 클라이언트 타임아웃을 그보다 넉넉히 길게 잡아 실제로는 성공한 발송을 스푸리어스
+  // "응답이 너무 늦어요" 에러로 오탐하지 않게 한다.
+  timeoutMs = 20000,
 ): Promise<void> {
   if (!RELAY_URL) throw new SyncRelayError('이메일 동기화가 설정되지 않았어요')
   const ctrl = new AbortController()

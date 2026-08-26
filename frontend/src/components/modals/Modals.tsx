@@ -381,9 +381,11 @@ export function EmailSyncModal() {
     <Modal open={open} onClose={close} title="이메일로 내보내기" className="w-[440px] max-w-[92vw]">
       <div className="text-[15px] font-bold">이메일로 내보내기</div>
       <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
-        암호화된 금고 번들을 입력한 이메일로 보내드려요. 먼저{' '}
+        금고 번들을 입력한 이메일로 보내드려요. 먼저{' '}
         <span className="font-mono text-fg-soft">확인 링크</span>가 담긴 메일이 가고, 그 링크를
-        눌러야 실제 파일이 담긴 메일이 한 번 더 발송됩니다.
+        눌러야 실제 파일이 담긴 메일이 한 번 더 발송됩니다. 비밀 값은 암호화되어 있지만,
+        서비스명·라벨·프로젝트명·메모 같은 메타데이터는 평문으로 포함되어 이 메일을 중계하는
+        매니저와 메일 제공자가 볼 수 있어요.
       </p>
       <input
         type="email"
