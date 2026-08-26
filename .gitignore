@@ -66,3 +66,5 @@ docs/RESULT_REPORT_제출양식.md
 # tesseract.js 로컬 벤더 자산 — scripts/vendor-tesseract.mjs 가 재생성(커밋 금지)
 frontend/public/tesseract/
 frontend/public/tessdata/
+# RapidOCR 한국어 인식 모델 — backend/scripts/vendor_ocr_models.py 가 재생성(커밋 금지)
+backend/app/ocr_models/

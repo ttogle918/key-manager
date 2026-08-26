@@ -66,6 +66,49 @@ export async function analyzeApi(
   }
 }
 
+/**
+ * POST /analyze/image — 스크린샷을 백엔드 로컬 OCR(RapidOCR, 한국어 인식 모델)로 읽어 분류한다.
+ * 브라우저 tesseract.js(CORE-3 원안)보다 한글 라벨 인식이 정확해 이 경로로 옮겼다 — 이미지는
+ * 여전히 이 로컬 백엔드(127.0.0.1) 안에서만 처리되고 디스크에 저장되지 않는다.
+ */
+export async function analyzeImageApi(
+  image: Blob,
+  opts: { url?: string; text?: string } = {},
+  timeoutMs = 20000,
+): Promise<AnalyzeApiResponse> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const form = new FormData()
+    form.append('image', image, 'screenshot.png')
+    if (opts.url) form.append('url', opts.url)
+    if (opts.text) form.append('text', opts.text)
+    const res = await fetch(`${API_BASE}/analyze/image`, {
+      method: 'POST',
+      body: form,
+      signal: ctrl.signal,
+    })
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new ApiError('OCR 모델이 아직 준비되지 않았어요 — 잠시 후 다시 시도해 보세요')
+      }
+      if (res.status === 413 || res.status === 422) {
+        throw new ApiError('이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요')
+      }
+      throw new ApiError(`문제가 발생했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`)
+    }
+    return (await res.json()) as AnalyzeApiResponse
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new ApiError('응답이 너무 늦어요 — 다시 시도해 보세요.')
+    }
+    throw new ApiError('KeyLens에 연결할 수 없어요 — 잠시 후 다시 시도하거나 재시작해 보세요.')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** GET /knowledge — 지식베이스(서비스·종류맵). 실패 시 ApiError(프론트는 기본 맵 유지). */
 export async function fetchKnowledge(timeoutMs = 5000): Promise<KnowledgeResponse> {
   const ctrl = new AbortController()

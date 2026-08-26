@@ -117,3 +117,11 @@ def test_truncated_flag_reaches_meta(kb):
     items = classify_text("MY_TOKEN=abcdefghijkl#trailing", kb)
     hit = next(it for it in items if it.value == "abcdefghijkl")
     assert hit.meta.get("truncated") is True
+
+
+def test_hyphen_split_by_ocr_space_is_rejoined(kb):
+    """백엔드 OCR(RapidOCR)이 하이픈 앞에 공백을 잘못 끼워 넣는 경우(실측 openai.png:
+    'sk-proj -abc...') — 원본 분리 토큰도 유지하되, 합친 후보도 추가로 시도해 값을 살린다."""
+    text = f"sk-proj -{'a' * 20}"
+    items = classify_text(text, kb)
+    assert any(it.official_env_name == "OPENAI_API_KEY" for it in items)

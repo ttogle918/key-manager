@@ -30,6 +30,13 @@ KAKAO_NATIVE = "d5e6e7a8b9c2d3e4e5a6b7c8d9eaebac"
 GCP_KEY = "AIza" + "SyDummyKeyTwoThreeFourFiveSixSevenAb"[:35]  # AIza + 35
 OPENAI_SECRET = "sk-proj-" + "DummyTwoThreeAbcdEfghTwoThree"  # sk-(proj-)?[A-Za-z0-9_-]{20,}
 OPENAI_ORG = "org-" + "DummyTwoThreeAbcdEfghXy"  # org-[A-Za-z0-9]{20,}
+GITHUB_PAT = "ghp_" + "a2b3c4d5e6e7a8b9c2d3e4e5a6b7c8d9e2f3g4h5"[:36]  # ghp_ + 36 alnum
+AWS_ACCESS_KEY = "AKIA" + "2B3C4D5E6F7G8H9J"  # AKIA/ASIA + 16 [0-9A-Z], 0/1/O/I 회피
+AWS_SECRET_KEY = "dQw" + "4w9WgXcQdummyTwoThreeAbcdEfghTwoThreeKey"[:37]  # 접두어 없음, 40자 base64풍
+SLACK_BOT = "xoxb-" + "2345678923456-2345678923456-a2b3c4d5e6e7a8b9c2d3e4e5"  # xoxb-...
+SLACK_USER = "xoxp-" + "2345678923456-2345678923456-2345678923456-a2b3c4d5e6"  # xoxp-...
+STRIPE_SECRET = "sk_test_" + "a2b3c4d5e6e7a8b9c2d3e4e5"  # sk_(live|test)_ + 16+ alnum
+STRIPE_PUBLISHABLE = "pk_test_" + "a2b3c4d5e6e7a8b9c2d3e4e5"  # pk_(live|test)_ + 16+ alnum
 
 # 화면별 정의: (파일명, 헤더, [(라벨, 값, 값모노여부)], 기대 env)
 SCREENS = [
@@ -67,6 +74,39 @@ SCREENS = [
             ("Organization ID", OPENAI_ORG, True),
         ],
         ["OPENAI_API_KEY", "OPENAI_ORG_ID"],
+    ),
+    (
+        "github.png",
+        "GitHub · Settings · Developer settings · Personal access tokens",
+        [("Token (classic)", GITHUB_PAT, True)],
+        ["GITHUB_TOKEN"],
+    ),
+    (
+        "aws.png",
+        "AWS · IAM · 사용자 자격 증명",
+        [
+            ("Access key ID", AWS_ACCESS_KEY, True),
+            ("Secret access key", AWS_SECRET_KEY, True),
+        ],
+        ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"],
+    ),
+    (
+        "slack.png",
+        "Slack API · OAuth & Permissions",
+        [
+            ("Bot User OAuth Token", SLACK_BOT, True),
+            ("User OAuth Token", SLACK_USER, True),
+        ],
+        ["SLACK_BOT_TOKEN", "SLACK_USER_TOKEN"],
+    ),
+    (
+        "stripe.png",
+        "Stripe · Developers · API keys",
+        [
+            ("Secret key", STRIPE_SECRET, True),
+            ("Publishable key", STRIPE_PUBLISHABLE, True),
+        ],
+        ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY"],
     ),
 ]
 
@@ -134,6 +174,12 @@ def main() -> None:
         (GCP_KEY, r"^AIza[0-9A-Za-z_\-]{35}$"),
         (OPENAI_SECRET, r"^sk-(proj-)?[A-Za-z0-9_\-]{20,}$"),
         (OPENAI_ORG, r"^org-[A-Za-z0-9]{20,}$"),
+        (GITHUB_PAT, r"^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{40,})$"),
+        (AWS_ACCESS_KEY, r"^(AKIA|ASIA)[0-9A-Z]{16}$"),
+        (SLACK_BOT, r"^xoxb-[0-9A-Za-z-]{10,}$"),
+        (SLACK_USER, r"^xoxp-[0-9A-Za-z-]{10,}$"),
+        (STRIPE_SECRET, r"^(sk|rk)_(live|test)_[A-Za-z0-9]{16,}$"),
+        (STRIPE_PUBLISHABLE, r"^pk_(live|test)_[A-Za-z0-9]{16,}$"),
     ]
     for val, pat in checks:
         assert re.match(pat, val), f"정규식 불일치: {val} !~ {pat}"

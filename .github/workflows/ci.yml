@@ -24,6 +24,9 @@ jobs:
           python-version: "3.13"
       - name: 의존성 설치(런타임+테스트)
         run: pip install -r backend/requirements-dev.txt
+      - name: OCR 모델 벤더링(RapidOCR 한국어 인식, CORE-3)
+        working-directory: backend
+        run: python scripts/vendor_ocr_models.py
       - name: pytest
         working-directory: backend
         run: python -m pytest -q
@@ -72,15 +75,33 @@ jobs:
           reuse lint
 
       # 백엔드 런타임 의존성만 깐 clean 환경에서 카피레프트 검사(도구 의존성 오탐 회피).
-      - name: 백엔드 라이선스 (pip-licenses, 카피레프트 0)
+      # 강한 카피레프트(GPL/AGPL)는 예외 없이 차단. 약한 카피레프트(LGPL/MPL)는
+      # THIRD-PARTY-NOTICES.md에 근거(미수정 사용·재링크 가능 구조)를 남긴 승인 목록만 통과시킨다.
+      - name: 백엔드 라이선스 (pip-licenses, 카피레프트 검사)
         run: |
           python -m venv /tmp/rt
           /tmp/rt/bin/pip install -q -r backend/requirements.txt pip-licenses
           /tmp/rt/bin/pip-licenses --format=csv > licenses-backend.csv
           echo "--- 백엔드 런타임 라이선스 ---"; cat licenses-backend.csv
-          if grep -iE '(^|,|")(A?L?GPL|GNU (Affero|Lesser|General)|Mozilla Public|MPL)' licenses-backend.csv; then
-            echo "::error::백엔드 런타임에 카피레프트 의존성이 있습니다"; exit 1
+
+          if grep -iE '"[^"]*","[^"]*","[^"]*(A?GPL|GNU (Affero|General) Public)[^"]*"' licenses-backend.csv \
+              | grep -viE 'LGPL|Lesser'; then
+            echo "::error::백엔드 런타임에 강한 카피레프트(GPL/AGPL) 의존성이 있습니다"; exit 1
           fi
+
+          # 새 의존성이 LGPL/MPL로 걸리면: 미수정 사용인지·재링크 가능 구조인지 확인해
+          # THIRD-PARTY-NOTICES.md에 근거를 남긴 뒤에만 여기 추가한다(자동 통과 금지).
+          ALLOWED_WEAK_COPYLEFT="tqdm"
+          tail -n +2 licenses-backend.csv | while IFS=',' read -r name _ license; do
+            name=$(echo "$name" | tr -d '"')
+            license=$(echo "$license" | tr -d '"')
+            if echo "$license" | grep -qiE 'LGPL|Lesser|Mozilla Public|MPL'; then
+              if ! echo " $ALLOWED_WEAK_COPYLEFT " | grep -qi " $name "; then
+                echo "::error::승인되지 않은 약한 카피레프트 의존성: $name ($license) — THIRD-PARTY-NOTICES.md 근거 기록 후 허용목록에 추가하세요"
+                exit 1
+              fi
+            fi
+          done
 
       # 프론트 production(배포) 트리만 검사 — devDependencies(빌드 CSS 도구의 MPL 등)는 제외.
       - name: 프론트 라이선스 (license-checker --production, 카피레프트 0)

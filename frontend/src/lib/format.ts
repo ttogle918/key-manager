@@ -100,6 +100,23 @@ export function strengthLevel(pw: string): number {
   return Math.max(1, Math.min(4, Math.round((sc * 4) / 5)))
 }
 
+/**
+ * 분류 meta(원본 컨텍스트·근처 URL·미분류 코드)에서 memo 자동 채움용 텍스트를 만든다.
+ * "라벨: 값" 조각을 " · "로 이어붙인다 — memo가 단일 줄 input이라 줄바꿈(\n)은 브라우저가
+ * 지워버리므로 쓰지 않는다. 사용자가 직접 지우거나 고치면 그 상태 그대로 저장된다(자동 재삽입 없음).
+ */
+export function autoMemoFrom(meta: Record<string, unknown> | undefined): string {
+  if (!meta) return ''
+  const parts: string[] = []
+  const context = meta['context']
+  if (typeof context === 'string' && context) parts.push(`원본: ${context}`)
+  const urls = meta['nearby_urls']
+  if (Array.isArray(urls) && urls.length) parts.push(`관련 링크: ${urls.join(', ')}`)
+  const codes = meta['nearby_codes']
+  if (Array.isArray(codes) && codes.length) parts.push(`근처 미분류 코드: ${codes.join(', ')}`)
+  return parts.join(' · ')
+}
+
 /** 보관함 항목들을 .env 텍스트로 직렬화(서비스별 그룹, 주석에 프로젝트). */
 export function envText(items: VaultItem[]): string {
   const out: string[] = []

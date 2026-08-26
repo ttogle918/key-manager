@@ -80,6 +80,45 @@ def _label_candidates(context: str, kb: KnowledgeBase) -> list[_Signal]:
     return out
 
 
+def _label_only_credentials(kb: KnowledgeBase) -> list[tuple[Service, Credential]]:
+    """값 규칙이 없어 라벨로만 식별 가능한 크리덴셜(예: AWS Secret Access Key).
+
+    UUID·32hex 형태가 아니라 `_find_ambiguous`의 값 우선 탐색에 안 걸리므로,
+    라벨 자체를 먼저 찾고 그 근처에서 값을 역추적하는 별도 경로가 필요하다.
+    """
+    return [(s, c) for s in kb.services for c in s.credentials if not c.value_regex]
+
+
+def _looks_like_value_token(tok: str) -> bool:
+    """값처럼 보이는 토큰인지 — 공백 없이 충분히 긴 문자열(라벨 문장 자체는 보통 공백 포함)."""
+    tok = tok.strip()
+    return bool(tok) and " " not in tok and len(tok) >= 8
+
+
+def _value_after_label(text: str, pat: str) -> str | None:
+    """라벨 패턴이 포함된 줄을 찾아, 같은 줄의 나머지 또는 바로 다음 줄에서 값을 역추적한다.
+
+    OCR 재구성 텍스트는 보통 "라벨\\n값"(줄 분리) 또는 "라벨: 값"(한 줄) 형태다.
+    """
+    lines = text.splitlines()
+    low_pat = pat.lower()
+    for i, line in enumerate(lines):
+        idx = line.lower().find(low_pat)
+        if idx == -1:
+            continue
+        rest = line[idx + len(pat) :].strip(" :\t·-")
+        if _looks_like_value_token(rest):
+            return rest
+        for j in range(i + 1, len(lines)):
+            if not lines[j].strip():
+                continue
+            cand = lines[j].strip()
+            if _looks_like_value_token(cand):
+                return cand
+            break
+    return None
+
+
 def _url_candidates(url: str, kb: KnowledgeBase) -> list[tuple[Service, Credential, str, str, bool]]:
     """URL을 url_patterns 와 대조. 반환: (서비스, 자격증명, 값, 근거, 강한신호)."""
     out: list[tuple[Service, Credential, str, str, bool]] = []
@@ -112,6 +151,14 @@ def classify_context(
             ctx = _context_for(text, value)
             for sig in _label_candidates(ctx, kb):
                 add(value, sig)
+
+        # 값 규칙이 없는(라벨 전용) 크리덴셜 — UUID/32hex 모양이 아니라 위 탐색에 안 걸린다.
+        # 라벨을 먼저 찾아 그 근처 값을 역추적(AWS Secret Access Key 등).
+        for s, c in _label_only_credentials(kb):
+            for pat in c.label_patterns:
+                value = _value_after_label(text, pat)
+                if value and value not in skip:
+                    add(value, (s, c, f'라벨 "{pat}" 감지(라벨 전용)', True))
 
     if url:
         for s, c, value, evidence, strong in _url_candidates(url, kb):

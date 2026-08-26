@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 /** 백엔드 분류 결과(ClassifiedItem)를 프론트 도메인(AnalysisResult)으로 변환. */
 import { SERVICE_BY_ID, TYPE_MAP } from '@/data/services'
+import { autoMemoFrom } from '@/lib/format'
 import type { AnalysisResult, Confidence, UnknownItem, VaultItem } from '@/types'
 import type { ApiConfidence, ClassifiedItem, VaultEntryMeta } from './types'
 
@@ -61,6 +62,17 @@ function contextFrom(meta: Record<string, unknown>): string | undefined {
 }
 
 /**
+ * 사용자가 입력한 메모 + meta 자동 추출 정보(원본 컨텍스트·URL·미분류 코드)를 합친다.
+ * memo가 단일 줄 input이라 줄바꿈 대신 " · "로 잇는다(줄바꿈은 브라우저가 지워버림).
+ * 저장 시 이 값이 그대로 memo 필드로 나가므로, 사용자가 이후 지우거나 고치면 그 상태가 유지된다
+ * (매 렌더링마다 재삽입하지 않음 — 최초 결과 생성 시 한 번만 채움).
+ */
+function withAutoMemo(memo: string, meta: Record<string, unknown>): string {
+  const auto = autoMemoFrom(meta)
+  return [memo, auto].filter(Boolean).join(' · ')
+}
+
+/**
  * 서비스가 확정된 항목은 AnalysisResult 카드로,
  * 값만으로 판별 불가한 항목(service=null)은 unknowns 로 분리한다.
  * 조인 키는 official_env_name — 백엔드/프론트가 공유하는 안정적 계약.
@@ -89,7 +101,7 @@ export function toAnalysisResults(
         format: it.format,
         source: it.source,
         context: contextFrom(it.meta),
-        memo,
+        memo: withAutoMemo(memo, it.meta),
         project,
         metaOpen: false,
         meta: it.meta,
@@ -117,7 +129,7 @@ export function toAnalysisResults(
         format: it.format,
         source: it.source,
         context: contextFrom(it.meta),
-        memo,
+        memo: withAutoMemo(memo, it.meta),
         project,
         metaOpen: false,
         meta: it.meta,
