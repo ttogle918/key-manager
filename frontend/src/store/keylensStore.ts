@@ -20,6 +20,7 @@ import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
 import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
+import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -132,6 +133,8 @@ interface KeylensState {
   envOpen: boolean
   /** 금고 가져오기(SYNC-0) 모달 열림 여부. */
   syncOpen: boolean
+  /** 이메일로 내보내기(SYNC-2 재설계) 모달 열림 여부. */
+  emailSyncOpen: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
@@ -251,6 +254,10 @@ interface KeylensState {
   openSync: () => void
   closeSync: () => void
   importVault: (file: File, password: string, mode: 'replace' | 'merge') => Promise<boolean>
+  /** 이메일 릴레이로 내보내기(SYNC-2 재설계, 계정/DB 없음). */
+  openEmailSync: () => void
+  closeEmailSync: () => void
+  emailExport: (destEmail: string) => Promise<boolean>
 
   resetProto: () => void
 }
@@ -326,6 +333,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     rotateTarget: null,
     envOpen: false,
     syncOpen: false,
+    emailSyncOpen: false,
     knowledgeReady: false,
     pendingRequests: [],
     sdkProjects: [],
@@ -1106,6 +1114,31 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     openSync: () => set({ syncOpen: true }),
     closeSync: () => set({ syncOpen: false }),
+    openEmailSync: () => set({ emailSyncOpen: true }),
+    closeEmailSync: () => set({ emailSyncOpen: false }),
+    emailExport: async (destEmail) => {
+      if (get().locked) {
+        get().showToast('잠금 상태에서는 내보낼 수 없어요 — 먼저 잠금을 해제하세요')
+        return false
+      }
+      try {
+        const bundle = await vaultApi.exportBundle()
+        await requestEmailExport(destEmail, bundle)
+        set({ emailSyncOpen: false })
+        get().showToast('확인 메일을 보냈어요 — 메일함에서 링크를 클릭하면 실제 파일이 발송됩니다')
+        return true
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) {
+          set({ locked: true })
+          get().showToast('금고가 잠겨 내보낼 수 없어요 — 잠금을 해제하세요')
+        } else if (e instanceof SyncRelayError) {
+          get().showToast(e.message)
+        } else {
+          get().showToast('내보내기 실패 — 잠시 후 다시 시도해 보세요')
+        }
+        return false
+      }
+    },
     importVault: async (file, password, mode) => {
       let bundle: import('@/api/types').VaultBundle
       try {
