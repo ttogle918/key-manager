@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 ttogle918
+# SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """엔드포인트 상태코드/부수효과 테스트. httpx(certifi/MPL) 회피 — 라우트 함수 직접 호출."""
 import pytest

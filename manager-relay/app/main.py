@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 ttogle918
+# SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """KeyLens 매니저 릴레이 API.
 

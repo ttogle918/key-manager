@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 ttogle918
+# SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """app.main import 시점의 fail-fast(SMTP env 필수) 를 테스트에서도 만족시키는 더미 값."""
 import os

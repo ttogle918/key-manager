@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2026 ttogle918
+# SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """엔드포인트 입출력 스키마."""
 from __future__ import annotations
