@@ -68,6 +68,7 @@ def test_send_bundle_email_attaches_json():
     attachments = list(msg.iter_attachments())
     assert len(attachments) == 1
     assert attachments[0].get_content().decode("utf-8") == '{"format": "klvault"}'
+    assert attachments[0].get_filename() == "keylens-vault.klvault.json"
 
 
 def test_send_error_normalizes_to_mail_send_error(monkeypatch):
