@@ -80,3 +80,22 @@ def test_pipeline_url_only(kb):
     resp = analyze(AnalyzeRequest(url=DB_URL), kb)
     assert resp.count == 1
     assert resp.items[0].official_env_name == "NOTION_DATABASE_ID"
+
+
+def test_label_only_credential_no_value_regex(kb):
+    """AWS Secret Access Key처럼 value_regex 가 없는(라벨 전용) 크리덴셜도 라벨로 역추적한다.
+
+    UUID·32hex 모양이 아니라 _find_ambiguous 로는 후보에 안 잡히던 케이스(실 데모 스크린샷에서 발견한 갭).
+    """
+    text = "Secret access key\ndQw4w9WgXcQdummyTwoThreeAbcdEfghTwoThree"
+    items = classify_context(text, "", kb)
+    assert len(items) == 1
+    assert items[0].official_env_name == "AWS_SECRET_ACCESS_KEY"
+    assert items[0].confidence == "high"
+
+
+def test_label_only_credential_same_line(kb):
+    """라벨:값이 한 줄에 붙어 있어도(콜론 구분) 값을 역추적한다."""
+    items = classify_context("Secret access key: dQw4w9WgXcQdummyTwoThree", "", kb)
+    assert len(items) == 1
+    assert items[0].official_env_name == "AWS_SECRET_ACCESS_KEY"

@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import crypto
@@ -40,6 +40,7 @@ from .models import (
     VaultValue,
     VaultVerifyResult,
 )
+from .ocr import OcrUnavailableError, run_ocr
 from .vault_session import SdkApprovalPending, VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
@@ -118,6 +119,42 @@ def knowledge() -> dict:
 @app.post("/analyze", response_model=AnalyzeResponse)
 def analyze_endpoint(request: AnalyzeRequest) -> AnalyzeResponse:
     return analyze(request, KB)
+
+
+_MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15MB — 스크린샷 한 장 기준 넉넉히, 폭주 입력은 차단
+
+
+@app.post("/analyze/image", response_model=AnalyzeResponse)
+async def analyze_image_endpoint(
+    image: UploadFile = File(...),
+    url: str | None = Form(default=None),
+    text: str | None = Form(default=None),
+) -> AnalyzeResponse:
+    """스크린샷 이미지를 로컬 OCR(RapidOCR, 한국어 인식 모델)로 읽어 기존 분류 파이프라인에 먹인다.
+
+    이미지는 이 로컬 백엔드(127.0.0.1) 안에서만 처리되고 디스크에 저장되지 않는다.
+    `text`(사용자가 직접 붙여넣은 텍스트, 선택)가 있으면 OCR 결과 뒤에 이어붙여 함께 분석한다.
+    """
+    if image.content_type is None or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=422, detail="이미지 파일만 업로드할 수 있어요")
+
+    data = await image.read(_MAX_IMAGE_BYTES + 1)
+    if not data:
+        raise HTTPException(status_code=422, detail="빈 파일이에요")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=422, detail="이미지가 너무 커요(15MB 제한)")
+
+    try:
+        ocr_text = run_ocr(data)
+    except OcrUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from None
+    except Exception:
+        raise HTTPException(
+            status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+        ) from None
+
+    combined_text = "\n".join(t for t in (ocr_text, text) if t)
+    return analyze(AnalyzeRequest(text=combined_text, url=url), KB)
 
 
 # ── 금고 (VAULT-1/2) ─────────────────────────────────────────────

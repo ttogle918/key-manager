@@ -5,7 +5,9 @@ SPDX-License-Identifier: MIT
 # THIRD-PARTY NOTICES
 
 이 프로젝트(MIT)는 다음 서드파티 구성요소를 사용합니다. 각 구성요소는 해당 라이선스 조건을 따릅니다.
-모든 항목은 허용적(permissive) 라이선스이며, 카피레프트(GPL/AGPL/LGPL/MPL)는 포함하지 않습니다.
+대부분 허용적(permissive) 라이선스이며, GPL/AGPL 같은 **강한 카피레프트는 전혀 포함하지 않습니다**.
+`backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 2건**을 의도적으로
+포함합니다 — 아래 "스크린샷 OCR(backend)" 절에 왜 안전한지 근거를 명시합니다.
 
 ## 브라우저 OCR (frontend, CORE-3)
 
@@ -31,6 +33,57 @@ SPDX-License-Identifier: MIT
   `frontend/public/tessdata/`에 로컬 번들한다. 런타임 CDN 다운로드는 사용하지 않는다.
   (core WASM·worker 역시 node_modules에서 `frontend/public/tesseract/`로 로컬 복사.)
 
+## 스크린샷 OCR (backend, CORE-3 — 한국어 라벨 인식 정확도 개선)
+
+브라우저 tesseract.js(위 절)는 한글 단일 글자 라벨("키"/"앱")을 반복 오독해 Kakao 4종 키 중 2종이
+`unknown`으로 빠졌다. RapidOCR의 한국어 PP-OCRv5 인식 모델로 교체 실험 결과 4종 전부 정확히 인식해
+이 경로를 **로컬 백엔드(127.0.0.1)** 로 옮겼다 — 이미지는 여전히 이 기기 안에서만 처리되고 디스크에
+저장되지 않는다(로컬 우선 원칙·대회 규정 제9조 로컬 구동 필수 그대로 유지).
+
+### rapidocr
+- 버전: 3.9.2
+- 라이선스: **Apache-2.0**
+- 출처: https://github.com/RapidAI/RapidOCR
+- 용도: PP-OCR(det·cls·rec) ONNX 모델을 감싸는 추론 래퍼. 코드 복사 없이 공개 API(`RapidOCR`)만 호출.
+
+### onnxruntime
+- 버전: 1.29.0
+- 라이선스: **MIT**
+- 출처: https://github.com/microsoft/onnxruntime
+
+### python-multipart
+- 라이선스: **Apache-2.0**
+- 출처: https://github.com/Kludex/python-multipart
+- 용도: FastAPI `UploadFile`(스크린샷 업로드) 파싱에 필요.
+
+### PP-OCRv5 한국어 인식 모델 (가중치)
+- 파일: `korean_PP-OCRv5_rec_mobile.onnx` (SHA256 `cd6e2ea5…773c9b`, 벤더링 시 검증)
+- 라이선스: **Apache-2.0** (PaddleOCR 프로젝트 산출물)
+- 출처: https://www.modelscope.cn/models/RapidAI/RapidOCR (v3.9.2 릴리스)
+- 비고: `backend/scripts/vendor_ocr_models.py`가 해시 검증 후 `backend/app/ocr_models/`에 로컬
+  벤더링한다(커밋 제외, `.gitignore`). det(글자영역 검출)·cls(각도분류) 모델은 `rapidocr` 패키지에
+  이미 번들되어 별도 벤더링이 필요 없다(둘 다 Apache-2.0, 동일 출처).
+
+### 확인된 전이 의존성(전부 permissive)
+Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BSD-3-Clause AND
+0BSD AND MIT AND Zlib AND CC0-1.0, 전 구성요소 허용목록 내) · pyclipper·six (MIT) · Pillow
+(MIT-CMU) · flatbuffers·requests (Apache-2.0).
+
+### 약한 카피레프트 2건 — 의도적 포함(안전 근거 명시)
+
+- **tqdm** (rapidocr 필수 전이 의존성) — 라이선스 **MPL-2.0**(핵심 코드, 일부 deprecated shim
+  파일만 MIT). **파일 단위(weak) 카피레프트**: MPL이 요구하는 건 "MPL 커버 파일 자체를 수정해서
+  재배포할 때 그 수정 파일을 공개"뿐이다. 우리는 tqdm 소스를 수정하지 않고 pip 의존성으로 그대로
+  사용하므로 이 프로젝트(MIT) 코드에는 전염되지 않는다.
+- **opencv-python** (rapidocr 필수 전이 의존성) — 파이썬 바인딩 코드 자체는 Apache-2.0이나, Windows
+  휠에 **FFmpeg(LGPL-2.1)** 가 동봉된다. 단, FFmpeg는 cv2 본체에 정적으로 박히지 않고 **별도의
+  교체 가능한 플러그인 DLL**(`cv2/opencv_videoio_ffmpeg500_64.dll`)로 동적 로드된다 — OpenCV팀이
+  LGPL의 "재링크 가능성 보장" 요건을 만족시키려 의도적으로 설계한 구조다. cx_Freeze 데스크톱 패키징도
+  이 DLL을 실행파일과 분리된 개별 파일로 배치해(정적 병합 없음) 재교체 가능성이 유지된다.
+- CLAUDE.md 규칙: **강한 카피레프트(GPL/AGPL)는 여전히 절대 금지**. 위 두 건은 "미수정 의존성
+  사용 + 재링크 가능 구조 유지"라는 조건을 만족하는 예외로, 새로 카피레프트 의존성을 볼 때마다
+  이 기준으로 개별 판단한다(자동으로 전부 허용되는 게 아님).
+
 ## 암호화 저장소 (backend, VAULT-1)
 
 ### cryptography
@@ -51,6 +104,9 @@ SPDX-License-Identifier: MIT
 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx |
 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge |
 | tailwindcss | 4.3.2 | MIT | https://github.com/tailwindlabs/tailwindcss (생성 CSS가 배포물에 포함) |
+| @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui — 분석 결과 요약 DataGrid |
+| @mui/x-data-grid | 9.12.0 | **MIT**(Community 등급) | https://github.com/mui/mui-x — ⚠️ Pro/Premium/Enterprise 등급은 유료 상용 라이선스라 미사용, Community(`@mui/x-data-grid`, 접미사 없음)만 사용 |
+| @emotion/react · @emotion/styled | 11.14.0 · 11.14.1 | MIT | https://github.com/emotion-js/emotion — MUI 기본 스타일링 엔진(전이 의존성) |
 
 ## 웹폰트 (로컬 벤더링 — 배포 번들 포함, CDN 미사용)
 

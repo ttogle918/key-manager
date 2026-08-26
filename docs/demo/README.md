@@ -18,6 +18,13 @@ SPDX-License-Identifier: MIT
 | `kakao.png` | Kakao Developers 앱 키 | REST API 키 · JavaScript 키 · Admin 키 · Native 앱 키 (32hex ×4) | `KAKAO_REST_API_KEY`, `KAKAO_JS_KEY`, `KAKAO_ADMIN_KEY`, `KAKAO_NATIVE_APP_KEY` |
 | `gcp.png` | Google Cloud 사용자 인증 정보 | API 키(`AIza…`) | `GOOGLE_API_KEY` |
 | `openai.png` | OpenAI API keys | Secret key(`sk-…`) · Organization ID(`org-…`) | `OPENAI_API_KEY`, `OPENAI_ORG_ID` |
+| `github.png` | GitHub Personal access tokens | Token (classic)(`ghp_…`, 값기반) | `GITHUB_TOKEN` |
+| `aws.png` | AWS IAM 사용자 자격 증명 | Access key ID(값기반 `AKIA…`) · Secret access key(라벨 전용, 값규칙 없음) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
+| `slack.png` | Slack OAuth & Permissions | Bot User OAuth Token(`xoxb-…`) · User OAuth Token(`xoxp-…`) | `SLACK_BOT_TOKEN`, `SLACK_USER_TOKEN` |
+| `stripe.png` | Stripe Developers API keys | Secret key(`sk_test_…`) · Publishable key(`pk_test_…`) | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` |
+
+> `github`/`aws`/`slack`/`stripe` 4종은 백엔드 OCR(RapidOCR, 아래 절) 검증 전용으로 추가했다 —
+> `notion`/`kakao`/`gcp`/`openai` 4종처럼 브라우저 tesseract.js 골든 픽스처(`*.recon.txt`)는 없다.
 
 ## OCR 회귀 픽스처
 

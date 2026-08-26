@@ -6,9 +6,16 @@
 // 목업 로직(seed 데이터, 가짜 분석·저장)은 그대로 유지하며,
 // 실제 백엔드(SPEC 5장: OCR·분류·암호화·SQLite)로 교체할 지점은 seed.ts / services.ts로 분리해 둔다.
 import { create } from 'zustand'
-import { analyzeApi, ApiError, fetchKnowledge, sdkApi, vaultApi, VaultApiError } from '@/api/client'
+import {
+  analyzeApi,
+  analyzeImageApi,
+  ApiError,
+  fetchKnowledge,
+  sdkApi,
+  vaultApi,
+  VaultApiError,
+} from '@/api/client'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
-import { runOcr } from '@/ocr/ocr'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
@@ -608,30 +615,28 @@ export const useKeylens = create<KeylensState>((set, get) => {
         unknowns: [],
       })
 
-      // 실제 스크린샷이면 브라우저 안에서 OCR(CORE-3) → 라벨 보존 텍스트. 이미지는 기기를 떠나지 않는다.
-      let ocrText = ''
-      // OCR 이 이어붙인 이음매(불확실 지점) — 값 문자열 → 표식 인덱스. 결과 카드가 "여기 확인" 표시.
-      const ocrMarks = new Map<string, number[]>()
+      // 실제 스크린샷이 있으면 이미지 자체를 로컬 백엔드 OCR(RapidOCR, CORE-3)에 보내
+      // OCR→분류를 한 번에 받는다 — 이미지는 이 기기(127.0.0.1)를 떠나지 않는다.
       if (img && img !== 'sample') {
-        set({ ocrProgress: 0 })
         try {
-          const rec = await runOcr(img, (p) => {
-            if (get().analyzing) set({ ocrProgress: p.progress })
-          })
-          ocrText = rec.text
-          for (const f of rec.flagged) ocrMarks.set(f.text, f.marks)
-        } catch {
-          get().showToast('스크린샷 인식 실패 — 텍스트·URL만 분석합니다')
+          const blob = await (await fetch(img)).blob()
+          const resp = await analyzeImageApi(blob, { url: url || undefined, text: text || undefined })
+          if (!get().analyzing) return
+          const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
+          set({ analyzing: false, analyzed: true, results, unknowns })
+        } catch (e) {
+          if (!get().analyzing) return
+          if (!(e instanceof ApiError)) console.error('[KeyLens] 이미지 분석 요청 실패:', e)
+          const results = freshResults().map((r) => ({ ...r, memo, project }))
+          const msg = e instanceof ApiError ? e.message : 'KeyLens에 연결할 수 없어요'
+          set({ analyzing: false, analyzed: true, results, unknowns: [], apiError: msg })
+          get().showToast(`${msg} — 샘플 결과로 시연합니다`)
         }
-        if (!get().analyzing) return // 중간에 리셋됨
-        set({ ocrProgress: null })
+        return
       }
 
-      // OCR 텍스트 + 직접 입력 텍스트를 합쳐 Stage2 라벨 페어링에 먹인다.
-      const analyzeText = [ocrText, text].filter(Boolean).join('\n')
-
-      // 분석할 소스가 아무것도 없으면(샘플 이미지·OCR 빈 결과) 샘플 목업으로 시연.
-      if (!analyzeText && !url) {
+      // 분석할 소스가 아무것도 없으면(샘플 스크린샷) 샘플 목업으로 시연.
+      if (!text && !url) {
         await new Promise((r) => setTimeout(r, Math.max(200, ANALYZE_SECONDS * 1000)))
         if (!get().analyzing) return
         const results = freshResults().map((r) => ({ ...r, memo, project }))
@@ -639,27 +644,15 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return
       }
 
-      // 백엔드 Stage1(값)+Stage2(맥락) 분류 호출.
+      // 백엔드 Stage1(값)+Stage2(맥락) 분류 호출(텍스트·URL만, 이미지 없음).
       try {
         const resp = await analyzeApi({
-          text: analyzeText || undefined,
+          text: text || undefined,
           url: url || undefined,
         })
         if (!get().analyzing) return
         const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
-        // OCR 이 이어붙인 값에 "여기 확인" 표식을 달고, 있으면 토스트로 알린다(값은 복붙 권장).
-        let flaggedCount = 0
-        for (const r of results) {
-          const marks = ocrMarks.get(r.full)
-          if (marks?.length) {
-            r.ocrUncertain = marks
-            flaggedCount++
-          }
-        }
         set({ analyzing: false, analyzed: true, results, unknowns })
-        if (flaggedCount) {
-          get().showToast('OCR가 값 일부를 이어붙였어요 — 원본을 복사해 확인하세요')
-        }
       } catch (e) {
         if (!get().analyzing) return
         // 백엔드 미연결 → 데모가 끊기지 않게 샘플 목업으로 폴백.
