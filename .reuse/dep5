@@ -40,6 +40,9 @@ Files:
   .env.example
   backend/pytest.ini
   backend/requirements-dev.txt
+  manager-relay/pytest.ini
+  manager-relay/.env.example
+  manager-relay/requirements-dev.txt
   keylens-env/pyproject.toml
   .claude/settings.json
   frontend/.oxlintrc.json
