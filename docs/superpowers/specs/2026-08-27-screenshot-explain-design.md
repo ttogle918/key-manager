@@ -60,6 +60,12 @@ SPDX-License-Identifier: MIT
 실행하면 LLM 호출이 돈(로컬이라도 지연시간)이 들고, Ollama가 없거나 느릴 때 기존 빠른 흐름 자체가
 느려진다. 온디맨드면 이런 부담이 전혀 없다.
 
+> **계획 작성 중 발견**: 지금 `InputScreen`은 첨부된 스크린샷을 76×52px 작은 정사각형 썸네일로만
+> 보여준다(`background-cover`로 잘라서 표시, 실제 분석 결과는 텍스트 카드로만 나타남). 이 크기에
+> 박스를 그리면 알아볼 수 없으므로, "기존 화면에 오버레이"가 아니라 **버튼을 누르면 스크린샷을 원본
+> 크기(또는 화면에 맞게 축소)로 보여주는 새 모달**을 열고 그 안에 박스+라벨을 그리는 것으로 조정한다.
+> 백엔드 설계·판단들은 전혀 바뀌지 않는다.
+
 ### 판단 3 — 로컬 LLM(Ollama) 옵트인, 설정 안 되면 기능 자체를 숨김
 
 SYNC-2의 `syncRelayConfigured` 패턴을 그대로 따른다 — Ollama가 실행 중인지 헬스체크로 확인해서,
@@ -138,7 +144,7 @@ flowchart TB
   LLM2 --> VERIFIED["🟡 AI 추정(검색 확인)"]
 
   KNOWN & VERIFIED & PLAIN --> MERGE["박스별 {좌표, 라벨, 등급}"]
-  MERGE --> UI["InputScreen 오버레이\n(실선=분류됨, 점선=AI 추정)"]
+  MERGE --> UI["설명 모달(전체 크기 스크린샷 + 오버레이)\n(실선=분류됨, 점선=AI 추정)"]
   UI -- "사용자가 '이 추정 저장' 승인" --> CACHE
 ```
 
@@ -188,7 +194,7 @@ sequenceDiagram
 | `.env.example` | `OLLAMA_BASE_URL`(선택, 기본 `http://localhost:11434`), `TAVILY_API_KEY`(선택), `KEYLENS_LOCAL_DISCOVERIES_PATH`(선택) 안내 추가 |
 | `.gitignore` | `local_discoveries.yaml` 추가(경로 기본값 기준) |
 | `frontend/src/lib/ollamaStatus.ts` 또는 유사(신규) | `explainConfigured` 판단(헬스체크 결과 캐시) — SYNC-2의 `syncRelayConfigured`와 같은 정신 |
-| `frontend/src/components/input/ExplainOverlay.tsx`(신규) | 스크린샷 `<img>` 위에 절대 위치로 박스+라벨을 그리는 오버레이(SVG) |
+| `frontend/src/components/modals/ExplainModal.tsx`(신규) | "이 화면 설명해줘" 결과를 보여주는 모달 — 스크린샷을 원본 비율로 렌더링하고 그 위에 SVG로 박스+라벨 오버레이 |
 | `frontend/src/store/keylensStore.ts` | 설명 요청/결과/승인 관련 상태·액션 추가 |
 
 ## API
