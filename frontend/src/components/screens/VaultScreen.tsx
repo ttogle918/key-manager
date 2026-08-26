@@ -97,7 +97,7 @@ export function VaultScreen() {
           <button
             type="button"
             onClick={s.openEmailSync}
-            title="암호화된 금고를 이메일로 다른 기기에 전달"
+            title="금고 값은 암호화한 채로 이메일로 다른 기기에 전달(서비스명 등 메타데이터는 평문 포함)"
             className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
           >
             이메일로 내보내기

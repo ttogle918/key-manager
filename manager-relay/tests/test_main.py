@@ -157,7 +157,13 @@ def test_sync_request_rejects_missing_bundle_format(relay):
 
 def test_reject_oversized_requests_middleware_returns_413():
     """ASGI 미들웨어는 이 파일의 다른 테스트처럼 라우트 함수를 직접 호출하는 방식으로는
-    검증할 수 없다 — call_next 를 흉내 낸 최소 더미로 미들웨어 함수 자체를 직접 호출한다."""
+    검증할 수 없다 — call_next 를 흉내 낸 최소 더미로 미들웨어 함수 자체를 직접 호출한다.
+
+    다만 이 테스트는 미들웨어 함수 자체의 로직(임계값 판단, 라우트 가드)만 검증할 뿐,
+    앱에 실제로 어떤 순서로 등록됐는지는 전혀 건드리지 않는다 — CORSMiddleware와의 등록
+    순서 버그(Finding 1) 같은 클래스의 문제는 이 테스트로는 절대 못 잡는다. 그래서 아래
+    test_oversized_request_through_real_app_has_cors_header 가 실제 app 객체를 raw ASGI로
+    구동해 그 부분까지 검증한다."""
     import asyncio
 
     class FakeRequest:
@@ -175,3 +181,121 @@ def test_reject_oversized_requests_middleware_returns_413():
         main._reject_oversized_requests(FakeRequest(), call_next_should_not_be_called)
     )
     assert response.status_code == 413
+
+
+async def _call_asgi_app(app, *, method, path, headers, body=b""):
+    """httpx(certifi/MPL) 없이 실제 ASGI 앱(미들웨어 스택 포함)을 stdlib만으로 구동한다.
+
+    FastAPI/Starlette 의 `app`은 평범한 ASGI 콜러블(`async def app(scope, receive, send)`)이라
+    실제 소켓이나 TestClient 없이도 scope/receive/send 를 손수 만들어 직접 호출할 수 있다.
+    이렇게 하면 라우트 함수 하나만 부르는 게 아니라 등록된 미들웨어 체인 전체(CORS 포함)를
+    실제로 통과하므로, 미들웨어 "등록 순서" 버그까지 잡아낼 수 있다.
+    """
+    body_sent = False
+
+    async def receive():
+        nonlocal body_sent
+        if not body_sent:
+            body_sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return {"type": "http.disconnect"}
+
+    messages = []
+
+    async def send(message):
+        messages.append(message)
+
+    if "?" in path:
+        path, _, query_string = path.partition("?")
+    else:
+        query_string = ""
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": method,
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": query_string.encode(),
+        "root_path": "",
+        "scheme": "http",
+        "headers": [
+            (k.lower().encode(), v.encode()) for k, v in headers
+        ],
+        "client": ("127.0.0.1", 12345),
+        "server": ("testserver", 80),
+    }
+
+    await app(scope, receive, send)
+
+    start = next(m for m in messages if m["type"] == "http.response.start")
+    body_chunks = [m.get("body", b"") for m in messages if m["type"] == "http.response.body"]
+    return {
+        "status": start["status"],
+        "headers": start["headers"],  # 리스트[(lower-case bytes, bytes)] — ASGI 스펙
+        "body": b"".join(body_chunks),
+    }
+
+
+def _get_header(headers, name):
+    """ASGI 응답 헤더(소문자 바이트 튜플 리스트)에서 대소문자 구분 없이 값을 찾는다."""
+    target = name.lower().encode()
+    for k, v in headers:
+        if k.lower() == target:
+            return v
+    return None
+
+
+def test_oversized_request_through_real_app_has_cors_header(relay):
+    """Finding 1/2 회귀 테스트 — 실제 FastAPI `app` 객체를 raw ASGI로 구동해, 용량 초과 시
+    반환되는 413 응답에 CORS 헤더(access-control-allow-origin)가 실제로 붙는지 검증한다.
+
+    기존 test_reject_oversized_requests_middleware_returns_413 은 미들웨어 함수를 직접
+    호출할 뿐이라 등록 순서(CORSMiddleware가 이 미들웨어를 감싸는지)를 전혀 검증하지
+    못했다 — 이 테스트가 바로 그 등록 순서를 검증한다. (main.py 를 되돌려 CORSMiddleware를
+    _reject_oversized_requests 보다 먼저 등록하도록 만들면 이 테스트가 실패하는 것으로
+    수동 확인함.)
+    """
+    import asyncio
+
+    oversized = str(main.MAX_REQUEST_BYTES + 1)
+    result = asyncio.run(
+        _call_asgi_app(
+            main.app,
+            method="POST",
+            path="/sync/request",
+            headers=[
+                ("content-length", oversized),
+                ("origin", "http://localhost:5173"),
+                ("content-type", "application/json"),
+            ],
+            body=b"{}",
+        )
+    )
+    assert result["status"] == 413
+    cors_header = _get_header(result["headers"], "access-control-allow-origin")
+    assert cors_header is not None, (
+        "413 응답에 CORS 헤더가 없음 — 크기 제한 미들웨어가 CORSMiddleware보다 바깥에서 "
+        "등록돼 있을 가능성이 있음(Finding 1)"
+    )
+
+
+def test_normal_request_through_real_app_is_not_rejected_by_size_guard(relay):
+    """라우트 스코프 가드가 실제 앱 배선에서도 여전히 정상 동작하는지 확인한다 —
+    크기 제한 미들웨어는 POST /sync/request 에만 적용돼야 하고, 다른 경로/메서드의
+    보통 크기 요청은 통과시켜야 한다."""
+    import asyncio
+
+    result = asyncio.run(
+        _call_asgi_app(
+            main.app,
+            method="GET",
+            path="/sync/confirm?token=nonexistent-token",
+            headers=[("origin", "http://localhost:5173")],
+            body=b"",
+        )
+    )
+    # 존재하지 않는 토큰이므로 410(만료 안내 HTML)이 기대값 — 413(용량 초과)만 아니면 됨,
+    # 즉 크기 제한 미들웨어가 이 경로를 잘못 가로채지 않았다는 뜻.
+    assert result["status"] != 413
+    assert result["status"] == 410

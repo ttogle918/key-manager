@@ -25,17 +25,15 @@ from .token_store import TokenStore
 
 app = FastAPI(title="KeyLens Manager Relay", version="0.1.0")
 
-# 이 릴레이는 자격증명을 쓰지 않는 공개 API라, 배포되는 exe가 어떤 로컬 오리진에서
-# 오든(사용자마다 포트가 다를 수 있음) 그대로 허용한다. 쿠키/세션이 없어 안전하다.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST", "GET"],
-    allow_headers=["*"],
-)
-
 # 실제 번들은 수 KB 수준이다 — 이보다 훨씬 큰 요청은 형식이 잘못됐거나(공격) 남용 시도로
 # 간주해 pydantic이 전체를 메모리로 파싱하기 전에 미들웨어에서 먼저 거부한다.
+#
+# 이 미들웨어는 반드시 아래의 CORSMiddleware 등록보다 먼저 등록해야 한다. Starlette은
+# add_middleware 호출마다 리스트 맨 앞에 끼워 넣고, 스택은 그 리스트를 reversed()로 감싸
+# 만들기 때문에 "나중에 등록된 것이 가장 바깥"이 된다. 즉 이 함수가 CORS보다 먼저 등록돼야
+# CORS가 가장 바깥으로 와서 이 미들웨어가 반환하는 413 응답에도 CORS 헤더가 붙는다 — 순서가
+# 반대면 413 응답이 CORSMiddleware를 거치지 않아 브라우저 fetch()가 CORS 오류로 실패해
+# "용량 초과" 대신 "연결할 수 없음" 같은 엉뚱한 에러로 보인다.
 MAX_REQUEST_BYTES = 1_000_000
 
 
@@ -46,6 +44,18 @@ async def _reject_oversized_requests(request: Request, call_next):
         if content_length is not None and int(content_length) > MAX_REQUEST_BYTES:
             return Response(content="금고 번들이 너무 커요", status_code=413)
     return await call_next(request)
+
+
+# 이 릴레이는 자격증명을 쓰지 않는 공개 API라, 배포되는 exe가 어떤 로컬 오리진에서
+# 오든(사용자마다 포트가 다를 수 있음) 그대로 허용한다. 쿠키/세션이 없어 안전하다.
+# (등록 순서 주의사항은 위의 MAX_REQUEST_BYTES 주석 참고 — 반드시 이 CORSMiddleware가
+# _reject_oversized_requests보다 나중에 등록돼야 한다.)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["POST", "GET"],
+    allow_headers=["*"],
+)
 
 
 # 기동 시 SMTP 설정이 없으면 바로 실패한다(fail-fast) — 자격증명 없이 조용히 떠서
