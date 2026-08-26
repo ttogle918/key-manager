@@ -10,11 +10,14 @@ import {
   analyzeApi,
   analyzeImageApi,
   ApiError,
+  explainImageApi,
+  explainStatusApi,
   fetchKnowledge,
   sdkApi,
   vaultApi,
   VaultApiError,
 } from '@/api/client'
+import type { ExplainBox } from '@/api/types'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
@@ -100,6 +103,12 @@ interface KeylensState {
   projVal: string
   attachedImage: string | null
   attachedName: string
+
+  /** 화면 설명 기능(1단계) — Ollama 가용 여부(부팅 시 1회 확인). */
+  explainAvailable: boolean
+  explainOpen: boolean
+  explainLoading: boolean
+  explainBoxes: ExplainBox[]
 
   // 직접 입력 탭 — 자동 분류 없이 이름=값을 바로 선언(RUNTIME-1과 무관, UI 전용)
   inputMode: InputMode
@@ -259,6 +268,11 @@ interface KeylensState {
   closeEmailSync: () => void
   emailExport: (destEmail: string) => Promise<boolean>
 
+  /** 화면 설명(1단계, 검색·캐시 없음). */
+  checkExplainAvailable: () => Promise<void>
+  openExplain: () => Promise<void>
+  closeExplain: () => void
+
   resetProto: () => void
 }
 
@@ -313,6 +327,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     projVal: '',
     attachedImage: null,
     attachedName: '',
+    explainAvailable: false,
+    explainOpen: false,
+    explainLoading: false,
+    explainBoxes: [],
     inputMode: 'auto',
     manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
     analyzing: false,
@@ -392,6 +410,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ screen: 'lock', locked: true })
         }
         get().loadPending()
+        get().checkExplainAvailable()
       } catch (e) {
         // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
         console.error('[KeyLens] 부팅 시 금고 상태 조회 실패:', e)
@@ -1163,6 +1182,29 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return false
       }
     },
+
+    // ── 화면 설명(EXPLAIN, 1단계) ──
+    checkExplainAvailable: async () => {
+      const available = await explainStatusApi()
+      set({ explainAvailable: available })
+    },
+    openExplain: async () => {
+      const img = get().analyzedImage
+      if (!img || img === 'sample') {
+        get().showToast('실제 스크린샷이 있을 때만 화면 설명을 볼 수 있어요')
+        return
+      }
+      set({ explainOpen: true, explainLoading: true, explainBoxes: [] })
+      try {
+        const blob = await (await fetch(img)).blob()
+        const boxes = await explainImageApi(blob)
+        set({ explainLoading: false, explainBoxes: boxes })
+      } catch (e) {
+        set({ explainLoading: false, explainOpen: false })
+        get().showToast(e instanceof ApiError ? e.message : '화면 설명을 불러오지 못했어요')
+      }
+    },
+    closeExplain: () => set({ explainOpen: false, explainBoxes: [] }),
 
     resetProto: () => {
       set({
