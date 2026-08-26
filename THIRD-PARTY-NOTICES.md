@@ -104,6 +104,9 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx |
 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge |
 | tailwindcss | 4.3.2 | MIT | https://github.com/tailwindlabs/tailwindcss (생성 CSS가 배포물에 포함) |
+| @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui — 분석 결과 요약 DataGrid |
+| @mui/x-data-grid | 9.12.0 | **MIT**(Community 등급) | https://github.com/mui/mui-x — ⚠️ Pro/Premium/Enterprise 등급은 유료 상용 라이선스라 미사용, Community(`@mui/x-data-grid`, 접미사 없음)만 사용 |
+| @emotion/react · @emotion/styled | 11.14.0 · 11.14.1 | MIT | https://github.com/emotion-js/emotion — MUI 기본 스타일링 엔진(전이 의존성) |
 
 ## 웹폰트 (로컬 벤더링 — 배포 번들 포함, CDN 미사용)
 

@@ -5,6 +5,7 @@ import { TYPE_MAP } from '@/data/services'
 import { useKeylens } from '@/store/keylensStore'
 import { ManualEntryTab } from '@/components/input/ManualEntryTab'
 import { ResultCard } from '@/components/input/ResultCard'
+import { ResultsGrid } from '@/components/input/ResultsGrid'
 
 /** 화면 1: 새 자격증명 분석 입력. */
 export function InputScreen() {
@@ -275,6 +276,7 @@ export function InputScreen() {
               {savableCount}개 모두 저장
             </button>
           </div>
+          <ResultsGrid results={results} />
           {results.map((r) => (
             <ResultCard key={r.id} r={r} />
           ))}
