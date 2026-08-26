@@ -31,6 +31,26 @@ jobs:
         working-directory: backend
         run: python -m pytest -q
 
+  manager-relay-test:
+    name: 매니저 릴레이 테스트 (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: 의존성 설치(런타임+테스트)
+        run: pip install -r manager-relay/requirements-dev.txt
+      - name: pytest
+        working-directory: manager-relay
+        env:
+          SMTP_HOST: smtp.test.invalid
+          SMTP_PORT: "587"
+          SMTP_USER: relay@test.invalid
+          SMTP_PASS: test-password
+          PUBLIC_BASE_URL: http://localhost:8080
+        run: python -m pytest -q
+
   frontend:
     name: 프론트 빌드·테스트·린트
     runs-on: ubuntu-latest
