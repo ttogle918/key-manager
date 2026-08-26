@@ -8,14 +8,19 @@ SPDX-License-Identifier: MIT
 [![CI](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Copyleft-free](https://img.shields.io/badge/dependencies-permissive%20only-brightgreen.svg)](./docs/SBOM.md)
+[![Website](https://img.shields.io/badge/website-ttogle918.github.io%2Fproject%2Fkey--manager-3ECF8E)](https://ttogle918.github.io/project/key-manager/home)
 
 > 스크린샷이나 URL을 던지면 "이건 Notion API 키, 이건 database ID"처럼 **맥락으로 정체를 가려** 공식 환경변수명에 매핑하고, 로컬에 암호화해 나만 볼 수 있게 보관하는 개인 개발자용 자격증명 관리 도구.
+>
+> **2026 오픈소스 개발자대회** 출품작입니다.
+
+**🌐 랜딩페이지·Windows 실행 파일(exe)·시연 영상**: **https://ttogle918.github.io/project/key-manager/home**
 
 <p align="center">
   <img src="docs/demo/demo.gif" alt="KeyLens 데모 — 콘솔 스크린샷을 던지면 무슨 키인지 맥락으로 분류해 공식 변수명으로 매핑" width="100%">
 </p>
 
-<p align="center"><sub>데모 · 모든 값은 더미. 실제 앱 화면 시연 영상은 준비 중입니다.</sub></p>
+<p align="center"><sub>데모 · 모든 값은 더미. 실제 앱 화면 시연 영상·실행 파일 다운로드는 위 랜딩페이지에서 확인할 수 있습니다.</sub></p>
 
 ## 왜 만들었나
 

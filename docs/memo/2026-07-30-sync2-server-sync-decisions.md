@@ -80,3 +80,19 @@ SPDX-License-Identifier: MIT
 - [ ] `@supabase/supabase-js` 추가 시 `THIRD-PARTY-NOTICES.md`·라이선스 스캔 갱신
 - [ ] 소셜 로그인 지원 여부(이메일/비번만으로 시작할지)
 - [ ] 회원 탈퇴(계정 삭제) 옵션을 별도로 추가할지 여부
+
+## 후속 발견 — Supabase 기본 메일러 발송 한도 (2026-08-26)
+
+**문제**: Supabase 기본(커스텀 SMTP 미설정) 메일러는 **가입 확인·비밀번호 재설정 메일을 시간당 2통**으로
+제한한다. 공식 문서 확인: "2 emails per hour, Limited By: Sum of combined requests project-wide"
+(https://supabase.com/docs/guides/auth/rate-limits) — **사용자 1명당이 아니라 프로젝트 전체 합산**이다.
+
+**영향**: 여러 사용자가 비슷한 시간대에 가입을 시도하면 3번째 요청부터 `429 email rate limit exceeded`로
+막힌다. 지금(솔로 테스트 단계)은 문제 없지만, SYNC-2를 실제로 여러 사용자가 쓰게 배포하기 전에는
+**커스텀 SMTP 공급자(Resend·SendGrid 등) 연결이 사실상 필수** — 옵션이 아니다. 연결하면 이 고정
+한도가 풀리고 대시보드에서 직접 조정 가능해진다(무료 티어로도 일 100통 이상 확보 가능).
+
+**후속 작업(SYNC-2 실배포 전 필수)**:
+- [ ] 커스텀 SMTP 공급자 선정·연결(Supabase 대시보드 → Authentication → Settings)
+- [ ] 연결 전까지는 테스트 계정 가입 시 이메일 확인을 끄거나(Authentication → 이메일 확인 옵션),
+      시간당 2통 한도를 감안해 테스트 페이스 조절
