@@ -353,3 +353,73 @@ export function EnvModal() {
     </Modal>
   )
 }
+
+/** 이메일로 내보내기 다이얼로그(SYNC-2 재설계) — 목적지 이메일 입력 → 확인 메일 발송 요청. */
+export function EmailSyncModal() {
+  const open = useKeylens((s) => s.emailSyncOpen)
+  const close = useKeylens((s) => s.closeEmailSync)
+  const emailExport = useKeylens((s) => s.emailExport)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (open) {
+      setEmail('')
+      setBusy(false)
+    }
+  }, [open])
+
+  const canRun = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && !busy
+  const run = async () => {
+    if (!canRun) return
+    setBusy(true)
+    await emailExport(email)
+    setBusy(false)
+  }
+
+  return (
+    <Modal open={open} onClose={close} title="이메일로 내보내기" className="w-[440px] max-w-[92vw]">
+      <div className="text-[15px] font-bold">이메일로 내보내기</div>
+      <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
+        금고 번들을 입력한 이메일로 보내드려요. 먼저{' '}
+        <span className="font-mono text-fg-soft">확인 링크</span>가 담긴 메일이 가고, 그 링크를
+        눌러야 실제 파일이 담긴 메일이 한 번 더 발송됩니다. 비밀 값은 암호화되어 있지만,
+        서비스명·라벨·프로젝트명·메모 같은 메타데이터는 평문으로 포함되어 이 메일을 중계하는
+        매니저와 메일 제공자가 볼 수 있어요.
+      </p>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && canRun) void run()
+        }}
+        placeholder="목적지 이메일 주소"
+        autoFocus
+        className="mt-[14px] w-full rounded-lg border border-border bg-surface px-3 py-[10px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
+      />
+      <div className="mt-[18px] flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={close}
+          className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => void run()}
+          disabled={!canRun}
+          className="rounded-lg border-none px-[14px] py-2 text-[12.5px] font-bold hover:brightness-[1.07]"
+          style={{
+            background: canRun ? '#3ECF8E' : '#1B2128',
+            color: canRun ? '#05231A' : '#525B67',
+            cursor: canRun ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {busy ? '요청 중…' : '확인 메일 보내기'}
+        </button>
+      </div>
+    </Modal>
+  )
+}

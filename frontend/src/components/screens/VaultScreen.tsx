@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { SERVICE_ORDER, SVC_META } from '@/data/services'
 import { expiryInfo } from '@/lib/format'
+import { syncRelayConfigured } from '@/lib/syncRelay'
 import { useKeylens } from '@/store/keylensStore'
 import { useProjectNames } from '@/store/selectors'
 import { VaultRow } from '@/components/vault/VaultRow'
@@ -92,6 +93,16 @@ export function VaultScreen() {
         >
           가져오기
         </button>
+        {syncRelayConfigured && (
+          <button
+            type="button"
+            onClick={s.openEmailSync}
+            title="금고 값은 암호화한 채로 이메일로 다른 기기에 전달(서비스명 등 메타데이터는 평문 포함)"
+            className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+          >
+            이메일로 내보내기
+          </button>
+        )}
         <button
           type="button"
           onClick={locked ? s.gotoLockScreen : s.lockNow}

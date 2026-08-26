@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# 개발/테스트 의존성 (런타임 포함).
+# httpx(TestClient)는 certifi(MPL-2.0)를 끌어와 CLAUDE.md 라이선스 규칙에 걸리므로
+# 쓰지 않는다 — 테스트는 라우트 함수를 직접 호출한다(backend/tests 와 동일 관례).
+-r requirements.txt
+pytest==9.0.3         # MIT
