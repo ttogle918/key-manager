@@ -58,6 +58,8 @@ def generate(config: OllamaConfig, prompt: str, timeout: float = 30.0) -> str:
             payload = json.loads(res.read().decode("utf-8"))
     except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
         raise OllamaUnavailableError(f"Ollama 요청 실패: {e}") from e
+    if not isinstance(payload, dict):
+        raise OllamaUnavailableError("Ollama 응답 형식이 예상과 다릅니다")
     response = payload.get("response")
     if not isinstance(response, str):
         raise OllamaUnavailableError("Ollama 응답 형식이 예상과 다릅니다")

@@ -82,3 +82,13 @@ def test_generate_raises_on_malformed_response(monkeypatch):
     )
     with pytest.raises(OllamaUnavailableError):
         generate(CONFIG, "설명해줘")
+
+
+def test_generate_raises_when_response_is_not_dict(monkeypatch):
+    """json.loads는 성공하지만 dict가 아닌 값(null, 배열 등)이 반환될 때."""
+    payload = json.dumps([1, 2, 3]).encode("utf-8")
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(payload)
+    )
+    with pytest.raises(OllamaUnavailableError):
+        generate(CONFIG, "설명해줘")
