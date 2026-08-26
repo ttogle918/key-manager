@@ -16,7 +16,14 @@ import { InputScreen } from '@/components/screens/InputScreen'
 import { VaultScreen } from '@/components/screens/VaultScreen'
 import { PendingScreen } from '@/components/screens/PendingScreen'
 import { ProjectAccessScreen } from '@/components/screens/ProjectAccessScreen'
-import { DeleteModal, DupModal, EnvModal, RotateModal, SyncModal } from '@/components/modals/Modals'
+import {
+  AccountSyncModal,
+  DeleteModal,
+  DupModal,
+  EnvModal,
+  RotateModal,
+  SyncModal,
+} from '@/components/modals/Modals'
 import { Toast } from '@/components/ui/Toast'
 import { ProjectsDatalist } from '@/components/ProjectsDatalist'
 
@@ -92,6 +99,7 @@ export default function App() {
       <RotateModal />
       <EnvModal />
       <SyncModal />
+      <AccountSyncModal />
       <Toast />
     </>
   )

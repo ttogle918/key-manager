@@ -107,6 +107,7 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 | @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui — 분석 결과 요약 DataGrid |
 | @mui/x-data-grid | 9.12.0 | **MIT**(Community 등급) | https://github.com/mui/mui-x — ⚠️ Pro/Premium/Enterprise 등급은 유료 상용 라이선스라 미사용, Community(`@mui/x-data-grid`, 접미사 없음)만 사용 |
 | @emotion/react · @emotion/styled | 11.14.0 · 11.14.1 | MIT | https://github.com/emotion-js/emotion — MUI 기본 스타일링 엔진(전이 의존성) |
+| @supabase/supabase-js | 2.112.4 | MIT | https://github.com/supabase/supabase-js — SYNC-2(옵트인 서버 동기화) 로그인·암호화 번들 업/다운로드 |
 
 ## 웹폰트 (로컬 벤더링 — 배포 번들 포함, CDN 미사용)
 

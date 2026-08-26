@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { SERVICE_ORDER, SVC_META } from '@/data/services'
 import { expiryInfo } from '@/lib/format'
+import { supabaseConfigured } from '@/lib/supabase'
 import { useKeylens } from '@/store/keylensStore'
 import { useProjectNames } from '@/store/selectors'
 import { VaultRow } from '@/components/vault/VaultRow'
@@ -92,6 +93,16 @@ export function VaultScreen() {
         >
           가져오기
         </button>
+        {supabaseConfigured && (
+          <button
+            type="button"
+            onClick={s.openAccountSync}
+            title="계정 로그인 기반 서버 동기화(옵트인) — 암호문만 업/다운로드"
+            className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[11.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+          >
+            계정 동기화
+          </button>
+        )}
         <button
           type="button"
           onClick={locked ? s.gotoLockScreen : s.lockNow}

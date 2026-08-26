@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { CONSOLE_URL, resolveIssueUrl, TYPE_MAP } from '@/data/services'
 import { envText, fmtDate } from '@/lib/format'
+import { supabaseConfigured } from '@/lib/supabase'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem } from '@/types'
 
@@ -348,6 +349,202 @@ export function EnvModal() {
           className="cursor-pointer rounded-lg border-none bg-mint px-[14px] py-2 text-[12.5px] font-bold text-on-mint hover:brightness-[1.08]"
         >
           파일 다운로드
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+/**
+ * 계정 동기화(SYNC-2, 옵트인) 다이얼로그.
+ * Supabase 환경변수가 설정 안 됐으면 아예 렌더하지 않는다(안 되는 기능을 보여주지 않음).
+ */
+export function AccountSyncModal() {
+  const open = useKeylens((s) => s.accountSyncOpen)
+  const close = useKeylens((s) => s.closeAccountSync)
+  const syncUser = useKeylens((s) => s.syncUser)
+  const syncBusy = useKeylens((s) => s.syncBusy)
+  const signUp = useKeylens((s) => s.supabaseSignUp)
+  const signIn = useKeylens((s) => s.supabaseSignIn)
+  const signOut = useKeylens((s) => s.supabaseSignOut)
+  const upload = useKeylens((s) => s.supabaseUploadBackup)
+  const download = useKeylens((s) => s.supabaseDownloadBackup)
+
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [masterPw, setMasterPw] = useState('')
+  const [dlMode, setDlMode] = useState<'merge' | 'replace'>('merge')
+  const [uploadOnLogout, setUploadOnLogout] = useState(true)
+
+  useEffect(() => {
+    if (open) {
+      setEmail('')
+      setPassword('')
+      setMasterPw('')
+    }
+  }, [open])
+
+  if (!supabaseConfigured) return null
+
+  const inputCls =
+    'mt-[8px] w-full rounded-lg border border-border bg-surface px-3 py-[9px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]'
+  const primaryBtnCls = (enabled: boolean) =>
+    'w-full rounded-lg border-none px-[14px] py-[9px] text-[12.5px] font-bold ' +
+    (enabled
+      ? 'cursor-pointer bg-mint text-on-mint hover:brightness-[1.08]'
+      : 'cursor-not-allowed bg-[#1B2128] text-[#525B67]')
+
+  return (
+    <Modal open={open} onClose={close} title="계정 동기화" className="w-[440px] max-w-[92vw]">
+      <div className="text-[15px] font-bold">계정 동기화 (선택)</div>
+      <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
+        로그인은 &ldquo;내 암호화 번들이 서버 어디 있는지&rdquo; 식별용일 뿐이에요. 복호화
+        열쇠는 항상 이 기기의 마스터 비밀번호에서만 나오고, 서버는 암호문만 보관합니다(제로
+        널리지). 업로드·다운로드는 아래 버튼을 직접 눌러야만 일어나요 — 자동 동기화 없음.
+      </p>
+
+      {!syncUser ? (
+        <>
+          <div className="mt-4 flex gap-[6px]">
+            <button
+              type="button"
+              onClick={() => setAuthMode('signin')}
+              className={
+                'cursor-pointer rounded-[8px] border-none px-3 py-[7px] text-[12px] font-bold ' +
+                (authMode === 'signin' ? 'bg-[#191F26] text-fg' : 'bg-transparent text-muted')
+              }
+            >
+              로그인
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('signup')}
+              className={
+                'cursor-pointer rounded-[8px] border-none px-3 py-[7px] text-[12px] font-bold ' +
+                (authMode === 'signup' ? 'bg-[#191F26] text-fg' : 'bg-transparent text-muted')
+              }
+            >
+              가입
+            </button>
+          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="이메일"
+            className={inputCls}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="계정 비밀번호 (마스터 비밀번호와 다른 값)"
+            className={inputCls}
+          />
+          <button
+            type="button"
+            disabled={syncBusy || !email || !password}
+            onClick={() =>
+              void (authMode === 'signin' ? signIn(email, password) : signUp(email, password))
+            }
+            className={primaryBtnCls(!syncBusy && !!email && !!password) + ' mt-3'}
+          >
+            {syncBusy ? '처리 중…' : authMode === 'signin' ? '로그인' : '가입'}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mt-4 flex items-center justify-between rounded-lg border border-line bg-inset px-3 py-[10px]">
+            <span className="truncate text-[12.5px] text-fg-soft">{syncUser.email}</span>
+            <span className="flex-none rounded-[6px] border border-[rgba(62,207,142,.28)] bg-[rgba(62,207,142,.1)] px-2 py-[3px] text-[11px] font-bold text-[#5FD9A4]">
+              로그인됨
+            </span>
+          </div>
+
+          <button
+            type="button"
+            disabled={syncBusy}
+            onClick={() => void upload()}
+            className={primaryBtnCls(!syncBusy) + ' mt-3'}
+          >
+            {syncBusy ? '업로드 중…' : '지금 업로드'}
+          </button>
+
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="text-[12px] font-semibold text-fg-soft">서버에서 다운로드</div>
+            <input
+              type="password"
+              value={masterPw}
+              onChange={(e) => setMasterPw(e.target.value)}
+              placeholder="이 금고의 마스터 비밀번호"
+              className={inputCls}
+            />
+            <div className="mt-[10px] flex flex-col gap-[6px] text-[12px] text-muted">
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="radio"
+                  name="kl-account-dl-mode"
+                  checked={dlMode === 'merge'}
+                  onChange={() => setDlMode('merge')}
+                  className="mt-[3px]"
+                />
+                <span>
+                  <span className="font-semibold text-fg-soft">병합</span> — 현재 금고에 새
+                  항목만 추가
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="radio"
+                  name="kl-account-dl-mode"
+                  checked={dlMode === 'replace'}
+                  onChange={() => setDlMode('replace')}
+                  className="mt-[3px]"
+                />
+                <span>
+                  <span className="font-semibold text-[#E3B341]">교체</span> — 현재 금고를 서버
+                  백업으로 완전히 대체
+                </span>
+              </label>
+            </div>
+            <button
+              type="button"
+              disabled={syncBusy || !masterPw}
+              onClick={() => void download(masterPw, dlMode)}
+              className={primaryBtnCls(!syncBusy && !!masterPw) + ' mt-[10px]'}
+            >
+              {syncBusy ? '다운로드 중…' : '지금 다운로드'}
+            </button>
+          </div>
+
+          <div className="mt-4 border-t border-line pt-3">
+            <label className="flex cursor-pointer items-center gap-2 text-[12px] text-muted">
+              <input
+                type="checkbox"
+                checked={uploadOnLogout}
+                onChange={(e) => setUploadOnLogout(e.target.checked)}
+              />
+              로그아웃 전에 지금 업로드
+            </label>
+            <button
+              type="button"
+              onClick={() => void signOut(uploadOnLogout)}
+              className="mt-[10px] w-full cursor-pointer rounded-lg border border-border bg-none px-[14px] py-[9px] text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+            >
+              로그아웃
+            </button>
+          </div>
+        </>
+      )}
+
+      <div className="mt-[18px] flex justify-end">
+        <button
+          type="button"
+          onClick={close}
+          className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          닫기
         </button>
       </div>
     </Modal>

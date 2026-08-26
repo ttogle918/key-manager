@@ -20,6 +20,7 @@ import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
 import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
+import { supabase } from '@/lib/supabase'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -132,6 +133,12 @@ interface KeylensState {
   envOpen: boolean
   /** 금고 가져오기(SYNC-0) 모달 열림 여부. */
   syncOpen: boolean
+  /** 계정 동기화(SYNC-2, 옵트인) 모달 열림 여부. */
+  accountSyncOpen: boolean
+  /** Supabase 로그인 사용자(마스터 비밀번호와 무관 — "내 번들이 서버 어디 있는지" 식별용). */
+  syncUser: { id: string; email: string } | null
+  /** 계정 동기화 요청(로그인/업로드/다운로드 등) 진행 중 표시. */
+  syncBusy: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
@@ -252,6 +259,15 @@ interface KeylensState {
   closeSync: () => void
   importVault: (file: File, password: string, mode: 'replace' | 'merge') => Promise<boolean>
 
+  // ── SYNC-2: 계정 로그인 기반 서버 동기화(옵트인) ──
+  openAccountSync: () => void
+  closeAccountSync: () => void
+  supabaseSignUp: (email: string, password: string) => Promise<void>
+  supabaseSignIn: (email: string, password: string) => Promise<void>
+  supabaseSignOut: (uploadFirst: boolean) => Promise<void>
+  supabaseUploadBackup: () => Promise<void>
+  supabaseDownloadBackup: (masterPassword: string, mode: 'replace' | 'merge') => Promise<void>
+
   resetProto: () => void
 }
 
@@ -326,6 +342,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
     rotateTarget: null,
     envOpen: false,
     syncOpen: false,
+    accountSyncOpen: false,
+    syncUser: null,
+    syncBusy: false,
     knowledgeReady: false,
     pendingRequests: [],
     sdkProjects: [],
@@ -1131,6 +1150,123 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
     },
 
+    // ── SYNC-2: 계정 로그인 기반 서버 동기화(옵트인) ──
+    // 로그인은 "내 암호화 번들이 서버 어디 있는지" 식별용일 뿐 — 복호화 열쇠는 항상 로컬
+    // 마스터 비밀번호에서만 나온다(제로 널리지 유지). 업/다운로드는 항상 사용자가 직접 누를 때만
+    // 실행된다(자동 실시간 동기화 없음). 설계 근거: docs/memo/2026-07-30-sync2-server-sync-decisions.md
+    openAccountSync: () => set({ accountSyncOpen: true }),
+    closeAccountSync: () => set({ accountSyncOpen: false }),
+
+    supabaseSignUp: async (email, password) => {
+      if (!supabase) {
+        get().showToast('서버 동기화가 설정되지 않았어요')
+        return
+      }
+      set({ syncBusy: true })
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      set({ syncBusy: false })
+      if (error) {
+        get().showToast(error.message)
+        return
+      }
+      if (data.session && data.user) {
+        set({ syncUser: { id: data.user.id, email: data.user.email ?? email } })
+        get().showToast('가입 완료 — 로그인됐어요')
+      } else {
+        get().showToast('가입 확인 이메일을 보냈어요 — 확인 후 로그인해 주세요')
+      }
+    },
+
+    supabaseSignIn: async (email, password) => {
+      if (!supabase) {
+        get().showToast('서버 동기화가 설정되지 않았어요')
+        return
+      }
+      set({ syncBusy: true })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        set({ syncBusy: false })
+        get().showToast(error.message)
+        return
+      }
+      set({ syncUser: { id: data.user.id, email: data.user.email ?? email }, syncBusy: false })
+      // 서버에 기존 백업이 있는지만 미리 확인 — 자동으로 가져오지 않고 안내만(수동 트리거 원칙).
+      const { data: row } = await supabase
+        .from('vault_backups')
+        .select('updated_at')
+        .eq('user_id', data.user.id)
+        .maybeSingle()
+      if (row) {
+        get().showToast('서버 백업이 있어요 — "지금 다운로드"로 가져올 수 있어요')
+      } else {
+        get().showToast('로그인됐어요')
+      }
+    },
+
+    supabaseSignOut: async (uploadFirst) => {
+      if (!supabase) return
+      if (uploadFirst) await get().supabaseUploadBackup()
+      await supabase.auth.signOut()
+      set({ syncUser: null })
+      get().showToast('로그아웃했어요 — 로컬 금고는 그대로 남아있어요')
+    },
+
+    supabaseUploadBackup: async () => {
+      const { syncUser } = get()
+      if (!supabase || !syncUser) return
+      if (get().locked) {
+        get().showToast('잠금 상태에서는 업로드할 수 없어요 — 먼저 잠금을 해제하세요')
+        return
+      }
+      set({ syncBusy: true })
+      try {
+        const bundle = await vaultApi.exportBundle()
+        const { error } = await supabase.from('vault_backups').upsert({
+          user_id: syncUser.id,
+          bundle,
+          updated_at: new Date().toISOString(),
+        })
+        if (error) throw error
+        get().showToast('서버에 업로드했어요 — 암호문만 저장됨(제로 널리지)')
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '업로드 실패'
+        get().showToast(vaultErrorText(e, msg))
+      } finally {
+        set({ syncBusy: false })
+      }
+    },
+
+    supabaseDownloadBackup: async (masterPassword, mode) => {
+      const { syncUser } = get()
+      if (!supabase || !syncUser) return
+      set({ syncBusy: true })
+      try {
+        const { data, error } = await supabase
+          .from('vault_backups')
+          .select('bundle')
+          .eq('user_id', syncUser.id)
+          .maybeSingle()
+        if (error) throw error
+        if (!data) {
+          get().showToast('서버에 백업이 없어요 — 먼저 업로드해 주세요')
+          return
+        }
+        const bundle = data.bundle as import('@/api/types').VaultBundle
+        const res = await vaultApi.importBundle(bundle, masterPassword, mode)
+        set({ accountSyncOpen: false, locked: false })
+        await get().loadVault()
+        const tail = res.skipped ? ` · ${res.skipped}개 건너뜀(중복)` : ''
+        get().showToast(
+          (res.mode === 'replace' ? '금고 교체' : '병합') +
+            ` 완료 — ${res.imported}개 가져옴${tail}`,
+        )
+      } catch (e) {
+        get().showToast(vaultErrorText(e, '다운로드 실패 — 마스터 비밀번호를 확인하세요'))
+      } finally {
+        set({ syncBusy: false })
+      }
+    },
+
     resetProto: () => {
       set({
         vault: [],
@@ -1164,6 +1300,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         rotateTarget: null,
         envOpen: false,
         syncOpen: false,
+        accountSyncOpen: false,
         pendingRequests: [],
         sdkProjects: [],
         selectedSdkProject: null,
