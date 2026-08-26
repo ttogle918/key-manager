@@ -1134,7 +1134,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         } else if (e instanceof SyncRelayError) {
           get().showToast(e.message)
         } else {
-          get().showToast('내보내기 실패 — 잠시 후 다시 시도해 보세요')
+          get().showToast(vaultErrorText(e, '내보내기 실패 — 잠시 후 다시 시도해 보세요'))
         }
         return false
       }
