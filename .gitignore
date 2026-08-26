@@ -49,6 +49,8 @@ Thumbs.db
 .claude/settings.local.json
 # WIP 체크포인트(/checkpoint) — 세션 핸드오프용 임시 메모, 커밋 금지
 docs/CHECKPOINT.md
+# 세션별 작업 로그(개인 참고용 — 의논 맥락·의사결정 기록, 커밋 금지)
+docs/session_log/
 
 # --- Claude Design 프로토타입 export (로컬 참고용 — React 이식 완료, 커밋 금지) ---
 KeyLens 자격증명 관리 도구/
