@@ -13,12 +13,14 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import crypto
+from . import crypto, explain, ollama_client
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
 from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
+    ExplainImageResponse,
+    ExplainStatusResponse,
     HealthResponse,
     SdkAddDirRequest,
     SdkEnvRequest,
@@ -41,6 +43,7 @@ from .models import (
     VaultVerifyResult,
 )
 from .ocr import OcrUnavailableError, run_ocr
+from .ollama_client import OllamaConfig
 from .vault_session import SdkApprovalPending, VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
@@ -155,6 +158,42 @@ async def analyze_image_endpoint(
 
     combined_text = "\n".join(t for t in (ocr_text, text) if t)
     return analyze(AnalyzeRequest(text=combined_text, url=url), KB)
+
+
+# ── 화면 설명(EXPLAIN, 1단계) ──
+# 로컬 Ollama가 없거나 OLLAMA_MODEL이 설정 안 됐으면 기능 자체가 비활성(None) — 앱은 어떤
+# 모델도 번들하지 않는다. 설계 근거: docs/superpowers/specs/2026-08-27-screenshot-explain-design.md
+
+OLLAMA_CONFIG = OllamaConfig.from_env()
+
+
+@app.get("/explain/status", response_model=ExplainStatusResponse)
+def explain_status() -> ExplainStatusResponse:
+    available = OLLAMA_CONFIG is not None and ollama_client.is_available(OLLAMA_CONFIG)
+    return ExplainStatusResponse(available=available)
+
+
+@app.post("/explain/image", response_model=ExplainImageResponse)
+async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageResponse:
+    if OLLAMA_CONFIG is None:
+        raise HTTPException(
+            status_code=503,
+            detail="화면 설명 기능이 설정되지 않았어요 — OLLAMA_MODEL 환경변수를 설정하세요",
+        )
+    if image.content_type is None or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=422, detail="이미지 파일만 업로드할 수 있어요")
+
+    data = await image.read(_MAX_IMAGE_BYTES + 1)
+    if not data:
+        raise HTTPException(status_code=422, detail="빈 파일이에요")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=422, detail="이미지가 너무 커요(15MB 제한)")
+
+    try:
+        boxes = explain.explain_image(data, KB, OLLAMA_CONFIG)
+    except OcrUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from None
+    return ExplainImageResponse(boxes=boxes)
 
 
 # ── 금고 (VAULT-1/2) ─────────────────────────────────────────────
