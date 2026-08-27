@@ -292,7 +292,7 @@ const STEPS = [
     body: {
       desc: '입력 화면에서 <strong>"이 화면 설명해줘"</strong>를 누르면, 지식베이스에 있는 서비스는 바로 라벨을 붙이고 모르는 영역만 로컬 Ollama에게 짧게 물어봐서 박스로 짚어줍니다.',
       mock: '<div class="mock"><div class="m-card"><div style="border:1px dashed var(--color-mint-pale);border-radius:6px;padding:8px;font-size:11.5px;color:var(--color-mint-soft);">┌ 이 영역: Kakao REST API 키로 보임 (Ollama 추정)</div></div></div>',
-      fine: '이미지·텍스트는 여전히 이 기기 안에서만 오가며, 앱은 어떤 LLM 모델도 담고 있지 않습니다.',
+      fine: '이미지·텍스트는 여전히 이 기기 안에서만 오가며, 앱은 어떤 LLM 모델도 담고 있지 않습니다. (TAVILY_API_KEY를 추가로 설정했다면, 모르는 영역의 추측된 서비스명만 검색 확인을 위해 Tavily로 전송됩니다 — 값 자체는 전송되지 않습니다.)',
       next: '확인했으면 다음 →'
     }
   },

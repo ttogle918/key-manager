@@ -397,13 +397,15 @@ const DATA = [
         tradeoff: 'Ollama가 없는 사용자는 이 기능 자체를 못 쓴다 — 로컬 우선 원칙과 기능 가용성 사이의 명시적 트레이드오프.'
       },
       {
-        code: 'GUIDE-3', name: 'Tavily 검색 연동 / 로컬 발견 캐시', status: 'planned',
-        desc: '미등록 서비스를 공식 문서 도메인으로 제한해 검색·캐시하는 2·3단계.',
-        files: [],
-        why: '설계 문서에는 로컬 LLM만으로 못 짚는 완전히 새로운 서비스를 위한 후속 단계로 이미 스케치돼 있다.',
-        decision: '이번 범위에서는 명시적으로 제외 — 1단계(OCR 박스 + 로컬 Ollama)만 구현했다.',
-        alternatives: [],
-        tradeoff: ''
+        code: 'GUIDE-3', name: 'Tavily 검색 연동 / 로컬 발견 캐시', status: 'done',
+        desc: '로컬 Ollama가 지식베이스에 없는 서비스를 추측하면 Tavily 웹 검색으로 확인해 ai_verified 등급 + 공식 문서 링크를 붙이고, 사용자가 승인한 결과는 로컬 캐시에 남겨 재검색을 피한다.',
+        files: ['backend/app/tavily_client.py', 'backend/app/discoveries_repo.py', 'backend/app/explain.py'],
+        why: '설계 문서에는 로컬 LLM만으로 못 짚는 완전히 새로운 서비스를 위한 후속 단계로 이미 스케치돼 있었다.',
+        decision: 'Tavily 검색에 도메인 제한을 두지 않는다 — 신규 서비스는 정의상 지식베이스에 없어 아는 도메인으로 제한하면 애초에 못 찾는다. 대신 검색 결과가 실제 그 서비스가 맞는지 로컬 Ollama가 다시 판단한다(신뢰 경계는 화이트리스트가 아니라 LLM 재검증). 완전 옵트인(TAVILY_API_KEY 없으면 검색 단계 자체를 건너뛰고 1단계와 동일하게 동작 — Ollama와 달리 버튼을 숨기지 않는다). 캐시(local_discoveries.yaml)는 사용자가 화면에서 항목별로 승인해야만 저장되고 confirmed는 코드로는 절대 true가 되지 않는다 — 승격은 사람이 지식베이스 YAML에 직접 반영해야만.',
+        alternatives: [
+          { name: '지식베이스 도메인으로 검색 제한', reason: '원본 설계 초안에 있었지만 자기모순이었다 — 검색이 필요한 건 바로 지식베이스에 없는 새 서비스인데, 아는 도메인으로 제한하면 그 문서를 찾을 수 없다.' }
+        ],
+        tradeoff: '추측한 서비스명(값 자체는 아님)이 검색 쿼리로 Tavily에 전송된다 — 값처럼 보이는 추측은 전송 전에 걸러내지만, 완전한 로컬 처리 원칙에는 명시적 예외다. 검증 1건당 검색+재추론이 걸릴 수 있어 이미지 1건당 검증 시도를 3건으로 제한한다.'
       }
     ]
   },
