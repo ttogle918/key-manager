@@ -23,7 +23,7 @@ export function Sidebar() {
   const goProjectAccess = useKeylens((s) => s.goProjectAccess)
   const lockNow = useKeylens((s) => s.lockNow)
   const gotoLockScreen = useKeylens((s) => s.gotoLockScreen)
-  const resetProto = useKeylens((s) => s.resetProto)
+  const openResetVault = useKeylens((s) => s.openResetVault)
 
   const navBtn = (active: boolean) =>
     cn(
@@ -94,10 +94,11 @@ export function Sidebar() {
         </button>
         <button
           type="button"
-          onClick={resetProto}
-          className="cursor-pointer border-none bg-none px-2 py-[2px] text-left text-[11px] text-dim-3 hover:text-muted"
+          onClick={openResetVault}
+          title="저장된 모든 자격증명을 완전히 삭제하고 초기 상태로 되돌립니다(되돌릴 수 없음)"
+          className="cursor-pointer border-none bg-none px-2 py-[2px] text-left text-[11px] text-dim-3 hover:text-danger"
         >
-          프로토타입 데이터 초기화
+          금고 완전 초기화
         </button>
       </div>
     </aside>
