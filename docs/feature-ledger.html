@@ -1,0 +1,912 @@
+<!doctype html>
+<!--
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>키지기 기능 원장</title>
+</head>
+<body>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #eef0f3;
+    --surface: #ffffff;
+    --surface-2: #f5f6f8;
+    --ink: #171b22;
+    --muted: #5b6472;
+    --faint: #8a919d;
+    --border: #d8dce2;
+    --border-soft: #e4e7eb;
+    --accent: #a8672c;
+    --accent-ink: #fffaf3;
+    --accent-soft: #f4e6cf;
+    --accent-line: #d9b276;
+    --done: #1f8a5f;
+    --done-soft: #dcefe4;
+    --progress: #2f6fb0;
+    --progress-soft: #dde9f7;
+    --planned: #7c8592;
+    --planned-soft: #e7e9ec;
+    --shadow: 0 1px 2px rgba(23,27,34,0.04), 0 8px 24px -12px rgba(23,27,34,0.10);
+    --radius: 10px;
+    --font-display: 'Fraunces', 'Noto Serif KR', Georgia, serif;
+    --font-body: 'Public Sans', 'Noto Sans KR', -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'D2Coding', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151a;
+      --surface: #191d24;
+      --surface-2: #20252d;
+      --ink: #e8eaef;
+      --muted: #97a0ad;
+      --faint: #6c7480;
+      --border: #2a2f38;
+      --border-soft: #232830;
+      --accent: #d9a35c;
+      --accent-ink: #1a1206;
+      --accent-soft: #362a18;
+      --accent-line: #8a6733;
+      --done: #4fbf8a;
+      --done-soft: #16342a;
+      --progress: #6fa4e0;
+      --progress-soft: #17293b;
+      --planned: #8b95a3;
+      --planned-soft: #262b32;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151a;
+    --surface: #191d24;
+    --surface-2: #20252d;
+    --ink: #e8eaef;
+    --muted: #97a0ad;
+    --faint: #6c7480;
+    --border: #2a2f38;
+    --border-soft: #232830;
+    --accent: #d9a35c;
+    --accent-ink: #1a1206;
+    --accent-soft: #362a18;
+    --accent-line: #8a6733;
+    --done: #4fbf8a;
+    --done-soft: #16342a;
+    --progress: #6fa4e0;
+    --progress-soft: #17293b;
+    --planned: #8b95a3;
+    --planned-soft: #262b32;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px -12px rgba(0,0,0,0.5);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-soft); }
+  a { color: var(--accent); }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 0.05em 0.4em;
+    color: var(--ink);
+  }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .shell { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 0; max-width: 1280px; margin: 0 auto; }
+
+  /* ---- masthead ---- */
+  .masthead {
+    grid-column: 1 / -1;
+    padding: 48px 32px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-optical-sizing: auto;
+    font-size: clamp(30px, 4vw, 44px);
+    line-height: 1.1;
+    margin: 10px 0 8px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .subtitle { color: var(--muted); font-size: 16px; max-width: 62ch; margin: 0 0 24px; }
+
+  .stat-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .stat-chip {
+    display: flex; align-items: baseline; gap: 7px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; padding: 7px 14px 7px 12px;
+    font-size: 13px; color: var(--muted); box-shadow: var(--shadow);
+  }
+  .stat-chip b { font-family: var(--font-mono); font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.done { background: var(--done); }
+  .dot.progress { background: var(--progress); }
+  .dot.planned { background: var(--planned); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  #search {
+    font-family: var(--font-body); font-size: 14px;
+    padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink); min-width: 240px; flex: 1 1 240px;
+  }
+  #search::placeholder { color: var(--faint); }
+  .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn {
+    font-family: var(--font-mono); font-size: 12.5px; letter-spacing: 0.01em;
+    padding: 8px 13px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); cursor: pointer;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+  .filter-btn:hover { border-color: var(--accent-line); color: var(--ink); }
+  .filter-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  :root[data-theme="dark"] .filter-btn.active,
+  @media (prefers-color-scheme: dark) { }
+
+  /* ---- rail ---- */
+  .rail {
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    align-self: start;
+    position: sticky; top: 0;
+    max-height: 100vh; overflow-y: auto;
+  }
+  .rail-title { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); padding: 0 10px 8px; }
+  .rail a {
+    display: flex; justify-content: space-between; gap: 8px;
+    text-decoration: none; color: var(--muted);
+    padding: 8px 10px; border-radius: 7px; font-size: 13.5px;
+  }
+  .rail a:hover { background: var(--surface-2); color: var(--ink); }
+  .rail a .n { font-family: var(--font-mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .rail a.current { background: var(--accent-soft); color: var(--ink); font-weight: 600; }
+
+  /* ---- main ---- */
+  main { padding: 8px 32px 100px; min-width: 0; }
+
+  .category { padding-top: 44px; scroll-margin-top: 16px; }
+  .category:first-child { padding-top: 32px; }
+  .cat-head { margin-bottom: 18px; }
+  .cat-eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+  h2.cat-title { font-family: var(--font-display); font-weight: 600; font-size: 26px; margin: 6px 0 6px; text-wrap: balance; }
+  .cat-desc { color: var(--muted); font-size: 14.5px; max-width: 68ch; margin: 0; }
+
+  .feature-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+  details.feature {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  details.feature[open] { border-color: var(--accent-line); }
+  details.feature summary {
+    list-style: none; cursor: pointer;
+    padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  details.feature summary::-webkit-details-marker { display: none; }
+  .chevron {
+    flex: none; width: 20px; height: 20px; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--faint);
+    transition: transform 160ms ease;
+  }
+  details.feature[open] .chevron { transform: rotate(90deg); color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+  .f-main { flex: 1; min-width: 0; }
+  .f-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; }
+  .f-name { font-weight: 700; font-size: 15.5px; }
+  .f-code { font-family: var(--font-mono); font-size: 11.5px; color: var(--faint); }
+  .status-chip {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 999px; font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-chip.done { background: var(--done-soft); color: var(--done); }
+  .status-chip.progress { background: var(--progress-soft); color: var(--progress); }
+  .status-chip.planned { background: var(--planned-soft); color: var(--planned); }
+  .f-desc { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .f-files { font-family: var(--font-mono); font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+
+  .f-body {
+    padding: 4px 16px 20px 48px;
+    border-top: 1px solid var(--border-soft);
+    margin-top: 2px;
+    display: grid; gap: 14px;
+  }
+  .f-block h4 {
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); margin: 14px 0 6px;
+  }
+  .f-block p { margin: 0; font-size: 14px; color: var(--ink); }
+  .f-block.tradeoff p { color: var(--muted); }
+
+  .alt-list { display: grid; gap: 8px; margin-top: 4px; }
+  .alt-item {
+    background: var(--surface-2); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 10px 12px;
+  }
+  .alt-name { font-weight: 600; font-size: 13.5px; }
+  .alt-name::before { content: "기각/보류 — "; font-weight: 500; color: var(--faint); font-size: 11.5px; }
+  .alt-reason { color: var(--muted); font-size: 13.5px; margin-top: 3px; }
+
+  .empty-state { color: var(--faint); font-size: 14px; padding: 40px 0; text-align: center; }
+
+  footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--border);
+    padding: 28px 32px 40px;
+    color: var(--faint); font-size: 12.5px;
+  }
+
+  @media (max-width: 880px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: static; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+    main { padding: 8px 18px 80px; }
+    .masthead { padding: 32px 18px 22px; }
+  }
+</style>
+
+<div class="shell">
+  <header class="masthead">
+    <div class="eyebrow">KeyLens · 키지기</div>
+    <h1 class="title">기능 원장</h1>
+    <p class="subtitle">지금까지 만든 모든 기능과, 그걸 왜 그렇게 만들었는지의 기록. 항목을 펼치면 배경·결정·기각한 대안이 나옵니다.</p>
+    <div class="stat-strip" id="statStrip"></div>
+    <div class="controls">
+      <input id="search" type="text" placeholder="기능 이름, 파일 경로, 키워드로 검색…" autocomplete="off" />
+      <div class="filter-group" id="filterGroup"></div>
+    </div>
+  </header>
+
+  <nav class="rail" id="rail"></nav>
+  <main id="main"></main>
+
+  <footer>
+    키지기(KeyLens) · 2026 오픈소스 개발자대회 제출용 내부 문서 · 원본 근거: <code>docs/BACKLOG.md</code>,
+    각 기능의 <code>docs/superpowers/specs/*.md</code> 설계 문서, <code>SECURITY_REVIEW.md</code>,
+    <code>THIRD-PARTY-NOTICES.md</code>. 대안이 적혀 있지 않은 항목은 요구사항이 명확해 비교 검토
+    기록 자체가 없었던 경우입니다 — 없는 대안을 지어내지 않았습니다.
+  </footer>
+</div>
+
+<script>
+const DATA = [
+  {
+    id: 'classify', letter: 'A', title: '분류·매핑 엔진', eyebrow: '프로젝트의 심장',
+    desc: '스크린샷·URL·텍스트에서 값을 읽고, 그 값의 정체를 값 자체가 아니라 출처 맥락으로 가려낸다.',
+    features: [
+      {
+        code: 'CORE-1', name: '값 기반 분류 (Stage 1)', status: 'done',
+        desc: '접두어가 명확한 키(sk-, ghp_, AKIA, AIza, xoxb- 등)를 값만으로 즉시 high 신뢰도로 식별.',
+        files: ['backend/app/classify/stage1.py'],
+        why: '접두사가 명확한 키는 값만으로 100% 식별 가능한 "쉬운" 영역이다. 여기서 시간을 아껴 진짜 차별점(Stage2, 맥락 기반 분류)에 시간을 몰아주는 게 목표였다.',
+        decision: '값 규칙을 별도 detectors 모듈로 만들지 않고, 지식베이스 YAML의 value_regex 필드로 통합했다.',
+        alternatives: [
+          { name: '별도 backend/app/detectors/value_rules.py 모듈', reason: '값 규칙과 서비스 정의가 두 곳에 나뉘면 새 서비스를 추가할 때마다 두 곳을 고쳐야 한다. YAML 한 곳으로 합쳐서 "YAML 하나 추가 = 서비스 하나 추가"라는 확장성 스토리를 지켰다.' }
+        ],
+        tradeoff: '검출 범위가 지식베이스에 등록된 접두어로만 한정된다. 접두어가 없는 값(UUID·32hex)은 단정하지 않고 unknown으로 안전 분류한다.'
+      },
+      {
+        code: 'CORE-2', name: '맥락 기반 분류 (Stage 2)', status: 'done',
+        desc: '값 주변 라벨 + URL 구조로, 값만으로는 구분 안 되는 키의 정체를 가려낸다. 신호 충돌 시 단정하지 않고 확인 필요로 표시.',
+        files: ['backend/app/classify/stage2.py', 'backend/app/classify/pipeline.py'],
+        why: 'Notion의 database_id·data_source_id·page_id는 전부 같은 32자 UUID라 값만으로는 구분이 불가능하다. 기존 값 기반 시크릿 스캐너(TruffleHog·Gitleaks 등)가 정확히 이 지점에서 "여러 후보 가능"이라며 판별을 포기한다.',
+        decision: 'OCR(CORE-3) 완성을 기다리지 않고, 이미 텍스트·URL을 받던 /analyze 위에서 라벨 사전 대조 + URL 패턴 매칭으로 Stage2를 먼저 완성·증명했다. OCR은 나중에 "이미지 → 텍스트+라벨"을 만들어 이 파이프라인에 먹이는 입력 경로로만 붙였다.',
+        alternatives: [
+          { name: 'OCR 파이프라인을 먼저 완성한 뒤 그 위에서 Stage2 착수', reason: '이 순서로 가면 이 프로젝트의 존재 이유(맥락 기반 분류)의 완성이 OCR 안정성이라는 훨씬 불확실한 요소에 인질로 잡힌다. 순서를 바꿔 차별점의 리스크를 먼저 없앴다.' }
+        ],
+        tradeoff: '신호가 충돌하면 임의로 단정하지 않고 conflict + 후보 목록만 제시한다 — 완전 자동 분류율을 일부 포기하는 대신 오식별을 원천 차단하는 쪽을 택했다.'
+      },
+      {
+        code: 'CORE-3', name: '백엔드 OCR (RapidOCR)', status: 'done',
+        desc: '스크린샷에서 값+라벨+위치를 로컬 백엔드(127.0.0.1)에서 추출. 이미지는 기기를 떠나지 않는다.',
+        files: ['backend/app/ocr.py', 'backend/scripts/vendor_ocr_models.py'],
+        why: '초기에는 브라우저 tesseract.js(WASM)를 썼다 — "모든 분석은 이 기기 안에서" 원칙과 맞고 파이썬 의존성이 0이라서다. 그런데 한글 단일 글자 라벨("키"/"앱")을 반복 오독해 Kakao 4종 키 중 2종이 unknown으로 빠지는 문제가 있었다.',
+        decision: '한국어 PP-OCRv5 인식 모델을 쓰는 RapidOCR로 교체하되, 실행 위치는 로컬 백엔드(127.0.0.1)로 유지해 "이미지가 기기를 떠나지 않는다"는 원칙은 그대로 지켰다.',
+        alternatives: [
+          { name: '이미지 전역 전처리(그레이스케일·대비·샤픈·2배 확대·Otsu 이진화)', reason: '실험 결과 한글 단일 글자·base62 1↔i 오독은 모델 한계라 개선되지 않았고, 공격적인 변형은 오히려 결과를 퇴행시켰다 — 샤픈은 없던 문자를 만들어내고(환각), Otsu 이진화는 hex 값의 0을 @로 바꿔버렸다.' },
+          { name: '클라우드 OCR API(Google Vision 등)', reason: '스크린샷엔 진짜 비밀 값이 찍혀 있을 수 있다. 외부로 이미지를 보내면 이 프로젝트가 막으려는 바로 그 유출 경로가 된다 — 처음부터 후보에서 제외했다.' }
+        ],
+        tradeoff: '고엔트로피 시크릿의 완벽한 문자 인식은 엔진을 바꿔도 본질적으로 불안정하다. 그래서 "값은 복붙 전제, OCR은 분류에 집중"으로 역할을 좁혔다 — 값 토큰 영역만 2차 인식(길이 가드로 퇴행 방지)한다.'
+      },
+      {
+        code: 'CORE-4', name: '서비스 지식베이스', status: 'done',
+        desc: '서비스별 키 종류·라벨·URL 패턴·공식 변수명·검증 엔드포인트를 YAML로 선언. 9종 22종류.',
+        files: ['backend/knowledge/*.yaml', 'backend/app/knowledge.py'],
+        why: '서비스 정의를 코드로 두면 새 서비스 추가마다 코드 리뷰·배포가 필요해 오픈소스 기여 문턱이 올라간다.',
+        decision: '서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트·발급 도움말·보안 등급을 전부 YAML 데이터로 선언하고, 프론트는 부팅 시 /knowledge를 읽어 동적으로 구성한다 — 새 서비스는 프론트 코드 0줄로 반영된다.',
+        alternatives: [],
+        tradeoff: '분류 정확도가 지식베이스 큐레이션 품질에 의존한다 — 서비스 콘솔이 개편되면 YAML도 갱신해야 한다.'
+      },
+      {
+        code: 'CORE-5', name: '.env 내보내기', status: 'done',
+        desc: '보관된 키를 표준 변수명 KEY=VALUE 형식으로 복사·다운로드.',
+        files: ['frontend/src/components/modals/Modals.tsx'],
+        why: '분류·저장된 키를 실제 개발에 바로 쓰게 하기 위함.',
+        decision: '내보내기까지만 지원하고, dotenv 같은 런타임 자동 주입은 처음부터 범위 밖으로 그었다 — 그 갭은 이후 keylens-env SDK가 메운다.',
+        alternatives: [],
+        tradeoff: '파일로 내보내는 순간 평문이 디스크에 남는다 — 모달에 경고 문구를 고정 표시한다.'
+      }
+    ]
+  },
+  {
+    id: 'explain', letter: 'B', title: '화면 설명', eyebrow: '신규 · 옵트인',
+    desc: '"이 화면 자체가 뭔지" 궁금할 때, 스크린샷 전체를 박스+라벨로 설명해주는 기능.',
+    features: [
+      {
+        code: 'GUIDE-3', name: 'OCR 박스 좌표 재사용', status: 'done',
+        desc: 'RapidOCR이 이미 계산하는 줄 단위 박스 좌표를 보존해 설명 기능의 입력으로 재사용.',
+        files: ['backend/app/explain.py'],
+        why: '강사 화면을 따라가다 "여기까지는 따라했는데 이 화면에서 뭐가 키인지 모르겠다"는 순간을 해결하려면, 화면 전체를 이해하고 설명하는 기능이 필요했다.',
+        decision: 'LLM에게 이미지를 통째로 주지 않고, 이미 추출된 "텍스트 조각 + 좌표 목록"만 준다.',
+        alternatives: [
+          { name: '비전-그라운딩(멀티모달 LLM이 이미지에서 직접 좌표 추출)', reason: '이걸 안정적으로 하는 로컬 모델은 대체로 무겁다 — "로컬 LLM 용량이 너무 커진다"는 우려가 재발한다. 텍스트 전용 작은 로컬 모델로도 충분한 방식을 택했다.' }
+        ],
+        tradeoff: '한 줄 안의 하위 구간(예: 노션 URL의 doc_id vs database_id 경계)까지는 짚지 못한다 — OCR 박스가 보통 줄 단위라서다. 문자 단위 세분화는 후속 과제.'
+      },
+      {
+        code: 'GUIDE-3', name: '온디맨드 트리거', status: 'done',
+        desc: '"이 화면 설명해줘" 버튼을 눌렀을 때만 실행 — 자동 실행 없음.',
+        files: ['frontend/src/components/modals/ExplainModal.tsx'],
+        why: '기존 Stage1/2(빠른 규칙 기반 분류) 위에 얹는 선택적 추가 단계여야 했다.',
+        decision: '사용자가 버튼을 눌렀을 때만 실행되도록 설계했다.',
+        alternatives: [
+          { name: '스크린샷 업로드 시 자동 실행', reason: '매번 자동 실행하면 LLM 호출 지연이 들고, Ollama가 없거나 느릴 때 기존의 빠른 흐름 자체가 막힌다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'GUIDE-3', name: '로컬 Ollama 전용, 옵트인', status: 'done',
+        desc: '사용자가 이미 실행 중인 로컬 Ollama에만 연결. 앱은 모델 가중치를 포함하지 않는다.',
+        files: ['backend/app/ollama_client.py'],
+        why: '스크린샷엔 진짜 비밀 값이 찍혀 있을 수 있다.',
+        decision: '클라우드 LLM이나 일반 웹 검색 대신 사용자 로컬 Ollama에만 옵트인으로 연결한다. OLLAMA_MODEL 환경변수가 없으면 버튼 자체를 화면에서 숨긴다.',
+        alternatives: [
+          { name: '클라우드 LLM API(OpenAI·Claude 등)', reason: '이미지·텍스트를 통째로 외부로 보내면 이 프로젝트가 막으려는 바로 그 유출 경로가 된다.' },
+          { name: '미설정 시 저성능 폴백 모델로 조용히 동작', reason: '"동작하지만 나쁘게 동작"은 사용자가 알아채기 어려워 오히려 신뢰를 해친다. 조용한 저성능 대신 기능을 완전히 숨기는 쪽을 택했다.' }
+        ],
+        tradeoff: 'Ollama가 없는 사용자는 이 기능 자체를 못 쓴다 — 로컬 우선 원칙과 기능 가용성 사이의 명시적 트레이드오프.'
+      },
+      {
+        code: 'GUIDE-3', name: 'Tavily 검색 연동 / 로컬 발견 캐시', status: 'planned',
+        desc: '미등록 서비스를 공식 문서 도메인으로 제한해 검색·캐시하는 2·3단계.',
+        files: [],
+        why: '설계 문서에는 로컬 LLM만으로 못 짚는 완전히 새로운 서비스를 위한 후속 단계로 이미 스케치돼 있다.',
+        decision: '이번 범위에서는 명시적으로 제외 — 1단계(OCR 박스 + 로컬 Ollama)만 구현했다.',
+        alternatives: [],
+        tradeoff: ''
+      }
+    ]
+  },
+  {
+    id: 'vault', letter: 'C', title: '암호화 금고 & 인증', eyebrow: '"나만 보기"의 실체',
+    desc: '마스터 비밀번호에서 키를 유도해 값을 암호화 저장하고, 인증 없이는 절대 복호화하지 않는다.',
+    features: [
+      {
+        code: 'VAULT-1', name: 'Argon2id + AES-256-GCM', status: 'done',
+        desc: '메모리-하드 KDF로 키를 유도하고, 항목별 AEAD 암호화. SQLite엔 평문 값 컬럼 자체가 없음.',
+        files: ['backend/app/crypto.py', 'backend/app/vault_repo.py'],
+        why: '"나만 보기"의 실체. 마스터 비밀번호나 유도 키가 새면 전체 위협모델이 무너진다.',
+        decision: 'Argon2id(메모리-하드 KDF)로 32B 키를 유도하고, 값은 AES-256-GCM(AEAD)으로 항목별 고유 nonce와 함께 암호화한다. 자체 보안 감사(SECURITY_REVIEW.md)에서 이 조합이 "현행 권장 표준"에 부합함을 확인했다.',
+        alternatives: [
+          { name: 'PBKDF2 / bcrypt 계열 KDF', reason: 'GPU 병렬 공격에 상대적으로 약하다. Argon2id는 메모리 요구량을 키워 이 공격을 어렵게 만드는 최신 권장안이라 이쪽을 택했다.' },
+          { name: 'AES-CBC + 별도 MAC 조합', reason: '패딩이 있는 모드는 패딩 오라클 공격 가능성을 남긴다. AEAD(AES-GCM)는 패딩이 아예 없어 이 공격을 구조적으로 배제한다.' }
+        ],
+        tradeoff: '이미 장악된 호스트(키로거·메모리 덤프)나 약한 마스터 비밀번호는 방어 범위 밖 — 문서에 정직하게 명시했다.'
+      },
+      {
+        code: 'VAULT-2', name: '인증 = 복호화 성공 여부', status: 'done',
+        desc: '별도 비밀번호 해시를 저장하지 않고, GCM 태그 일치 여부만으로 인증을 판정.',
+        files: ['backend/app/vault_session.py'],
+        why: '별도 비밀번호 해시를 저장하면 관리해야 할 비밀이 하나 더 늘어난다.',
+        decision: '고정 토큰을 키로 암호화해 저장해두고, 잠금 해제 시 그 복호화 성공 여부(GCM 태그 일치)만으로 인증을 판정한다. 자체 보안 감사에서 제안돼 그대로 채택했다.',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'VAULT-2', name: '세션 인증 · 자동 잠금 · 실패 지연', status: 'done',
+        desc: '무활동 자동 잠금, 연속 실패 시 지수 백오프(429+Retry-After). 잠금 시 메타데이터만 노출.',
+        files: ['backend/app/vault_session.py'],
+        why: '값 조회·복사·내보내기 전 항상 인증이 필요하다는 사용자 요구사항.',
+        decision: '무활동 타이머로 자동 잠금, 연속 인증 실패는 지수 백오프로 지연시킨다.',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'SYNC-0', name: '금고 번들 포맷 (.klvault.json)', status: 'done',
+        desc: 'SQLite 파일 자체가 아니라 포맷/버전 메타를 가진 단일 JSON 번들로 내보내기.',
+        files: ['backend/app/vault_repo.py'],
+        why: '서버 없이 멀티 기기 이동을 해결하는 최소 단위가 필요했다.',
+        decision: 'vault.db 파일을 그대로 옮기는 대신 새 번들 포맷을 정의했다.',
+        alternatives: [
+          { name: 'vault.db 파일 자체를 그대로 복사해 옮기기', reason: '포맷 버전·검증·병합(중복 처리) 규칙을 넣을 자리가 없다. JSON 번들로 만들어 버전 필드와 병합 규칙을 명시적으로 통제했다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'VAULT-RESET', name: '금고 완전 초기화', status: 'done',
+        desc: '교육·공용 PC에서 마스터 비밀번호 재확인 후 버튼 하나로 금고를 완전히 비우는 기능(POST /vault/reset).',
+        files: ['backend/app/vault_repo.py', 'backend/app/vault_session.py', 'backend/app/main.py', 'frontend/src/components/modals/Modals.tsx'],
+        why: '보조강사로 참여한 2일짜리 교육에서, 실습이 끝난 뒤 자격증명을 정리하는 부담을 없애고 싶었다. 그런데 사이드바의 기존 "프로토타입 데이터 초기화" 버튼을 코드로 확인해보니 프론트 화면 상태만 리셋하고 실제 vault.db는 지우지 않는다는 걸 발견했다.',
+        decision: 'vault.db 파일 삭제 대신 기존 DELETE FROM entries/meta/access_log SQL(번들 교체 때 이미 쓰던 패턴)을 재사용 — meta 행이 사라지면 "초기화 안 됨" 상태가 자연히 따라온다. RUNTIME-1의 SDK 디렉토리 승인 기록도 함께 삭제해 공용 PC에 이전 사용자 흔적이 안 남게 했다. 인증은 change-password와 동일하게 세션 잠금 해제 여부와 무관하게 마스터 비밀번호 자체를 재검증한다 — 잠금 해제된 채 방치된 세션만으로 완전 삭제가 가능하면 안 되기 때문.',
+        alternatives: [
+          { name: 'vault.db 파일 자체를 삭제 후 재생성', reason: 'SQLite WAL/저널 파일 잔존, OS별 파일 잠금 같은 불필요한 위험만 추가. 이미 검증된 DELETE 패턴 재사용이 더 안전.' },
+          { name: '세션이 잠금 해제 상태면 비밀번호 재확인 없이 허용', reason: '공용 PC에서 잠금 해제된 채 방치된 세션만으로 완전 삭제가 가능해지면 이 기능의 존재 동기(공용 PC 안전)와 정면으로 어긋난다.' }
+        ],
+        tradeoff: '엔드포인트에 별도 rate-limit(지수 백오프)은 두지 않았다 — 기존 change-password도 동일하게 비보호라 일관성을 우선했다.'
+      }
+    ]
+  },
+  {
+    id: 'dashboard', letter: 'D', title: '조회 대시보드 (보관함)', eyebrow: '최근 개편',
+    desc: '서비스별 그룹에서 프로젝트별 그룹으로 — 실제 SDK 사용 패턴에 맞춘 재구성.',
+    features: [
+      {
+        code: 'UI-3', name: '프로젝트별 아코디언 그룹', status: 'done',
+        desc: '서비스별 그룹핑을 프로젝트별로 전환. 서비스는 상단 로고 태그(다중 선택 필터)로 격상.',
+        files: ['frontend/src/components/screens/VaultScreen.tsx', 'docs/superpowers/specs/2026-08-27-vault-project-grouping-design.md'],
+        why: 'keylens-env SDK가 이미 "프로젝트 = 컬렉션" 단위로 키를 가져가는데, 보관함 화면은 여전히 서비스별로 묶여 있어 실사용 패턴과 어긋났다.',
+        decision: '그룹핑 축을 프로젝트로 뒤집고, 서비스는 프로젝트 안의 소그룹이자 상단 로고 태그 필터로 재배치했다.',
+        alternatives: [
+          { name: '서비스별 그룹을 유지하고 프로젝트는 드롭다운 필터로만', reason: '실제 SDK 사용 패턴(프로젝트 단위로 키를 꺼내 씀)과 화면 구조가 어긋나 있었다 — 반대로 뒤집는 게 자연스러웠다.' }
+        ],
+        tradeoff: '프로젝트 이름 변경·병합 UI, 프로젝트 단위 일괄 삭제는 이번 범위에서 제외했다.'
+      },
+      {
+        code: 'UI-3', name: '프로젝트 미지정 시 등록일 자동 저장', status: 'done',
+        desc: '프로젝트를 안 적은 항목은 화면 표시용이 아니라 실제 DB에 등록일(YYYY-MM-DD)을 저장.',
+        files: ['backend/app/vault_repo.py'],
+        why: '프로젝트가 선택 입력이라 대부분의 기존 키가 프로젝트 없이 저장돼 있었다. 그대로 그룹핑을 뒤집으면 "프로젝트 없음" 버킷이 화면 대부분을 차지하는 어색한 상태가 된다.',
+        decision: '프로젝트 미지정 시 오늘 날짜를 실제 project 컬럼에 저장한다. 사용자가 나중에 프로젝트 칸을 비우면 "오늘"이 아니라 그 항목의 등록일로 되돌린다.',
+        alternatives: [
+          { name: '화면에서만 날짜를 보여주고 저장은 빈 값으로 유지', reason: 'keylens-env는 프로젝트 미지정 키를 "전역 키"로 취급하는 기존 규칙이 있다. 화면만 속이면 SDK 동작과 사용자 의도가 어긋난다 — 실제 필드에 써서 그 날짜 문자열을 keylens-env 프로젝트명으로도 바로 쓸 수 있게 했다.' }
+        ],
+        tradeoff: '이미 저장된 기존 빈-프로젝트 항목은 소급 수정하지 않는다 — 화면 그룹핑 계산 시에만 등록일로 유도한다.'
+      },
+      {
+        code: 'UI-3', name: 'MUI DataGrid 결과 요약', status: 'done',
+        desc: '분석 결과를 표 형태로 요약해서 보여주는 그리드.',
+        files: ['frontend/src/components/input/ResultsGrid.tsx'],
+        why: '카드 나열만으로는 여러 건을 한눈에 비교하기 어려웠다.',
+        decision: 'MUI의 무료 Community 등급 DataGrid를 도입했다 — 유료 Pro/Premium 기능은 쓰지 않는다.',
+        alternatives: [],
+        tradeoff: ''
+      }
+    ]
+  },
+  {
+    id: 'trust', letter: 'E', title: '신뢰 기능', eyebrow: 'stretch 목표였던 것',
+    desc: '단순 보관을 넘어 "이 키가 살아있나", "언제 만료되나"까지 알려준다.',
+    features: [
+      {
+        code: 'TRUST-1', name: '키 유효성 검증', status: 'done',
+        desc: '지식베이스에 선언된 read-only 엔드포인트로 1회 호출해 active/invalid/unknown 확인.',
+        files: ['backend/app/verify.py'],
+        why: '단순 보관을 넘어서는 한 끗. 만료일을 몰라도 "이 키 죽었어요"는 실제 호출로 알 수 있다(TruffleHog의 verification 발상에서 착안, 코드는 직접 구현).',
+        decision: '사용자가 버튼을 눌렀을 때 read-only(GET/HEAD)로 1회만 호출한다 — 자동 주기 호출은 하지 않는다.',
+        alternatives: [
+          { name: 'httpx로 구현', reason: 'httpx가 끌어오는 certifi가 MPL 라이선스라 이 레포에서 금지된 패턴이다. 대신 표준 라이브러리 urllib로 구현해 새 런타임 의존성을 0으로 유지했다.' }
+        ],
+        tradeoff: '현재 검증 엔드포인트를 선언한 서비스는 OpenAI·Notion 2종뿐 — 카카오·GCP 등은 인증 스킴이 달라 미선언(unsupported) 상태다.'
+      },
+      {
+        code: 'TRUST-2', name: '만료일 관리', status: 'done',
+        desc: '수동 입력 + JWT는 exp 클레임 자동 추출. 임박 항목 상단 정렬.',
+        files: ['frontend/src/lib/format.ts'],
+        why: '대부분의 생짜 API 키엔 만료 정보가 없다.',
+        decision: '사용자 입력을 기본으로 하되, JWT 형태면 저장 시 exp를 자동 추출해 채운다.',
+        alternatives: [],
+        tradeoff: ''
+      }
+    ]
+  },
+  {
+    id: 'sync', letter: 'F', title: '서버리스 멀티 기기 & 이메일 전달', eyebrow: '오늘 문서에 반영 예정',
+    desc: '서버 없이 여러 기기로 금고를 옮기는 방법. SYNC-2는 완성됐지만 보고서에 아직 없다.',
+    features: [
+      {
+        code: 'SYNC-0', name: '암호화 번들 내보내기/가져오기', status: 'done',
+        desc: '금고 전체를 .klvault.json 하나로 내보내 USB·개인 클라우드로 이동. 교체/병합 지원.',
+        files: ['backend/app/vault_repo.py'],
+        why: '서버 없이 멀티 기기를 해결하는 최소 단위.',
+        decision: '암호화된 금고 파일 자체를 내보내고, 여는 열쇠는 항상 마스터 비밀번호로 유지한다(제로 널리지, KeePass+Dropbox 패턴).',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'SYNC-2', name: '이메일 릴레이 동기화 — manager-relay', status: 'done',
+        desc: '계정·DB 없이 SMTP로만 암호화 번들을 전달하는 독립 배포형 서비스(opt-in).',
+        files: ['manager-relay/'],
+        why: '최초 설계는 Supabase 계정 로그인이었다. 실사용 검증 중 두 가지 문제가 드러났다: (1) Supabase 기본 메일러가 프로젝트 전체 합산 시간당 2통만 허용해, 강의실처럼 30명이 비슷한 시간대에 시도하면 3번째 요청부터 막힌다 (2) "로컬 우선·서버 없음"을 내세우는 프로젝트가 클라우드 DB에 사용자 데이터(암호문이라도)를 쌓는 구조는 "결국 우리가 서버를 운영한다"는 인상을 줘 대회 심사에 불리할 수 있다는 우려가 나왔다.',
+        decision: '계정도 DB도 없애고, SMTP만으로 목적지 이메일에 암호화 번들을 전달하는 방식으로 재설계했다. 코드는 이 레포에 공개하되, KeyLens 앱 자체가 서버를 운영하는 게 아니라 원하는 운영자("매니저")가 자기 SMTP 자격증명으로 직접 배포해야 동작한다.',
+        alternatives: [
+          { name: 'Supabase 계정 로그인 기반 설계(최초안)', reason: '위 두 가지 문제로 폐기했다 — 구현했던 브랜치는 머지하지 않고 참고용으로만 남겼다.' },
+          { name: 'Gmail API(OAuth)', reason: '매니저가 반드시 Gmail 계정이어야 하고 토큰 갱신 로직을 직접 구현해야 한다. 범용 SMTP는 표준 라이브러리(smtplib)만으로 되고, Gmail 앱 비밀번호부터 Resend·SendGrid까지 환경변수만 바꾸면 그대로 교체된다 — "누구나 자기 자격증명으로 자기 매니저를 운영"하는 오픈소스 지향과 더 잘 맞았다.' }
+        ],
+        tradeoff: '매니저와 그의 메일 제공자는 서비스명·라벨·프로젝트·메모 같은 메타데이터는 볼 수 있다(비밀 값은 암호문이라 못 봄) — README에 명시했다.'
+      },
+      {
+        code: 'SYNC-2', name: '2단계 발송(어뷰징 방지)', status: 'done',
+        desc: '확인 메일(첨부 없음) → 클릭 → 실제 첨부 메일. 임의 주소로 스팸 발송을 막는다.',
+        files: ['manager-relay/app/mailer.py'],
+        why: '매니저 릴레이는 원리상 "임의의 이메일 주소로 메일을 보내는 창구"가 될 수 있다.',
+        decision: '확인 메일을 먼저 보내고, 그 이메일함의 주인만 클릭할 수 있는 링크를 눌러야 실제 첨부 메일이 발송되게 했다 — 계정 없이도 "요청자가 그 이메일함에 접근 가능한지"를 확인할 수 있다.',
+        alternatives: [
+          { name: '첫 요청에서 바로 첨부파일 발송', reason: '누구든 exe에 아무 이메일 주소나 입력해 스팸을 발생시킬 수 있다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'SYNC-2', name: '토큰 저장 = 메모리 + TTL', status: 'done',
+        desc: '확인 대기 중인 번들을 서버 프로세스 메모리에 15분만 들고 있는다. 영구 저장소 없음.',
+        files: ['manager-relay/app/token_store.py'],
+        why: '확인 링크를 클릭하기 전까지 번들을 잠깐 들고 있어야 한다.',
+        decision: '새 DB를 두지 않고 서버 프로세스 메모리 dict + TTL(15분)로 처리한다.',
+        alternatives: [
+          { name: '별도 DB(Redis 등)에 토큰 저장', reason: '애초에 피하려던 문제(영구 저장소 운영)가 재발한다. 서버가 재시작돼 대기 요청이 유실돼도 재시도 비용이 낮으므로 이 트레이드오프를 택했다.' }
+        ],
+        tradeoff: '배포 시 인스턴스가 2개 이상이면 요청/확인이 서로 다른 인스턴스로 라우팅될 수 있다 — --max-instances=1이 권장이 아니라 필수다.'
+      },
+      {
+        code: 'SYNC-1', name: 'Google Drive 자동 동기화', status: 'planned',
+        desc: 'OAuth drive.appdata 스코프로 암호문 번들을 자동 업로드/다운로드.',
+        files: [],
+        why: 'SYNC-0의 수동 파일 이동을 자동화하고 싶다는 로드맵.',
+        decision: '처음부터 이번 범위 밖 — 설계 메모만 존재.',
+        alternatives: [],
+        tradeoff: ''
+      }
+    ]
+  },
+  {
+    id: 'sdk', letter: 'G', title: '런타임 키 주입 SDK — keylens-env', eyebrow: '오늘 문서에 반영 예정',
+    desc: 'dotenv 대체. 완성됐지만 보고서에 아직 없는 두 번째 기능.',
+    features: [
+      {
+        code: 'RUNTIME-1', name: 'dotenv 대체 방식', status: 'done',
+        desc: 'load_env() 한 줄로 실행 중이고 잠금 해제된 KeyLens에서 값을 받아 os.environ에 주입.',
+        files: ['keylens-env/src'],
+        why: '.env 내보내기(CORE-5)로 평문 파일을 만들어 쓰면, 결국 디스크에 평문이 남는 건 똑같다.',
+        decision: '실행 중이고 잠금 해제된 KeyLens 로컬 백엔드에서 그때그때 값을 받아 os.environ에 주입한다 — 디스크에 평문 .env 파일이 남지 않는다.',
+        alternatives: [],
+        tradeoff: 'KeyLens 앱이 켜져 있고 잠금 해제된 상태여야만 동작한다 — 꺼져있거나 잠겨있으면 명확한 에러를 던진다(조용한 실패 없음).'
+      },
+      {
+        code: 'RUNTIME-1', name: '프로젝트 그룹 단위 접근범위', status: 'done',
+        desc: '프로젝트 지정 키는 등록된 디렉토리에서만, 미지정 키는 전역. 이름 겹치면 프로젝트 우선.',
+        files: ['backend/app/sdk_repo.py'],
+        why: '"전부 다 보임" 대신 필요한 프로젝트 것만 내려주는 최소 권한이 필요했다.',
+        decision: '기존 "프로젝트" 필드를 정식 그룹 단위로 승격했다. 프로젝트가 지정된 키는 등록된 디렉토리에서만, 미지정("기본") 키는 모든 프로젝트에서 접근 가능(전역 취급), 이름이 겹치면 프로젝트 쪽이 우선한다.',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'RUNTIME-1', name: '디렉토리 사전등록 + 승인 팝업', status: 'done',
+        desc: '미등록 디렉토리가 처음 요청하면 KeyLens 앱에 승인 대기 알림이 뜬다.',
+        files: ['frontend/src/components/screens/ProjectAccessScreen.tsx', 'frontend/src/components/screens/PendingScreen.tsx'],
+        why: '이 기능이 새로운 신뢰 경계를 만드는 건 아니다 — 잠금 해제 상태에선 이미 로컬 프로세스가 vault API를 호출할 수 있었다(기존 위협모델 그대로). 실제로 추가하는 가치는 "전부 다 보임" 대신 승인된 프로젝트 것만 내려주는 최소 권한 스코핑이다.',
+        decision: 'OAuth 동의창과 비슷한 패턴 — 설정 화면에서 미리 등록해두거나, 미등록 경로가 처음 요청하면 승인 팝업이 뜨고 허용하면 그 경로가 프로젝트에 등록돼 이후 자동 통과한다.',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'RUNTIME-1', name: '승인 알림 채널', status: 'done',
+        desc: '데스크톱 앱은 OS 네이티브 토스트 + 작업표시줄 깜빡임(Windows). 개발 모드는 화면 안 배너.',
+        files: ['desktop/notify.py'],
+        why: '승인 대기 상태를 놓치지 않도록 실행 형태에 맞는 채널로 알려야 했다.',
+        decision: '데스크톱 exe(plyer, MIT)는 OS 네이티브 토스트 + 표준 라이브러리 ctypes로 FlashWindowEx 호출(작업표시줄 깜빡임, 새 의존성 없음). 실제 배포 형태는 데스크톱 exe를 전제로 한다.',
+        alternatives: [
+          { name: '브라우저 Notification Web API를 주 채널로', reason: '권한 요청이 필요하고 탭이 백그라운드면 신뢰도가 낮다. 개발 모드 전용 대체 수단으로만 남기고, 화면 안 배너를 항상 병행하는 최후 안전망으로 뒀다.' }
+        ],
+        tradeoff: '브라우저 탭(dev 모드) 알림 채널은 스코프 하로 남아 있다 — macOS 독 바운스·Linux urgency hint도 후속 확장.'
+      },
+      {
+        code: 'RUNTIME-1', name: '빌드 백엔드 · 배포 방식', status: 'done',
+        desc: '패키지 빌드는 setuptools, 배포는 PyPI 대신 git 설치.',
+        files: ['keylens-env/pyproject.toml'],
+        why: '새 패키지를 만들 때마다 카피레프트 전이 의존성을 점검해야 한다는 CLAUDE.md 원칙.',
+        decision: '빌드 백엔드로 setuptools(PSF/BSD 계열)를 채택했다. 배포는 PyPI에 올리지 않고 git 설치(pip install git+…#subdirectory=keylens-env) 방식을 확정했다.',
+        alternatives: [
+          { name: 'hatchling(빌드 백엔드)', reason: '전이 의존성 pathspec이 MPL-2.0이라 permissive 우선 정책과 부딪혀 기각했다.' },
+          { name: 'PyPI 등록', reason: '별도 계정·API 토큰·배포 파이프라인이 필요하다. git 설치는 레포 태그로 버전을 고정할 수 있어 지금 규모에 더 가벼운 선택이었다 — PyPI는 나중에 추가할 수 있는 선택지로 열어뒀다.' }
+        ],
+        tradeoff: '패키지 버전과 앱 릴리스 태그가 서로 별개라 혼동 여지가 있다 — README에 명시.'
+      }
+    ]
+  },
+  {
+    id: 'guide', letter: 'H', title: '발급 도움말 & 보안 등급', eyebrow: 'GUIDE-1 / GUIDE-2',
+    desc: '어디서 발급받는지 모르는 사람, 노출되면 안 되는 키를 실수로 공개하는 사람을 위한 안전망.',
+    features: [
+      {
+        code: 'GUIDE-1', name: '역할·발급 콘솔·공식 문서 안내', status: 'done',
+        desc: '종류별 role/issue_url/docs_url, 서비스별 steps/prereq를 KB에 선언.',
+        files: ['frontend/src/components/KeyHelp.tsx'],
+        why: 'GCP·AWS·Kakao 등은 키 발급 경로가 헷갈리고, 콘솔 UI가 서비스마다 제각각이다.',
+        decision: 'KeyLens가 이미 갖고 있던 서비스별 지식베이스에 역할·발급 바로가기·공식 문서를 선언하면, 분류·보관을 넘어 발급까지 안내하는 도구가 된다. 프론트는 /knowledge 동적 소비라 코드 0줄로 반영된다.',
+        alternatives: [],
+        tradeoff: '콘솔 자동 로그인·키 자동 발급은 하지 않는다 — 안내(링크·설명)까지만, 실제 발급은 사용자가 공식 콘솔에서 직접.'
+      },
+      {
+        code: 'GUIDE-1', name: '콘솔 딥링크 + 도메인 화이트리스트', status: 'done',
+        desc: '{project} 플레이스홀더를 항목 값으로 치환해 딥링크. ID 형태일 때만, https + 등록된 호스트만.',
+        files: ['frontend/src/data/services.ts'],
+        why: '여러 콘솔 URL은 가운데 ID만 바뀐다(예: kakao 콘솔의 app_id, GCP credentials의 project_id).',
+        decision: 'issue_url에 플레이스홀더를 두고, 항목의 project 값이 ID 형태(공백·한글 아님)일 때만 치환해 해당 콘솔 페이지로 바로 연결한다. 최종 URL은 지식베이스가 선언한 호스트 + https만 통과하는 화이트리스트를 거친다.',
+        alternatives: [
+          { name: '플레이스홀더를 조건 없이 항상 치환', reason: 'project 값이 한글 라벨이거나 비어 있으면 깨진 URL이 만들어진다 — ID 형태 검증 후에만 치환하고, 아니면 기본 콘솔로 안전하게 폴백하도록 가드를 넣었다.' },
+          { name: '화이트리스트 없이 저장된 URL을 그대로 새 탭으로 열기', reason: '오픈 리다이렉트·javascript: 스킴 공격에 노출된다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'GUIDE-2', name: '노출 등급 뱃지', status: 'done',
+        desc: '22종 전부 public/secret 지정 → 🔒 노출 금지 / 공개 가능 뱃지.',
+        files: ['frontend/src/components/KeyHelp.tsx'],
+        why: '같은 서비스라도 공개 가능 키와 노출 금지 키가 갈린다(Kakao JS=공개 vs Admin=금지, Stripe pk vs sk, Slack bot vs user).',
+        decision: '22종 credential 전부에 exposure(public/secret)를 지정하고, secret 종류엔 유출 시 피해와 하드닝 팁을 붙였다. 검증 실패·만료 임박·회전 시점에 재발급 링크로 자동 연결한다.',
+        alternatives: [],
+        tradeoff: '노출 등급은 보조 신호일 뿐 최종 판단은 사용자 몫이다 — 자동 폐기·자동 재발급은 하지 않는다.'
+      }
+    ]
+  },
+  {
+    id: 'ops', letter: 'I', title: '실행 형태 & 배포', eyebrow: '남의 컴퓨터에서도 되게',
+    desc: '2차 기능테스트는 남의 환경에서 돌아간다 — "내 컴퓨터에서만 됨"은 0점이라는 전제.',
+    features: [
+      {
+        code: 'OSS-3', name: '단일 dev 스크립트', status: 'done',
+        desc: 'node scripts/dev.mjs 한 명령으로 백엔드+프론트 동시 기동.',
+        files: ['scripts/dev.mjs'],
+        why: '2차 기능테스트는 남의 환경에서 돌린다.',
+        decision: 'Node 기반 크로스플랫폼 dev 스크립트로 확정, 백엔드 venv를 자동 감지한다.',
+        alternatives: [
+          { name: 'docker compose', reason: '이 프로젝트의 결(로컬 우선, 가벼운 재현)과 안 맞는다고 판단해 기각했다.' },
+          { name: 'PyWebView를 개발 스크립트로 바로 사용', reason: '안정화 이전 시점이라 아직 이르다고 판단, 별도 데스크톱 앱 경로로 분리했다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'RUNTIME-1', name: '데스크톱 실행 파일 패키징', status: 'done',
+        desc: 'PyWebView 네이티브 창 + cx_Freeze로 단일 실행 파일. GitHub Releases 배포.',
+        files: ['desktop/app.py', 'desktop/setup.py'],
+        why: '개발자가 아닌 사용자도 더블클릭 한 번으로 쓸 수 있어야 한다.',
+        decision: 'cx_Freeze(PSF 계열 permissive)를 기본 패키저로 채택했다.',
+        alternatives: [
+          { name: 'PyInstaller', reason: '부트로더가 GPL-2.0+예외 라이선스다. 예외 조항상 생성된 실행 파일 자체는 GPL에 묶이지 않지만, 이 프로젝트의 "허용적 라이선스 우선" 원칙에 맞춰 더 명확히 permissive한 쪽을 기본으로 택했다.' },
+          { name: 'Nuitka', reason: 'Apache-2.0으로 조건은 만족하지만, 대안으로만 남겨두고 기본값은 cx_Freeze로 확정했다.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'DEMO-1', name: '로컬 자산 벤더링(OCR·폰트·로고)', status: 'done',
+        desc: 'OCR 가중치·웹폰트·서비스 로고 SVG를 빌드 시 로컬로 받아 same-origin 서빙.',
+        files: ['frontend/scripts/vendor-fonts.mjs', 'frontend/scripts/vendor-logos.mjs', 'backend/scripts/vendor_ocr_models.py'],
+        why: '런타임 CDN 요청이 있으면 local-first 원칙이 깨지고, 오프라인 환경에서도 안 된다.',
+        decision: '빌드 시점에 스크립트로 로컬에 받아 same-origin으로 서빙한다 — 런타임 외부 요청 0.',
+        alternatives: [],
+        tradeoff: ''
+      },
+      {
+        code: 'UI-4', name: '서비스 로고 표시', status: 'done',
+        desc: 'simple-icons(CC0-1.0)에서 원본 그대로 6종 벤더링, 상표는 지시적 사용으로 한정.',
+        files: ['frontend/src/assets/logos', 'THIRD-PARTY-NOTICES.md'],
+        why: '보관함에서 서비스를 한눈에 구분하려면 로고가 있는 편이 좋았지만, 저작권·상표 문제를 명확히 해야 했다.',
+        decision: 'CC0-1.0 아이콘 세트에서 원본 SVG를 수정 없이 그대로 사용하고, "이 자격증명이 어느 서비스 것인지" 식별하는 지시적 용도로만 한정했다(로고 변형·재판매·제휴 표시 없음). OpenAI·Slack·AWS는 세트에 없어(브랜드 요청으로 제거됨) 기존 컬러 이니셜 타일로 자동 폴백한다.',
+        alternatives: [
+          { name: '로고를 직접 변형·재구성해서 사용', reason: '상표권 침해 소지가 커진다 — 원본을 그대로 쓰는 쪽을 택했다.' }
+        ],
+        tradeoff: ''
+      }
+    ]
+  },
+  {
+    id: 'license', letter: 'J', title: '품질 · 라이선스', eyebrow: '코드만큼 채점되는 것',
+    desc: '오픈소스는 코드만큼 위생이 채점된다는 전제로, 첫날부터 지켜온 규칙들.',
+    features: [
+      {
+        code: 'OSS-2', name: '허용적 라이선스 정책 + 조건부 예외', status: 'done',
+        desc: '강한 카피레프트 절대 금지, 약한 카피레프트는 미수정 사용 시에만 조건부 허용.',
+        files: ['CLAUDE.md', 'THIRD-PARTY-NOTICES.md'],
+        why: '대회가 명시적으로 라이선스 충돌을 검증한다.',
+        decision: 'GPL/AGPL은 예외 없이 금지. LGPL/MPL은 패키지를 수정 없이 그대로 쓰는 경우만 조건부 허용 — RapidOCR 도입으로 유입된 tqdm·certifi(MPL-2.0)가 이 기준으로 허용됐다.',
+        alternatives: [
+          { name: 'TruffleHog(AGPL-3.0)의 탐지 패턴 포팅', reason: 'AGPL은 강한 카피레프트라 MIT 프로젝트에 절대 섞을 수 없다 — 명시적으로 금지했다. 대신 각 서비스 공식 문서를 근거로 정규식을 직접 작성했다.' },
+          { name: 'Gitleaks(MIT) 패턴 그대로 복사', reason: '라이선스는 호환되지만 그대로 복사하지 않고 참고만 했다 — 출처는 THIRD-PARTY-NOTICES.md에 기록.' }
+        ],
+        tradeoff: ''
+      },
+      {
+        code: 'OSS-2', name: 'REUSE 3.3 준수 (SPDX 헤더)', status: 'done',
+        desc: '모든 소스 파일에 SPDX 헤더, .reuse/dep5로 예외 파일 명시.',
+        files: ['.reuse/dep5'],
+        why: '헤더 누락은 2차 라이선스 검증에서 바로 감점 요인이 된다.',
+        decision: '새 파일마다 SPDX 헤더 2줄을 의무화하고, 인라인 헤더를 넣을 수 없는 파일(YAML frontmatter, 생성물)은 .reuse/dep5로 일괄 선언한다.',
+        alternatives: [],
+        tradeoff: '헤더가 있어도 한글 본문 때문에 reuse 6.x 파서가 오탐하는 경우가 있어(알려진 도구 버그) 그 파일들도 dep5에 별도로 등재해뒀다.'
+      },
+      {
+        code: 'OSS-2', name: 'CI 자동 검증', status: 'done',
+        desc: 'push/PR마다 pytest·lint·build·reuse lint·카피레프트·SCA를 자동 실행.',
+        files: ['.github/workflows'],
+        why: '제출 주간에 몰아서 하면 늦게 깨진 걸 고칠 시간이 없다.',
+        decision: '의존성 추가 때마다, 그리고 매 push마다 라이선스·취약점 검사를 상시화했다.',
+        alternatives: [],
+        tradeoff: ''
+      }
+    ]
+  }
+];
+
+const STATUS_META = {
+  done: { label: '완료', dot: 'done' },
+  progress: { label: '구현 중', dot: 'progress' },
+  planned: { label: '로드맵', dot: 'planned' }
+};
+
+function countAll() {
+  let c = { done: 0, progress: 0, planned: 0 };
+  DATA.forEach(cat => cat.features.forEach(f => { c[f.status]++; }));
+  return c;
+}
+
+function renderStats() {
+  const c = countAll();
+  const strip = document.getElementById('statStrip');
+  strip.innerHTML =
+    '<div class="stat-chip"><span class="dot done"></span>완료 <b>' + c.done + '</b></div>' +
+    '<div class="stat-chip"><span class="dot progress"></span>구현 중 <b>' + c.progress + '</b></div>' +
+    '<div class="stat-chip"><span class="dot planned"></span>로드맵 <b>' + c.planned + '</b></div>';
+}
+
+function renderFilters() {
+  const group = document.getElementById('filterGroup');
+  const opts = [['all','전체'], ['done','완료'], ['progress','구현 중'], ['planned','로드맵']];
+  group.innerHTML = opts.map(([key,label], i) =>
+    '<button class="filter-btn' + (i===0 ? ' active' : '') + '" data-filter="' + key + '">' + label + '</button>'
+  ).join('');
+  group.addEventListener('click', (e) => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    group.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  });
+}
+
+function renderRail() {
+  const rail = document.getElementById('rail');
+  rail.innerHTML = '<div class="rail-title">영역</div>' + DATA.map(cat =>
+    '<a href="#' + cat.id + '"><span>' + cat.letter + ' · ' + cat.title + '</span><span class="n">' + cat.features.length + '</span></a>'
+  ).join('');
+}
+
+function escapeHtml(s) {
+  return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function featureHtml(f) {
+  const meta = STATUS_META[f.status];
+  const filesHtml = (f.files && f.files.length)
+    ? '<div class="f-files">' + f.files.map(p => '<code>' + escapeHtml(p) + '</code>').join(' ') + '</div>'
+    : '';
+  const altHtml = (f.alternatives && f.alternatives.length)
+    ? '<div class="f-block"><h4>고려했던 다른 방법</h4><div class="alt-list">' +
+      f.alternatives.map(a =>
+        '<div class="alt-item"><div class="alt-name">' + escapeHtml(a.name) + '</div><div class="alt-reason">' + escapeHtml(a.reason) + '</div></div>'
+      ).join('') + '</div></div>'
+    : '';
+  const tradeoffHtml = f.tradeoff
+    ? '<div class="f-block tradeoff"><h4>한계 / 트레이드오프</h4><p>' + escapeHtml(f.tradeoff) + '</p></div>'
+    : '';
+  return (
+    '<details class="feature" data-name="' + escapeHtml((f.name + ' ' + f.desc + ' ' + (f.files||[]).join(' ') + ' ' + (f.code||'')).toLowerCase()) + '" data-status="' + f.status + '">' +
+      '<summary>' +
+        '<span class="chevron">&#9656;</span>' +
+        '<div class="f-main">' +
+          '<div class="f-top">' +
+            '<span class="f-name">' + escapeHtml(f.name) + '</span>' +
+            (f.code ? '<span class="f-code">' + escapeHtml(f.code) + '</span>' : '') +
+            '<span class="status-chip ' + meta.dot + '">' + meta.label + '</span>' +
+          '</div>' +
+          '<div class="f-desc">' + escapeHtml(f.desc) + '</div>' +
+          filesHtml +
+        '</div>' +
+      '</summary>' +
+      '<div class="f-body">' +
+        (f.why ? '<div class="f-block"><h4>왜 필요했나</h4><p>' + escapeHtml(f.why) + '</p></div>' : '') +
+        (f.decision ? '<div class="f-block"><h4>어떻게 결정했나</h4><p>' + escapeHtml(f.decision) + '</p></div>' : '') +
+        altHtml +
+        tradeoffHtml +
+      '</div>' +
+    '</details>'
+  );
+}
+
+function renderMain() {
+  const main = document.getElementById('main');
+  main.innerHTML = DATA.map(cat =>
+    '<section class="category" id="' + cat.id + '">' +
+      '<div class="cat-head">' +
+        '<div class="cat-eyebrow">' + cat.letter + ' · ' + escapeHtml(cat.eyebrow) + '</div>' +
+        '<h2 class="cat-title">' + escapeHtml(cat.title) + '</h2>' +
+        '<p class="cat-desc">' + escapeHtml(cat.desc) + '</p>' +
+      '</div>' +
+      '<div class="feature-list">' + cat.features.map(featureHtml).join('') + '</div>' +
+    '</section>'
+  ).join('') + '<div class="empty-state" id="emptyState" style="display:none">일치하는 기능이 없습니다.</div>';
+}
+
+function applyFilters() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const activeBtn = document.querySelector('.filter-btn.active');
+  const status = activeBtn ? activeBtn.dataset.filter : 'all';
+  let visibleCount = 0;
+  document.querySelectorAll('details.feature').forEach(el => {
+    const matchesText = !q || el.dataset.name.includes(q);
+    const matchesStatus = status === 'all' || el.dataset.status === status;
+    const show = matchesText && matchesStatus;
+    el.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+  document.querySelectorAll('.category').forEach(cat => {
+    const anyVisible = Array.from(cat.querySelectorAll('details.feature')).some(el => el.style.display !== 'none');
+    cat.style.display = anyVisible ? '' : 'none';
+  });
+  document.getElementById('emptyState').style.display = visibleCount === 0 ? '' : 'none';
+}
+
+function setupScrollSpy() {
+  const links = Array.from(document.querySelectorAll('.rail a'));
+  const sections = DATA.map(c => document.getElementById(c.id));
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('current'));
+        const link = links.find(l => l.getAttribute('href') === '#' + entry.target.id);
+        if (link) link.classList.add('current');
+      }
+    });
+  }, { rootMargin: '-10% 0px -70% 0px' });
+  sections.forEach(s => s && io.observe(s));
+}
+
+renderStats();
+renderFilters();
+renderRail();
+renderMain();
+document.getElementById('search').addEventListener('input', applyFilters);
+setupScrollSpy();
+</script>
+
+</body>
+</html>
