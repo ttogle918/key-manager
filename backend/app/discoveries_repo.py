@@ -27,12 +27,19 @@ def normalize_pattern(text: str) -> str:
 
 
 def _load(path: str | Path) -> list[dict]:
+    """캐시 파일을 읽는다. 손상된 파일(깨진 YAML·잘못된 모양)은 예외 대신 빈 목록으로 낮춘다 —
+    이 파일은 .gitignore 대상 로컬 상태라 수동 편집·쓰기 도중 중단으로 깨질 수 있다."""
     p = Path(path)
     if not p.exists():
         return []
     with p.open("r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    return data if isinstance(data, list) else []
+        try:
+            data = yaml.safe_load(f)
+        except yaml.YAMLError:
+            return []
+    if not isinstance(data, list):
+        return []
+    return [entry for entry in data if isinstance(entry, dict)]
 
 
 def find_by_pattern(path: str | Path, pattern: str) -> dict | None:

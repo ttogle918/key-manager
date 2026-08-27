@@ -57,3 +57,17 @@ def test_append_multiple_entries_keeps_all(tmp_path):
     append_discovery(path, pattern="B", label="라벨B", tier="ai_verified", docs_url=None)
     assert find_by_pattern(path, "A")["label"] == "라벨A"
     assert find_by_pattern(path, "B")["label"] == "라벨B"
+
+
+def test_find_by_pattern_returns_none_on_malformed_yaml(tmp_path):
+    """중단된 쓰기 등으로 파일이 깨진 YAML이어도 예외 대신 캐시 미스로 처리한다."""
+    path = tmp_path / "local_discoveries.yaml"
+    path.write_text("pattern: [unterminated", encoding="utf-8")
+    assert find_by_pattern(path, "아무 패턴") is None
+
+
+def test_find_by_pattern_skips_non_dict_entries(tmp_path):
+    """리스트 최상위 모양은 맞지만 원소가 dict가 아닌 손상 파일도 죽지 않는다."""
+    path = tmp_path / "local_discoveries.yaml"
+    path.write_text("- oops\n- 42\n", encoding="utf-8")
+    assert find_by_pattern(path, "아무 패턴") is None
