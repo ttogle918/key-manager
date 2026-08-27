@@ -275,6 +275,16 @@ export function InputScreen() {
             >
               {savableCount}개 모두 저장
             </button>
+            {s.explainAvailable && hasRealImg && (
+              <button
+                type="button"
+                onClick={s.openExplain}
+                title="화면 각 영역이 뭘 의미하는지 박스로 설명(로컬 LLM 필요)"
+                className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-[7px] text-[12px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+              >
+                이 화면 설명해줘
+              </button>
+            )}
           </div>
           <ResultsGrid results={results} />
           {results.map((r) => (

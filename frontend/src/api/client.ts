@@ -4,6 +4,7 @@
 import type {
   AnalyzeApiRequest,
   AnalyzeApiResponse,
+  ExplainBox,
   KnowledgeResponse,
   SdkPendingRequest,
   SdkProject,
@@ -226,4 +227,55 @@ export const sdkApi = {
       `/sdk/projects/${encodeURIComponent(project)}/directories/${dirId}`,
       { method: 'DELETE' },
     ),
+}
+
+// ── 화면 설명(EXPLAIN, 1단계) ──
+
+export async function explainStatusApi(timeoutMs = 3000): Promise<boolean> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API_BASE}/explain/status`, { signal: ctrl.signal })
+    if (!res.ok) return false
+    const body = (await res.json()) as { available: boolean }
+    return body.available
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/** POST /explain/image — 로컬 LLM 추론이 걸릴 수 있어 타임아웃을 넉넉히 잡는다. */
+export async function explainImageApi(image: Blob, timeoutMs = 45000): Promise<ExplainBox[]> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const form = new FormData()
+    form.append('image', image, 'screenshot.png')
+    const res = await fetch(`${API_BASE}/explain/image`, {
+      method: 'POST',
+      body: form,
+      signal: ctrl.signal,
+    })
+    if (!res.ok) {
+      if (res.status === 503) {
+        throw new ApiError('화면 설명 기능을 쓸 수 없어요 — Ollama가 실행 중인지 확인하세요')
+      }
+      if (res.status === 422) {
+        throw new ApiError('이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요')
+      }
+      throw new ApiError(`문제가 발생했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`)
+    }
+    const body = (await res.json()) as { boxes: ExplainBox[] }
+    return body.boxes
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new ApiError('응답이 너무 늦어요 — 다시 시도해 보세요.')
+    }
+    throw new ApiError('KeyLens에 연결할 수 없어요 — 잠시 후 다시 시도하거나 재시작해 보세요.')
+  } finally {
+    clearTimeout(timer)
+  }
 }

@@ -1,45 +1,62 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import { SERVICE_ORDER, SVC_META } from '@/data/services'
-import { expiryInfo } from '@/lib/format'
+import { SERVICE_ORDER, SVC_LOGO, SVC_META } from '@/data/services'
+import { expiryInfo, projectKey } from '@/lib/format'
 import { syncRelayConfigured } from '@/lib/syncRelay'
 import { useKeylens } from '@/store/keylensStore'
 import { useProjectNames } from '@/store/selectors'
 import { VaultRow } from '@/components/vault/VaultRow'
 import type { VaultItem } from '@/types'
 
-/** 화면 2: 조회 대시보드(보관함). */
+/** 화면 2: 조회 대시보드(보관함) — 프로젝트별 아코디언, 안은 서비스 소그룹. */
 export function VaultScreen() {
   const s = useKeylens()
   const projectNames = useProjectNames()
-  const { vault, search, projFilter, locked } = s
+  const { vault, search, projFilter, locked, serviceTagFilter, projectOpenOverrides } = s
 
   const q = search.trim().toLowerCase()
-  const match = (it: VaultItem) =>
-    (!projFilter || (it.project || '') === projFilter) &&
-    (!q ||
-      it.varName.toLowerCase().includes(q) ||
-      it.type.toLowerCase().includes(q) ||
-      it.service.toLowerCase().includes(q) ||
-      (it.memo || '').toLowerCase().includes(q) ||
-      (it.context || '').toLowerCase().includes(q) ||
-      (it.project || '').toLowerCase().includes(q))
+  const matchSearch = (it: VaultItem) =>
+    !q ||
+    it.varName.toLowerCase().includes(q) ||
+    it.type.toLowerCase().includes(q) ||
+    it.service.toLowerCase().includes(q) ||
+    (it.memo || '').toLowerCase().includes(q) ||
+    (it.context || '').toLowerCase().includes(q) ||
+    (it.project || '').toLowerCase().includes(q)
+  const matchServiceTag = (it: VaultItem) =>
+    serviceTagFilter.size === 0 || serviceTagFilter.has(it.service)
+  const filterActive = q.length > 0 || serviceTagFilter.size > 0
 
-  // 만료 임박(≤14일)·만료 항목을 각 그룹 상단으로. 그 외는 기존 순서 유지(TRUST-2).
+  // 만료 임박(≤14일)·만료 항목을 각 소그룹 상단으로. 그 외는 기존 순서 유지(TRUST-2).
   const urgency = (v: VaultItem): number => {
     const e = expiryInfo(v.expiresAt)
     return e && (e.expired || e.days <= 14) ? e.days : Infinity
   }
-  const groups = SERVICE_ORDER.map((name) => ({
-    name,
-    meta: SVC_META[name],
-    items: vault
-      .filter((v) => v.service === name && match(v))
-      .sort((a, b) => urgency(a) - urgency(b)),
-  })).filter((g) => g.items.length > 0)
+
+  const byProject = new Map<string, VaultItem[]>()
+  vault
+    .filter((it) => matchSearch(it) && matchServiceTag(it))
+    .forEach((it) => {
+      const key = projectKey(it)
+      const arr = byProject.get(key)
+      if (arr) arr.push(it)
+      else byProject.set(key, [it])
+    })
+
+  const projectGroups = Array.from(byProject.entries())
+    .map(([name, items]) => ({
+      name,
+      latest: items.reduce((max, it) => (it.addedAt > max ? it.addedAt : max), ''),
+      services: SERVICE_ORDER.map((svc) => ({
+        name: svc,
+        meta: SVC_META[svc],
+        items: items.filter((it) => it.service === svc).sort((a, b) => urgency(a) - urgency(b)),
+      })).filter((g) => g.items.length > 0),
+    }))
+    .sort((a, b) => (a.latest < b.latest ? 1 : a.latest > b.latest ? -1 : 0))
 
   const vaultEmpty = vault.length === 0
-  const noMatches = vault.length > 0 && groups.length === 0
+  const noMatches = vault.length > 0 && projectGroups.length === 0
 
   return (
     <div className="mx-auto max-w-[880px] px-8 pb-[90px] pt-[44px] [animation:klFadeUp_.35s_ease]">
@@ -53,10 +70,20 @@ export function VaultScreen() {
         </div>
         <select
           value={projFilter}
-          onChange={(e) => s.setProjFilter(e.target.value)}
+          onChange={(e) => {
+            const name = e.target.value
+            s.expandProject(name)
+            if (name) {
+              requestAnimationFrame(() => {
+                document
+                  .getElementById(`vault-project-${name}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              })
+            }
+          }}
           className="max-w-[170px] cursor-pointer rounded-lg border border-border bg-surface px-[10px] py-[9px] text-[12.5px] text-fg-soft outline-none"
         >
-          <option value="">전체 프로젝트</option>
+          <option value="">프로젝트로 이동</option>
           {projectNames.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -121,6 +148,49 @@ export function VaultScreen() {
         </button>
       </div>
 
+      {/* 서비스 로고 태그 필터 */}
+      {!vaultEmpty && (
+        <div className="mb-4 flex flex-wrap items-center gap-[6px]">
+          {SERVICE_ORDER.map((name) => {
+            const active = serviceTagFilter.has(name)
+            const logo = SVC_LOGO[name]
+            const meta = SVC_META[name]
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => s.toggleServiceTag(name)}
+                title={name}
+                aria-pressed={active}
+                className="flex size-8 cursor-pointer items-center justify-center rounded-full border transition-[border-color,box-shadow]"
+                style={{
+                  borderColor: active ? '#3ECF8E' : 'rgba(255,255,255,.08)',
+                  boxShadow: active ? '0 0 0 1px #3ECF8E' : 'none',
+                  background: logo ? '#EDEEF0' : (meta?.bg ?? '#232931'),
+                }}
+              >
+                {logo ? (
+                  <img src={logo} alt="" className="size-4" />
+                ) : (
+                  <span className="text-[10px] font-extrabold" style={{ color: meta?.fg }}>
+                    {meta?.tile}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+          {serviceTagFilter.size > 0 && (
+            <button
+              type="button"
+              onClick={s.clearServiceTagFilter}
+              className="cursor-pointer rounded-[6px] border border-border bg-none px-[9px] py-1 text-[11px] font-semibold text-faint hover:border-border-strong hover:text-fg-soft"
+            >
+              태그 해제
+            </button>
+          )}
+        </div>
+      )}
+
       {/* 잠금 배너 */}
       {locked && (
         <div className="mb-4 flex items-center gap-3 rounded-[10px] border border-border bg-surface px-4 py-[13px] [animation:klFade_.2s]">
@@ -168,37 +238,71 @@ export function VaultScreen() {
         <div className="py-12 text-center text-[13px] text-faint-2">조건에 맞는 항목이 없습니다.</div>
       )}
 
-      {/* 서비스별 그룹 */}
-      {groups.map((g) => (
-        <section
-          key={g.name}
-          className="mb-4 overflow-hidden rounded-xl border border-line bg-panel"
-        >
-          <header className="flex items-center gap-[10px] border-b border-line bg-panel-head px-4 py-[11px]">
-            <div
-              className="flex size-6 flex-none items-center justify-center rounded-[6px] text-[12px] font-extrabold"
-              style={{ background: g.meta.bg, color: g.meta.fg }}
-            >
-              {g.meta.tile}
-            </div>
-            <span className="text-[13.5px] font-semibold">{g.name}</span>
-            <span className="text-[11.5px] text-dim">{g.items.length}개</span>
-            <div className="ml-auto">
+      {/* 프로젝트별 그룹(아코디언) */}
+      {projectGroups.map((pg, idx) => {
+        const isOpen = (projectOpenOverrides[pg.name] ?? idx === 0) || filterActive
+        const itemCount = pg.services.reduce((n, g) => n + g.items.length, 0)
+        return (
+          <section
+            key={pg.name}
+            id={`vault-project-${pg.name}`}
+            className="mb-4 overflow-hidden rounded-xl border border-line bg-panel"
+          >
+            <header className="flex items-center gap-[10px] border-b border-line bg-panel-head px-4 py-[11px]">
               <button
                 type="button"
-                onClick={() => s.envCopyGroup(g.name)}
-                title="이 그룹을 .env 형식으로 복사"
+                onClick={() => {
+                  if (!filterActive) s.toggleProjectSection(pg.name, isOpen)
+                }}
+                className="flex flex-1 cursor-pointer items-center gap-[10px] border-none bg-none p-0 text-left"
+              >
+                <span
+                  className="text-[11px] text-faint transition-transform"
+                  style={{ transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                >
+                  ▸
+                </span>
+                <span className="text-[13.5px] font-semibold">{pg.name}</span>
+                <span className="text-[11.5px] text-dim">{itemCount}개</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => s.envCopyProject(pg.name)}
+                title="이 프로젝트 전체를 .env 형식으로 복사"
                 className="cursor-pointer rounded-[6px] border border-border bg-none px-[9px] py-1 font-mono text-[10.5px] font-semibold text-faint hover:border-border-strong hover:text-fg-soft"
               >
                 .env 복사
               </button>
-            </div>
-          </header>
-          {g.items.map((it) => (
-            <VaultRow key={it.id} it={it} />
-          ))}
-        </section>
-      ))}
+            </header>
+            {isOpen &&
+              pg.services.map((g) => (
+                <div key={g.name}>
+                  <div className="flex items-center gap-[8px] border-t border-[#14181E] bg-[#0F1216] px-4 py-[7px]">
+                    <div
+                      className="flex size-[18px] flex-none items-center justify-center rounded-[5px] text-[10px] font-extrabold"
+                      style={{ background: g.meta.bg, color: g.meta.fg }}
+                    >
+                      {g.meta.tile}
+                    </div>
+                    <span className="text-[11.5px] font-semibold text-muted-2">{g.name}</span>
+                    <span className="text-[10.5px] text-dim">{g.items.length}개</span>
+                    <button
+                      type="button"
+                      onClick={() => s.envCopyGroup(pg.name, g.name)}
+                      title="이 서비스만 .env 형식으로 복사"
+                      className="ml-auto cursor-pointer rounded-[6px] border border-border bg-none px-[8px] py-[2px] font-mono text-[10px] font-semibold text-faint hover:border-border-strong hover:text-fg-soft"
+                    >
+                      .env 복사
+                    </button>
+                  </div>
+                  {g.items.map((it) => (
+                    <VaultRow key={it.id} it={it} />
+                  ))}
+                </div>
+              ))}
+          </section>
+        )
+      })}
     </div>
   )
 }

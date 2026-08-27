@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: MIT
 import type { KnowledgeResponse } from '@/api/types'
 import type { Confidence, SvcMeta, TypeOption } from '@/types'
+import gcpLogo from '@/assets/logos/gcp.svg'
+import githubLogo from '@/assets/logos/github.svg'
+import kakaoLogo from '@/assets/logos/kakao.svg'
+import notionLogo from '@/assets/logos/notion.svg'
+import ollamaLogo from '@/assets/logos/ollama.svg'
+import stripeLogo from '@/assets/logos/stripe.svg'
 
 /**
  * 서비스 레지스트리 — 백엔드 `GET /knowledge`(지식베이스)에서 **런타임에** 채워진다.
@@ -74,6 +80,14 @@ export let SERVICE_BY_ID: Record<string, string> = {
   ollama: 'Ollama',
 }
 
+/** 서비스 표시명 → 로고 SVG(simple-icons, THIRD-PARTY-NOTICES.md 참고). 없으면 폴백 타일 사용. */
+export let SVC_LOGO: Record<string, string> = {
+  Notion: notionLogo,
+  Kakao: kakaoLogo,
+  GCP: gcpLogo,
+  Ollama: ollamaLogo,
+}
+
 /** 서비스 표시명 → 발급 도움말(서비스 단위, GUIDE-1). /knowledge 로 채워짐. */
 export let CONSOLE_URL: Record<string, string | null> = {}
 export let SVC_STEPS: Record<string, string[]> = {}
@@ -90,9 +104,24 @@ const CURATED_META: Record<string, SvcMeta> = {
   gcp: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
   openai: { tile: 'O', bg: '#17B597', fg: '#03211B' },
   ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
+  // simple-icons에 로고 파일이 없는(브랜드 요청으로 제거됨, Task 4 참고) 서비스 — 폴백 타일이라도
+  // 해시 기반 자동색(autoMeta) 대신 실제 브랜드 색을 쓴다.
+  aws: { tile: 'A', bg: '#FF9900', fg: '#161E2D' },
+  slack: { tile: 'S', bg: '#4A154B', fg: '#FFFFFF' },
 }
 // 큐레이션 서비스의 표시 순서(id). 나머지는 뒤에 알파벳순으로 붙는다.
 const CURATED_ORDER = ['notion', 'kakao', 'gcp', 'openai', 'ollama']
+
+// 큐레이션 서비스 id → 로고. simple-icons에 실제 파일이 있는 6종만(OpenAI·AWS·Slack 제외 —
+// 위 CURATED_META에서 이 셋은 로고 대신 브랜드색 폴백 타일을 쓴다).
+const CURATED_LOGO: Record<string, string> = {
+  notion: notionLogo,
+  kakao: kakaoLogo,
+  gcp: gcpLogo,
+  ollama: ollamaLogo,
+  github: githubLogo,
+  stripe: stripeLogo,
+}
 // 새 서비스 타일 자동 색(어두운 배경 + 흰 글자로 가독성 확보).
 const AUTO_PALETTE: Array<{ bg: string; fg: string }> = [
   { bg: '#3B5BDB', fg: '#FFFFFF' },
@@ -116,6 +145,7 @@ function autoMeta(name: string): SvcMeta {
 export function applyKnowledge(payload: KnowledgeResponse): void {
   const typeMap: Record<string, TypeOption[]> = {}
   const svcMeta: Record<string, SvcMeta> = {}
+  const svcLogo: Record<string, string> = {}
   const toId: Record<string, string> = {}
   const byId: Record<string, string> = {}
   const consoleUrl: Record<string, string | null> = {}
@@ -150,6 +180,7 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
       securityTip: c.security_tip ?? null,
     }))
     svcMeta[name] = CURATED_META[s.service] ?? autoMeta(name)
+    if (CURATED_LOGO[s.service]) svcLogo[name] = CURATED_LOGO[s.service]
     toId[name] = s.service
     byId[s.service] = name
     consoleUrl[name] = s.console_url ?? null
@@ -170,6 +201,7 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
     .map((s) => s.display_name)
   TYPE_MAP = typeMap
   SVC_META = svcMeta
+  SVC_LOGO = svcLogo
   SERVICE_TO_ID = toId
   SERVICE_BY_ID = byId
   CONSOLE_URL = consoleUrl

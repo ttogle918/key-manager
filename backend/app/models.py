@@ -268,3 +268,29 @@ class SdkPendingRequest(BaseModel):
     project: str
     path: str
     requested_at: str
+
+
+# ── 화면 설명(EXPLAIN, 1단계: 지식베이스 대조 + 로컬 Ollama) ──
+
+
+class ExplainBox(BaseModel):
+    """스크린샷 한 줄에 대한 설명 — 좌표(원본 이미지 픽셀 단위)와 등급."""
+
+    x: float
+    y: float
+    w: float
+    h: float
+    text: str
+    label: str
+    tier: Literal["known", "ai_verified", "ai_unverified"]
+    docs_url: Optional[str] = None
+
+
+class ExplainImageResponse(BaseModel):
+    boxes: list[ExplainBox]
+
+
+class ExplainStatusResponse(BaseModel):
+    """Ollama 가용 여부 — 프론트가 '이 화면 설명해줘' 버튼 표시 여부를 판단하는 데 씀."""
+
+    available: bool

@@ -125,6 +125,18 @@ export interface VaultImportResult {
   mode: string
 }
 
+/** 화면 설명 기능(1단계) 결과 한 항목 — 좌표는 원본 이미지 픽셀 단위. */
+export interface ExplainBox {
+  x: number
+  y: number
+  w: number
+  h: number
+  text: string
+  label: string
+  tier: 'known' | 'ai_verified' | 'ai_unverified'
+  docs_url?: string
+}
+
 /** 값 없는 항목 메타데이터 — 잠금 상태에서도 노출 가능. */
 export interface VaultEntryMeta {
   id: number

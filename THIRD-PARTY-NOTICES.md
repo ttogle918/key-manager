@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 이 프로젝트(MIT)는 다음 서드파티 구성요소를 사용합니다. 각 구성요소는 해당 라이선스 조건을 따릅니다.
 대부분 허용적(permissive) 라이선스이며, GPL/AGPL 같은 **강한 카피레프트는 전혀 포함하지 않습니다**.
-`backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 2건**을 의도적으로
+`backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 3건**을 의도적으로
 포함합니다 — 아래 "스크린샷 OCR(backend)" 절에 왜 안전한지 근거를 명시합니다.
 
 ## 브라우저 OCR (frontend, CORE-3)
@@ -69,27 +69,35 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 0BSD AND MIT AND Zlib AND CC0-1.0, 전 구성요소 허용목록 내) · pyclipper·six (MIT) · Pillow
 (MIT-CMU) · flatbuffers·requests (Apache-2.0).
 
-### 약한 카피레프트 2건 — 의도적 포함(안전 근거 명시)
+### 약한 카피레프트 3건 — 의도적 포함(안전 근거 명시)
 
 - **tqdm** (rapidocr 필수 전이 의존성) — 라이선스 **MPL-2.0**(핵심 코드, 일부 deprecated shim
   파일만 MIT). **파일 단위(weak) 카피레프트**: MPL이 요구하는 건 "MPL 커버 파일 자체를 수정해서
   재배포할 때 그 수정 파일을 공개"뿐이다. 우리는 tqdm 소스를 수정하지 않고 pip 의존성으로 그대로
   사용하므로 이 프로젝트(MIT) 코드에는 전염되지 않는다.
+- **certifi** (rapidocr → requests 전이 의존성) — 라이선스 **MPL-2.0**. CA 루트 인증서 번들만
+  담은 데이터 패키지로, requests가 HTTPS 검증용으로 import해 그대로 쓴다. tqdm과 동일한 이유로
+  안전 — 소스를 수정하지 않고 pip 의존성으로만 사용, 파일 단위 카피레프트라 이 프로젝트(MIT) 코드로
+  전염되지 않는다. (참고: `cryptography` 자체는 certifi를 끌어오지 않는다 — 아래 "cryptography"
+  절 참고. certifi는 rapidocr가 유일한 경로다.)
 - **opencv-python** (rapidocr 필수 전이 의존성) — 파이썬 바인딩 코드 자체는 Apache-2.0이나, Windows
   휠에 **FFmpeg(LGPL-2.1)** 가 동봉된다. 단, FFmpeg는 cv2 본체에 정적으로 박히지 않고 **별도의
   교체 가능한 플러그인 DLL**(`cv2/opencv_videoio_ffmpeg500_64.dll`)로 동적 로드된다 — OpenCV팀이
   LGPL의 "재링크 가능성 보장" 요건을 만족시키려 의도적으로 설계한 구조다. cx_Freeze 데스크톱 패키징도
   이 DLL을 실행파일과 분리된 개별 파일로 배치해(정적 병합 없음) 재교체 가능성이 유지된다.
-- CLAUDE.md 규칙: **강한 카피레프트(GPL/AGPL)는 여전히 절대 금지**. 위 두 건은 "미수정 의존성
+- CLAUDE.md 규칙: **강한 카피레프트(GPL/AGPL)는 여전히 절대 금지**. 위 세 건은 "미수정 의존성
   사용 + 재링크 가능 구조 유지"라는 조건을 만족하는 예외로, 새로 카피레프트 의존성을 볼 때마다
-  이 기준으로 개별 판단한다(자동으로 전부 허용되는 게 아님).
+  이 기준으로 개별 판단한다(자동으로 전부 허용되는 게 아님). CI(`ALLOWED_WEAK_COPYLEFT`)도 이
+  두 패키지명(tqdm, certifi)만 명시 허용한다 — opencv-python은 pip-licenses에 라이선스가
+  Apache-2.0으로만 잡혀 그 검사에 걸리지 않는다(LGPL 부분은 별도 바이너리 DLL이라 위 근거로 대신
+  기록).
 
 ## 암호화 저장소 (backend, VAULT-1)
 
 ### cryptography
-- 버전: 49.0.0
+- 버전: 50.0.1 (49.0.0은 PYSEC-2026-3552 취약점이 있어 패치본으로 고정 — pip-audit)
 - 라이선스: Apache-2.0 OR BSD-3-Clause (듀얼 — 본 프로젝트는 **BSD-3-Clause를 선택 적용**)
-- 출처: https://pypi.org/project/cryptography/49.0.0/ · https://github.com/pyca/cryptography
+- 출처: https://pypi.org/project/cryptography/50.0.1/ · https://github.com/pyca/cryptography
 - 용도: Argon2id 키 유도(KDF) + AES-256-GCM 항목별 암호화. 코드 복사 없이 공개 API만 호출
   (`hazmat.primitives.kdf.argon2.Argon2id`, `hazmat.primitives.ciphers.aead.AESGCM`).
 - 전이 의존성: cffi 2.0.0 (MIT), pycparser 3.0 (BSD-3-Clause). certifi/MPL/카피레프트 없음.
@@ -119,6 +127,26 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 - **local-first**: Google Fonts·jsdelivr CDN 런타임 로드를 없애고, `frontend/scripts/vendor-fonts.mjs`가 빌드 시
   `public/fonts/`로 받아 same-origin 서빙한다(외부 요청 0). 폰트 파일은 저장소에 커밋하지 않는다(.gitignore).
 > OFL 전문: https://openfontlicense.org/
+
+## 서비스 로고 아이콘 (frontend, 보관함 서비스 태그)
+
+### simple-icons
+- 버전: 16.28.0
+- 라이선스: **CC0-1.0**(저작권 전면 포기) — 단, 라이선스 본문 4조 1항에 "상표권·특허권은 이 문서로
+  포기·양도되지 않는다"고 명시. 즉 SVG 아이콘의 **저작권만 CC0**이고, Notion·GCP·OpenAI 등 각 로고가
+  나타내는 **브랜드 상표권은 여전히 해당 회사 소유**다.
+- 출처: https://github.com/simple-icons/simple-icons (npm `simple-icons@16.28.0`)
+- 용도: 보관함 화면 상단 "서비스별 필터" 태그의 아이콘(6종: Notion·Kakao·GCP·Ollama·GitHub·Stripe).
+  원본 SVG를 수정 없이 `frontend/scripts/vendor-logos.mjs`로 복사해 `frontend/src/assets/logos/*.svg`에
+  커밋(빌드타임 devDependency일 뿐 런타임 코드는 import하지 않음 — 런타임 의존성 0).
+- **상표 사용 근거(nominative fair use)**: "이 자격증명이 어느 서비스 것인지" 식별하는 지시적 용도로만
+  쓴다(로고를 변형·재판매하거나 KeyLens가 해당 회사와 제휴한 것처럼 표시하지 않음). 비밀번호 관리자·
+  OAuth 로그인 화면 등에서 서비스 식별용으로 원본 브랜드 마크를 그대로 보여주는 건 업계 보편적 관행이다.
+- **OpenAI·Slack·AWS는 이 세트에 없다** — simple-icons가 브랜드 요청으로 해당 아이콘을 완전히
+  제거했다(`node_modules/simple-icons/DISCLAIMER.md`의 "Removal of Brands" 참고, `icons/` 폴더에
+  파일 자체가 없음 — 다른 slug로 남아있지도 않음). 이 세 서비스는 KeyLens에서 로고 없이 기존 컬러
+  이니셜 타일(`SVC_META` 폴백)을 그대로 쓴다 — 별도 대응 불필요, 코드가 이미 그렇게 폴백하도록
+  설계돼 있다(Task 5).
 
 ## 백엔드 런타임 (FastAPI 로컬 서버)
 

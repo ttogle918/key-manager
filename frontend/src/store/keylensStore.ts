@@ -10,16 +10,19 @@ import {
   analyzeApi,
   analyzeImageApi,
   ApiError,
+  explainImageApi,
+  explainStatusApi,
   fetchKnowledge,
   sdkApi,
   vaultApi,
   VaultApiError,
 } from '@/api/client'
+import type { ExplainBox } from '@/api/types'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
-import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
+import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
@@ -101,6 +104,12 @@ interface KeylensState {
   attachedImage: string | null
   attachedName: string
 
+  /** 화면 설명 기능(1단계) — Ollama 가용 여부(부팅 시 1회 확인). */
+  explainAvailable: boolean
+  explainOpen: boolean
+  explainLoading: boolean
+  explainBoxes: ExplainBox[]
+
   // 직접 입력 탭 — 자동 분류 없이 이름=값을 바로 선언(RUNTIME-1과 무관, UI 전용)
   inputMode: InputMode
   manualRows: ManualRow[]
@@ -122,6 +131,10 @@ interface KeylensState {
   vault: VaultItem[]
   search: string
   projFilter: string
+  /** 프로젝트 아코디언 수동 펼침/접힘 오버라이드(이름→열림 여부). 없으면 기본값(가장 최근=열림). */
+  projectOpenOverrides: Record<string, boolean>
+  /** 상단 서비스 로고 태그 다중 선택 필터(비어있으면 전체 서비스). */
+  serviceTagFilter: Set<string>
   revealed: Record<string, boolean>
   expandedId: string | null
 
@@ -227,6 +240,11 @@ interface KeylensState {
 
   setSearch: (v: string) => void
   setProjFilter: (v: string) => void
+  /** 드롭다운에서 프로젝트 선택 — 그 섹션을 강제로 펼친다(스크롤은 VaultScreen이 처리). */
+  expandProject: (name: string) => void
+  toggleProjectSection: (name: string, currentlyOpen: boolean) => void
+  toggleServiceTag: (name: string) => void
+  clearServiceTagFilter: () => void
   reveal: (id: string) => void
   copy: (text: string, label: string) => void
   setVaultField: (id: string, key: keyof VaultItem, v: unknown) => void
@@ -245,7 +263,10 @@ interface KeylensState {
   closeEnv: () => void
   envCopyAll: () => void
   envDownload: () => void
-  envCopyGroup: (name: string) => void
+  /** 한 프로젝트 섹션 안의 특정 서비스만 .env로 복사(project+service 둘 다 일치하는 항목만). */
+  envCopyGroup: (project: string, service: string) => void
+  /** 한 프로젝트의 모든 서비스를 합쳐 .env로 복사. */
+  envCopyProject: (project: string) => void
   /** .env 모달 미리보기용 — 선택 항목을 복호화해 반환(모달 렌더링 전용, 클립보드/다운로드와 별개 호출). */
   loadEnvPreview: () => Promise<VaultItem[]>
 
@@ -259,6 +280,11 @@ interface KeylensState {
   closeEmailSync: () => void
   emailExport: (destEmail: string) => Promise<boolean>
 
+  /** 화면 설명(1단계, 검색·캐시 없음). */
+  checkExplainAvailable: () => Promise<void>
+  openExplain: () => Promise<void>
+  closeExplain: () => void
+
   resetProto: () => void
 }
 
@@ -271,10 +297,17 @@ export const useKeylens = create<KeylensState>((set, get) => {
   }
 
   // 값(full)은 로컬에 두지 않으므로 중복은 변수명+프로젝트(메타데이터)로만 판단한다.
-  const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined =>
-    get().vault.find(
-      (v) => v.varName === varName && (v.project || '') === (r.project || '').trim(),
+  // project 미지정 저장은 백엔드가 오늘(UTC) 날짜를 기본값으로 배정하므로, 아직 저장 전인 pending
+  // 결과(r.project === '')는 각 기존 항목이 실제로 배정받은 addedAt 과 비교해 매칭한다("오늘 날짜"를
+  // 프론트에서 별도로 재계산하지 않는다 — 로컬 today()는 UTC 자정 경계에서 백엔드와 어긋날 수 있다).
+  const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined => {
+    const rp = (r.project || '').trim()
+    return get().vault.find(
+      (v) =>
+        v.varName === varName &&
+        (rp ? (v.project || '') === rp : !v.project || v.project === v.addedAt),
     )
+  }
 
   // .env 내보내기용으로 각 항목의 값을 복호화해 채운다(잠금/실패 항목은 제외).
   const withValues = async (items: VaultItem[]): Promise<VaultItem[]> => {
@@ -313,6 +346,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     projVal: '',
     attachedImage: null,
     attachedName: '',
+    explainAvailable: false,
+    explainOpen: false,
+    explainLoading: false,
+    explainBoxes: [],
     inputMode: 'auto',
     manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
     analyzing: false,
@@ -326,6 +363,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     vault: [],
     search: '',
     projFilter: '',
+    projectOpenOverrides: {},
+    serviceTagFilter: new Set(),
     revealed: {},
     expandedId: null,
     deleteTarget: null,
@@ -392,6 +431,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ screen: 'lock', locked: true })
         }
         get().loadPending()
+        get().checkExplainAvailable()
       } catch (e) {
         // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
         console.error('[KeyLens] 부팅 시 금고 상태 조회 실패:', e)
@@ -632,6 +672,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
           if (!get().analyzing) return
           const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
           set({ analyzing: false, analyzed: true, results, unknowns })
+          // 부팅 후 Ollama가 뒤늦게 켜졌을 수 있으니 실제 스크린샷 분석마다 가용 여부를 다시 확인
+          // (버튼이 부팅 시 확인 결과에 영구히 묶이지 않도록 — fire-and-forget, 폴링 아님).
+          void get().checkExplainAvailable()
         } catch (e) {
           if (!get().analyzing) return
           if (!(e instanceof ApiError)) console.error('[KeyLens] 이미지 분석 요청 실패:', e)
@@ -884,6 +927,25 @@ export const useKeylens = create<KeylensState>((set, get) => {
     // ── 보관함 ──
     setSearch: (v) => set({ search: v }),
     setProjFilter: (v) => set({ projFilter: v }),
+    expandProject: (name) =>
+      set((s) => ({
+        projFilter: name,
+        projectOpenOverrides: name
+          ? { ...s.projectOpenOverrides, [name]: true }
+          : s.projectOpenOverrides,
+      })),
+    toggleProjectSection: (name, currentlyOpen) =>
+      set((s) => ({
+        projectOpenOverrides: { ...s.projectOpenOverrides, [name]: !currentlyOpen },
+      })),
+    toggleServiceTag: (name) =>
+      set((s) => {
+        const next = new Set(s.serviceTagFilter)
+        if (next.has(name)) next.delete(name)
+        else next.add(name)
+        return { serviceTagFilter: next }
+      }),
+    clearServiceTagFilter: () => set({ serviceTagFilter: new Set() }),
     reveal: async (id) => {
       if (get().locked) {
         get().showToast('잠금 상태에서는 값을 볼 수 없어요 — 먼저 잠금을 해제하세요')
@@ -1082,9 +1144,20 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('다운로드에 실패했어요')
       }
     },
-    envCopyGroup: async (name) => {
-      const items = await withValues(envItems().filter((i) => i.service === name))
-      get().copy(envText(items), name + ' 그룹 .env 복사됨')
+    // vault를 직접 필터링한다(envItems()를 재사용하지 않음) — envItems()는 projFilter(드롭다운으로
+    // 마지막에 이동한 프로젝트)로 스코프되는데, 이 두 버튼은 지금 렌더링 중인 프로젝트/서비스 섹션
+    // 기준이라 서로 다른 개념이다. envItems()를 재사용하면 두 스코프가 어긋날 때(예: A 섹션에서
+    // 복사했는데 projFilter는 예전에 이동한 B로 남아있는 경우) 교집합이 비어 조용히 빈 .env가
+    // 복사되는 버그가 생긴다.
+    envCopyGroup: async (project, service) => {
+      const items = await withValues(
+        get().vault.filter((i) => projectKey(i) === project && i.service === service),
+      )
+      get().copy(envText(items), `${project} · ${service} .env 복사됨`)
+    },
+    envCopyProject: async (project) => {
+      const items = await withValues(get().vault.filter((i) => projectKey(i) === project))
+      get().copy(envText(items), project + ' 프로젝트 .env 복사됨')
     },
     loadEnvPreview: () => withValues(envItems()),
 
@@ -1164,6 +1237,29 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
     },
 
+    // ── 화면 설명(EXPLAIN, 1단계) ──
+    checkExplainAvailable: async () => {
+      const available = await explainStatusApi()
+      set({ explainAvailable: available })
+    },
+    openExplain: async () => {
+      const img = get().analyzedImage
+      if (!img || img === 'sample') {
+        get().showToast('실제 스크린샷이 있을 때만 화면 설명을 볼 수 있어요')
+        return
+      }
+      set({ explainOpen: true, explainLoading: true, explainBoxes: [] })
+      try {
+        const blob = await (await fetch(img)).blob()
+        const boxes = await explainImageApi(blob)
+        set({ explainLoading: false, explainBoxes: boxes })
+      } catch (e) {
+        set({ explainLoading: false, explainOpen: false })
+        get().showToast(e instanceof ApiError ? e.message : '화면 설명을 불러오지 못했어요')
+      }
+    },
+    closeExplain: () => set({ explainOpen: false, explainBoxes: [] }),
+
     resetProto: () => {
       set({
         vault: [],
@@ -1178,6 +1274,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         locked: false,
         search: '',
         projFilter: '',
+        projectOpenOverrides: {},
+        serviceTagFilter: new Set(),
         revealed: {},
         expandedId: null,
         attachedImage: null,

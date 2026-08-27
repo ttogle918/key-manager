@@ -5,7 +5,8 @@
  * 모든 토큰은 더미이며 서명 검증은 하지 않는다(만료일 표기만 목적).
  */
 import { describe, expect, it } from 'vitest'
-import { jwtExp, passwordPolicyError } from './format'
+import { jwtExp, passwordPolicyError, projectKey } from './format'
+import type { VaultItem } from '@/types'
 
 /** base64url payload로 더미 JWT를 만든다(header/signature는 형식만 맞춘 더미). */
 function makeJwt(payload: Record<string, unknown>): string {
@@ -68,5 +69,35 @@ describe('passwordPolicyError', () => {
 
   it('3종류 조합이어도 8자 미만이면 거부', () => {
     expect(passwordPolicyError('Ab1!')).not.toBeNull()
+  })
+})
+
+function makeVaultItem(overrides: Partial<VaultItem> = {}): VaultItem {
+  return {
+    id: '1',
+    service: 'OpenAI',
+    type: 'API Key',
+    varName: 'OPENAI_API_KEY',
+    masked: 'sk-****',
+    full: 'sk-dummy',
+    addedAt: '2026-08-27',
+    project: '',
+    context: '',
+    memo: '',
+    sourceImage: null,
+    expiresAt: null,
+    history: [],
+    meta: {},
+    ...overrides,
+  }
+}
+
+describe('projectKey', () => {
+  it('project가 있으면 그대로 쓴다', () => {
+    expect(projectKey(makeVaultItem({ project: '블로그' }))).toBe('블로그')
+  })
+
+  it('project가 빈 문자열이면 등록일(addedAt)로 대체한다', () => {
+    expect(projectKey(makeVaultItem({ project: '', addedAt: '2026-08-27' }))).toBe('2026-08-27')
   })
 })

@@ -9,7 +9,8 @@ starlette==1.3.1      # BSD-3-Clause; 명시 고정 — BadHost 계열 CVE 전�
 uvicorn==0.34.0       # BSD-3-Clause
 pydantic==2.10.4      # MIT
 PyYAML==6.0.2         # MIT
-cryptography==49.0.0  # Apache-2.0 OR BSD-3-Clause (BSD-3 선택 적용); VAULT-1 Argon2id + AES-256-GCM
+cryptography==50.0.1  # Apache-2.0 OR BSD-3-Clause (BSD-3 선택 적용); VAULT-1 Argon2id + AES-256-GCM
+                      # PYSEC-2026-3552(49.0.0 취약) 패치본으로 고정
                       # 전이: cffi(MIT), pycparser(BSD-3). certifi/MPL 없음. Windows abi3 wheel(소스빌드 불필요).
 python-multipart==0.0.32  # Apache-2.0; FastAPI UploadFile(이미지 업로드, CORE-3 백엔드 OCR)에 필요
 
@@ -18,7 +19,8 @@ rapidocr==3.9.2       # Apache-2.0; PP-OCR(det/cls/rec) ONNX 추론 래퍼
 onnxruntime==1.29.0   # MIT; rapidocr 추론 엔진
                       # 전이(전부 확인됨): Shapely·antlr4-python3-runtime·omegaconf·protobuf(BSD-3),
                       # numpy(BSD류 다중), pyclipper·six·Pillow(MIT류), flatbuffers·requests(Apache-2.0).
-                      # 약한 카피레프트 2건 — 미수정 사용이라 안전(THIRD-PARTY-NOTICES.md 참고):
+                      # 약한 카피레프트 3건 — 미수정 사용이라 안전(THIRD-PARTY-NOTICES.md 참고):
                       #   tqdm(MPL-2.0, 파일단위 카피레프트 — 수정 없이 그대로 사용, 우리 코드로 비전염)
+                      #   certifi(MPL-2.0, requests 전이 — CA 인증서 데이터 패키지, 수정 없이 그대로 사용)
                       #   opencv-python(코드 Apache-2.0 + FFmpeg를 별도 교체가능 플러그인 DLL로 동적 로드,
                       #     LGPL-2.1 재링크 요건 충족 — cv2/opencv_videoio_ffmpeg500_64.dll 로 확인)

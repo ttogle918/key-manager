@@ -8,17 +8,21 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import crypto
+from . import crypto, explain, ollama_client
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
 from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
+    ExplainImageResponse,
+    ExplainStatusResponse,
     HealthResponse,
     SdkAddDirRequest,
     SdkEnvRequest,
@@ -41,6 +45,7 @@ from .models import (
     VaultVerifyResult,
 )
 from .ocr import OcrUnavailableError, run_ocr
+from .ollama_client import OllamaConfig
 from .vault_session import SdkApprovalPending, VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
@@ -157,6 +162,53 @@ async def analyze_image_endpoint(
     return analyze(AnalyzeRequest(text=combined_text, url=url), KB)
 
 
+# ── 화면 설명(EXPLAIN, 1단계) ──
+# 로컬 Ollama가 없거나 OLLAMA_MODEL이 설정 안 됐으면 기능 자체가 비활성(None) — 앱은 어떤
+# 모델도 번들하지 않는다. 설계 근거: docs/superpowers/specs/2026-08-27-screenshot-explain-design.md
+
+OLLAMA_CONFIG = OllamaConfig.from_env()
+
+
+@app.get("/explain/status", response_model=ExplainStatusResponse)
+def explain_status() -> ExplainStatusResponse:
+    available = OLLAMA_CONFIG is not None and ollama_client.is_available(OLLAMA_CONFIG)
+    return ExplainStatusResponse(available=available)
+
+
+@app.post("/explain/image", response_model=ExplainImageResponse)
+async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageResponse:
+    if OLLAMA_CONFIG is None:
+        raise HTTPException(
+            status_code=503,
+            detail="화면 설명 기능이 설정되지 않았어요 — OLLAMA_MODEL 환경변수를 설정하세요",
+        )
+    if image.content_type is None or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=422, detail="이미지 파일만 업로드할 수 있어요")
+
+    data = await image.read(_MAX_IMAGE_BYTES + 1)
+    if not data:
+        raise HTTPException(status_code=422, detail="빈 파일이에요")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=422, detail="이미지가 너무 커요(15MB 제한)")
+
+    try:
+        # RapidOCR 추론 + Ollama HTTP 호출(최대 30s)은 동기 블로킹이라 이벤트 루프에서
+        # 직접 돌리면 그 사이 다른 요청(RUNTIME-1 SDK 큐 포함)이 전부 멈춘다 — 스레드풀로 위임.
+        boxes = await run_in_threadpool(explain.explain_image, data, KB, OLLAMA_CONFIG)
+    except OcrUnavailableError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from None
+    except ollama_client.OllamaUnavailableError:
+        raise HTTPException(
+            status_code=503,
+            detail="로컬 LLM에 연결할 수 없어요 — Ollama가 실행 중인지 확인하세요",
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+        ) from None
+    return ExplainImageResponse(boxes=boxes)
+
+
 # ── 금고 (VAULT-1/2) ─────────────────────────────────────────────
 # 값은 잠금 해제(인증) 상태에서만 복호화된다. 잠금 상태에선 메타데이터만 노출.
 
@@ -199,6 +251,11 @@ def vault_lock() -> VaultStatus:
     return VaultStatus(**VAULT.status())
 
 
+def _today() -> str:
+    """프로젝트 미지정 저장의 기본값(UTC) — keylens-env 컬렉션명으로도 그대로 쓰일 수 있다."""
+    return datetime.now(timezone.utc).date().isoformat()
+
+
 @app.get("/vault/entries", response_model=list[VaultEntryMeta])
 def vault_list() -> list[VaultEntryMeta]:
     return [VaultEntryMeta(**m) for m in VAULT.list_entries()]
@@ -206,10 +263,11 @@ def vault_list() -> list[VaultEntryMeta]:
 
 @app.post("/vault/entries", response_model=VaultEntryMeta)
 def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
+    project = (body.project or "").strip() or _today()
     try:
         eid = VAULT.add_entry(
             service=body.service, kind=body.kind, official_name=body.official_name,
-            value=body.value, label=body.label, project=body.project, memo=body.memo,
+            value=body.value, label=body.label, project=project, memo=body.memo,
             expires_at=body.expires_at,
         )
     except VaultLocked:
@@ -219,9 +277,15 @@ def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
 
 @app.patch("/vault/entries/{entry_id}", response_model=VaultEntryMeta)
 def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
+    project = (body.project or "").strip()
+    if not project:
+        # project를 비우면 "오늘"이 아니라 그 항목의 등록일로 되돌린다 — 수정 행위 자체가
+        # 그룹핑 날짜를 오늘로 밀어버리면 안 되므로.
+        current = next((m for m in VAULT.list_entries() if m["id"] == entry_id), None)
+        project = current["created_at"][:10] if current else _today()
     try:
         ok = VAULT.update_meta(
-            entry_id, project=body.project, memo=body.memo, expires_at=body.expires_at
+            entry_id, project=project, memo=body.memo, expires_at=body.expires_at
         )
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
