@@ -418,6 +418,18 @@ def vault_change_password(body: VaultChangePassword) -> VaultStatus:
     return VaultStatus(**VAULT.status())
 
 
+@app.post("/vault/reset", response_model=VaultStatus)
+def vault_reset(body: VaultPassword) -> VaultStatus:
+    """금고 완전 초기화(VAULT-RESET) — 교육·공용 PC용. 비밀번호 재확인 필수, 되돌릴 수 없음."""
+    try:
+        VAULT.reset(body.password)
+    except crypto.DecryptError:
+        raise HTTPException(status_code=401, detail="마스터 비밀번호가 올바르지 않습니다") from None
+    except ValueError as e:  # 초기화되지 않은 금고
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return VaultStatus(**VAULT.status())
+
+
 # ── RUNTIME-1: SDK 접근 관리 ──
 # keylens-env SDK가 프로젝트별로 어떤 디렉토리에서 값을 가져갈 수 있는지 관리한다.
 # /sdk/env 는 실제 값을 반환하므로 인증(잠금 해제) 필수 — 그 외 관리 엔드포인트는

@@ -174,6 +174,54 @@ def test_update_meta(vault):
     assert main.vault_get_value(meta.id).value == DUMMY
 
 
+def test_reset_wrong_password_401_data_intact(vault):
+    """틀린 비밀번호로 reset 시도 → 401, 기존 항목 무손상."""
+    main.vault_init(VaultInit(password=MASTER))
+    main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    with pytest.raises(HTTPException) as e:
+        main.vault_reset(VaultPassword(password="wrong password"))
+    assert e.value.status_code == 401
+    assert len(main.vault_list()) == 1
+
+
+def test_reset_uninitialized_vault_409(vault):
+    """애초에 초기화 안 된 금고에 reset 시도 → 409."""
+    with pytest.raises(HTTPException) as e:
+        main.vault_reset(VaultPassword(password=MASTER))
+    assert e.value.status_code == 409
+
+
+def test_reset_succeeds_and_uninitializes(vault):
+    """올바른 비밀번호로 reset → 성공 후 vault_status가 미초기화를 반환, 세션도 잠김."""
+    main.vault_init(VaultInit(password=MASTER))
+    main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    result = main.vault_reset(VaultPassword(password=MASTER))
+    assert result.initialized is False
+    assert result.unlocked is False
+    st = main.vault_status()
+    assert st.initialized is False
+
+
+def test_reset_then_reinit_works(vault):
+    """reset 후 같은(또는 다른) 비밀번호로 다시 init 가능 — 파일이 아니라 데이터만 지워짐."""
+    main.vault_init(VaultInit(password=MASTER))
+    main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    main.vault_reset(VaultPassword(password=MASTER))
+    st = main.vault_init(VaultInit(password=MASTER))
+    assert st.initialized is True
+    assert main.vault_list() == []  # 이전 항목 완전히 사라짐
+
+
+def test_reset_clears_sdk_project_dirs(vault):
+    """SDK 디렉토리 사전등록(RUNTIME-1)도 reset 대상 — 공용 PC에 이전 사용자 승인 흔적이 안 남아야 함."""
+    main.vault_init(VaultInit(password=MASTER))
+    vault.add_project_dir("블로그", "/home/user/blog")
+    assert vault.list_project_dirs("블로그") != []
+    main.vault_reset(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
+    assert vault.list_project_dirs("블로그") == []
+
+
 def test_delete_entry(vault):
     main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
