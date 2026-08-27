@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 [Your Name]
 SPDX-License-Identifier: MIT
 -->
 
-# KeyLens
+# 키지기(KeyLens)
 
 [![CI](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/ttogle918/key-manager/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
@@ -12,10 +12,14 @@ SPDX-License-Identifier: MIT
 > 스크린샷이나 URL을 던지면 "이건 Notion API 키, 이건 database ID"처럼 **맥락으로 정체를 가려** 공식 환경변수명에 매핑하고, 로컬에 암호화해 나만 볼 수 있게 보관하는 개인 개발자용 자격증명 관리 도구.
 
 <p align="center">
-  <img src="docs/demo/demo.gif" alt="KeyLens 데모 — 콘솔 스크린샷을 던지면 무슨 키인지 맥락으로 분류해 공식 변수명으로 매핑" width="100%">
+  <img src="docs/demo/demo.gif" alt="KeyLens 데모 - 콘솔 스크린샷을 던지면 무슨 키인지 맥락으로 분류해 공식 변수명으로 매핑" width="100%">
 </p>
 
-<p align="center"><sub>데모 · 모든 값은 더미. 실제 앱 화면 시연 영상은 준비 중입니다.</sub></p>
+<p align="center"><a href="https://youtu.be/_foWud7ze7Q">데모 영상 바로가기</a></p>
+
+<p align="center"><a href="https://ttogle918.github.io/key-manager/">홈페이지 바로가기-exe 파일 다운로드</a></p>
+
+<p align="center"><a href="https://github.com/ttogle918/ttogle918.github.io/tree/master/project/key-manager">홈페이지 레포지토리 바로가기</a></p>
 
 ## 왜 만들었나
 
@@ -36,28 +40,49 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 - **암호화 보관 (VAULT-1/2 구현 완료)**: 마스터 비밀번호에서 Argon2id로 유도한 키로 값을 AES-256-GCM 암호화해 SQLite에 **암호문만** 저장. 조회는 인증 후에만, 자동 잠금·연속 실패 지연 포함(브라우저 E2E 검증 완료)
 - **조회 대시보드**: 서비스별 그룹으로 한눈에 보고, 인증 후 복사·편집·삭제. 잠금 상태에서는 값 마스킹. 만료 임박(≤14일)·만료 항목은 상단으로 정렬·뱃지 강조(TRUST-2)
 - **만료일 관리 (TRUST-2)**: 만료일 수동 입력 + JWT 계열은 `exp` 클레임에서 만료일 자동 추출
-- **키 유효성 검증 (TRUST-1)**: 사용자가 요청할 때 서비스의 read-only 엔드포인트(예: OpenAI `/v1/models`)로 **1회만** 호출해 키가 살아있는지(active/invalid/unknown) 확인. 값은 노출되지 않고 상태만 표시하며, 자동 주기 호출은 하지 않음. 검증 엔드포인트도 지식베이스 `verify:` 블록으로 선언 — 코드 수정 없이 서비스 확장
-- **서버리스 멀티 기기 (SYNC-0)**: 금고 전체를 **암호화 번들 파일**(`.klvault.json`)로 내보내 USB·개인 클라우드로 옮기고, 다른 기기에서 마스터 비밀번호로 가져오기(교체/병합). 파일은 전부 암호문이라 비밀번호 없이는 못 열림 — 우리 서버 없이 제로 널리지로 동기화(KeePass+Dropbox 패턴)
+- **키 유효성 검증 (TRUST-1)**: 사용자가 요청할 때 서비스의 read-only 엔드포인트(예: OpenAI `/v1/models`)로 **1회만** 호출해 키가 살아있는지(active/invalid/unknown) 확인. 값은 노출되지 않고 상태만 표시하며, 자동 주기 호출은 하지 않음. 검증 엔드포인트도 지식베이스 `verify:` 블록으로 선언 - 코드 수정 없이 서비스 확장
+- **서버리스 멀티 기기 (SYNC-0)**: 금고 전체를 **암호화 번들 파일**(`.klvault.json`)로 내보내 USB·개인 클라우드로 옮기고, 다른 기기에서 마스터 비밀번호로 가져오기(교체/병합). 파일은 전부 암호문이라 비밀번호 없이는 못 열림 - 우리 서버 없이 제로 널리지로 동기화(KeePass+Dropbox 패턴)
 - **이메일 릴레이 동기화 (SYNC-2, 옵트인)**: 계정·DB 없이 SMTP로만 암호화 번들을 목적지 이메일로 전달(`manager-relay/`, 독립 배포). KeyLens 앱 자체는 서버를 운영하지 않고, 쓰고 싶은 사람이 자기 SMTP 자격증명으로 직접 배포합니다. 비밀 값은 암호문으로만 전달됩니다
-- **확장 가능한 지식베이스 (현재 9종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe)**: 서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트가 YAML로 선언되어 있어, **YAML 파일 하나 추가로 백엔드·프론트 양쪽에 자동 반영** (프론트는 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 동적 구성 — 코드 수정 불필요)
+- **확장 가능한 지식베이스 (현재 9종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe)**: 서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트가 YAML로 선언되어 있어, **YAML 파일 하나 추가로 백엔드·프론트 양쪽에 자동 반영** (프론트는 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 동적 구성 - 코드 수정 불필요)
 
 ## 아키텍처
 
-```
-[ React + TypeScript 프론트엔드 ]        ←→  [ FastAPI 로컬 백엔드 ]
-  └─ OCR (tesseract.js — 브라우저 WASM,        ├─ 분류 엔진 (Stage1 값 기반 / Stage2 맥락 기반)
-     이미지가 기기를 떠나지 않음)                ├─ 지식베이스 로더 (knowledge/*.yaml)
-                                              └─ 암호화 저장소 (Argon2id + AES-256-GCM,
-                                                                 SQLite 암호문만 · 인증 게이트)
+```mermaid
+flowchart LR
+  subgraph Frontend["프론트엔드 (React + TypeScript)"]
+    IN["스크린샷 · URL · 텍스트 입력"] --> STORE["Zustand 스토어"]
+  end
+
+  subgraph Backend["FastAPI 로컬 백엔드 (127.0.0.1 전용)"]
+    OCR["RapidOCR<br/>(스크린샷 → 텍스트+좌표)"]
+    CLS["분류 엔진<br/>Stage1 값 기반 / Stage2 맥락 기반"]
+    KB[("지식베이스<br/>knowledge/*.yaml, 9종")]
+    VAULT["암호화 저장소<br/>Argon2id + AES-256-GCM"]
+    DB[("SQLite<br/>암호문만 저장")]
+    OLLAMA["로컬 Ollama<br/>(옵트인, 화면 설명)"]
+  end
+
+  subgraph Optin["옵트인 - 켜야만 동작(기본 꺼짐)"]
+    TAVILY["Tavily 검색<br/>(서비스명 추측만 전송)"]
+    RELAY["이메일 릴레이<br/>(SYNC-2, 별도 배포)"]
+  end
+
+  STORE -- 이미지 --> OCR --> CLS
+  STORE -- 텍스트·URL --> CLS
+  KB --> CLS
+  CLS -- 분류 결과 --> STORE
+  STORE -- 저장 요청 --> VAULT --> DB
+  DB -- 인증 후 조회 --> STORE
+  STORE -. "이 화면 설명해줘" .-> OLLAMA
+  OLLAMA -. 서비스명 추측만 .-> TAVILY
+  VAULT -. 금고 번들 내보내기 .-> RELAY
 ```
 
-**로컬 우선(local-first)**: 우리가 운영하는 외부 서버·클라우드가 없습니다. 모든 데이터는 기본적으로
-사용자 기기에만 존재합니다. 예외는 전부 사용자가 직접 켜야만 동작하는 옵트인 기능뿐입니다 —
-"이 화면 설명해줘"에서 `TAVILY_API_KEY`를 설정하면 (지식베이스에 없는 서비스를 만났을 때만) 로컬
-Ollama가 추측한 서비스명이 웹 검색으로 Tavily에 전달되고, 이메일 동기화(SYNC-2)를 배포하면
-암호화된 금고 번들이 SMTP로 전달됩니다. 두 기능 모두 값 자체를 평문으로 내보내지 않고, 설정하지
-않으면 기존처럼 아무 것도 외부로 나가지 않습니다.
 
+**로컬 우선(local-first)**: 우리가 운영하는 외부 서버·클라우드가 없습니다. 모든 데이터는 기본적으로 사용자 기기에만 존재합니다. 예외는 전부 사용자가 직접 켜야만 동작하는 옵트인 기능뿐입니다 
+- "이 화면 설명해줘"에서 `TAVILY_API_KEY`를 설정하면 (지식베이스에 없는 서비스를 만났을 때만) 로컬 Ollama가 추측한 서비스명이 웹 검색으로 Tavily에 전달되고, 이메일 동기화(SYNC-2)를 배포하면 암호화된 금고 번들이 SMTP로 전달됩니다. 
+  두 기능 모두 값 자체를 평문으로 내보내지 않고, 설정하지 않으면 기존처럼 아무 것도 외부로 나가지 않습니다.
+- 삭제한 항목은 `PRAGMA secure_delete` + `VACUUM`으로 디스크에서 포렌식 복구가 안 되게 지웁니다(SQLite 기본 DELETE는 VACUUM 전까지 복구 가능하다는 점을 보완).
 ## 설치 및 실행
 
 로컬에서 5분이면 실행됩니다. 기본 설정에서는 아무 데이터도 외부로 나가지 않으며, 각자 자기
@@ -71,7 +96,7 @@ Ollama가 추측한 서비스명이 웹 검색으로 Tavily에 전달되고, 이
 | Node.js | 20+ | `node --version` | https://nodejs.org/ (LTS 권장) |
 | Git | 아무 최신 | `git --version` | https://git-scm.com/downloads |
 
-> OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 — 별도 설치가 필요 없고,
+> OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 - 별도 설치가 필요 없고,
 > 필요한 로컬 자산은 `npm run dev`/`npm run build` 시 자동으로 벤더링됩니다(`scripts/vendor-tesseract.mjs`).
 
 ### 1) 내려받기
@@ -94,7 +119,7 @@ cd ..
 cd frontend && npm ci && cd ..
 ```
 
-### 3) 실행 — 한 번에 (권장)
+### 3) 실행 - 한 번에 (권장)
 
 백엔드(:8003)와 프론트엔드(:5173)를 한 명령으로 동시에 띄웁니다. `backend/.venv`가 있으면 자동으로 사용합니다.
 
@@ -109,7 +134,7 @@ node scripts/dev.mjs
 
 ---
 
-### 실행 — 개별 기동 (수동)
+### 실행 - 개별 기동 (수동)
 
 <details><summary>백엔드/프론트를 따로 띄우려면</summary>
 
@@ -162,12 +187,12 @@ npm run dev
 
 ## 보안 설계
 
-> ✅ **구현 상태**: 암호화 저장(VAULT-1)·인증 게이트(VAULT-2)가 구현되어 아래 설계(SPEC 6장)대로 동작합니다
+> **구현 상태**: 암호화 저장(VAULT-1)·인증 게이트(VAULT-2)가 구현되어 아래 설계(SPEC 6장)대로 동작합니다
 > (backend `crypto.py`·`vault_repo.py`·`vault_session.py`, pytest 검증 + 브라우저 E2E 검증 완료).
 
 - **키 유도**: 마스터 비밀번호 → Argon2id로 암호화 키 유도. 솔트만 저장하며 유도된 키는 메모리에만 존재, 잠금 시 폐기
 - **암호화**: 항목별 AES-256-GCM(인증 암호화), 매 암호화마다 고유 nonce. 무결성 태그로 변조 탐지
-- **저장**: SQLite에는 암호문·nonce·메타데이터만 저장 — 평문 값 컬럼 자체가 없음
+- **저장**: SQLite에는 암호문·nonce·메타데이터만 저장 - 평문 값 컬럼 자체가 없음
 - **접근 통제**: 조회·복사·내보내기 전 인증 필수, 일정 시간 후 자동 잠금, 연속 인증 실패 시 지연
 
 **방어 범위 밖(한계)**: 이미 장악된 호스트(키로거, 메모리 덤프), 약한 마스터 비밀번호. 이 도구는 분실·도난 기기의 디스크 접근, 파일 유출, 저장소 직접 열람으로부터 보호합니다.
@@ -197,28 +222,28 @@ credentials:
 `is_available()` 인터페이스만 보고 동작하므로, 이 파일만 다른 로컬 LLM 런타임의 API 형식에 맞게
 바꾸면 Ollama 대신 다른 모델/런타임으로 교체할 수 있습니다.
 
-- **전체 기능 문서**: [docs/FEATURES.md](./docs/FEATURES.md) — 기능 카탈로그 + 아키텍처·흐름 다이어그램(mermaid) + API 18종
+- **전체 기능 문서**: [docs/FEATURES.md](./docs/FEATURES.md) - 기능 카탈로그 + 아키텍처·흐름 다이어그램(mermaid) + API 31종
 - 기여 가이드: [CONTRIBUTING.md](./CONTRIBUTING.md) · 행동 강령: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 - 보안 취약점 신고: [SECURITY.md](./SECURITY.md) (공개 이슈 금지, 비공개로)
 - 변경 이력: [CHANGELOG.md](./CHANGELOG.md)
 
 ## 배포 (다른 사람도 쓰게 하기)
 
-KeyLens는 **각 사용자가 자기 기기에서 실행**하는 로컬 앱입니다("서버에 올려 여럿이 접속"하는 형태가 아닙니다 — 그러면 키가 기기를 떠나 제로 널리지가 깨집니다). 그래서 "남들도 쓰게" = **배포**입니다.
+KeyLens는 **각 사용자가 자기 기기에서 실행**하는 로컬 앱입니다("서버에 올려 여럿이 접속"하는 형태가 아닙니다 - 그러면 키가 기기를 떠나 제로 널리지가 깨집니다). 그래서 "남들도 쓰게" = **배포**입니다.
 
 - **소스 배포**: 위 설치 절차대로 `git clone` → 실행. 개발자라면 이걸로 충분합니다.
-- **데스크톱 앱**: 브라우저·터미널 없이 **네이티브 창 하나**로 실행 — `python desktop/app.py`(PyWebView). 여전히 100% 로컬. 사용법은 [`desktop/README.md`](./desktop/README.md).
-- **더블클릭 설치 파일**: 위 데스크톱 앱을 실행 파일로 패키징해 [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에 배포 중(Windows). 압축을 풀고 `KeyLens.exe`를 실행하면 됩니다 — 별도 설치 불필요. 랜딩 페이지·블로그에서 그 Releases로 링크하면 됩니다(다운로드 페이지는 정적 파일만 제공 — 사용자 키를 만지지 않으므로 안전).
+- **데스크톱 앱**: 브라우저·터미널 없이 **네이티브 창 하나**로 실행 - `python desktop/app.py`(PyWebView). 여전히 100% 로컬. 사용법은 [`desktop/README.md`](./desktop/README.md).
+- **더블클릭 설치 파일**: 위 데스크톱 앱을 실행 파일로 패키징해 [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에 배포 중(Windows). 압축을 풀고 `KeyLens.exe`를 실행하면 됩니다 - 별도 설치 불필요. 랜딩 페이지·블로그에서 그 Releases로 링크하면 됩니다(다운로드 페이지는 정적 파일만 제공 - 사용자 키를 만지지 않으므로 안전).
 
 ## 로드맵
 
-- ✅ **암호화 금고 내보내기/가져오기**(구현 완료): 암호문 번들 파일을 개인 클라우드·USB로 옮겨 다른 기기에서 마스터 비밀번호로 열기 — 서버 없는 멀티 기기
-- ✅ **데스크톱 앱**(PyWebView, `desktop/app.py`): 네이티브 창으로 로컬 실행 + 실행 파일 패키징(cx_Freeze, Windows) 완료 — [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에서 다운로드. macOS/Linux 패키징은 후속
-- **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드(로드맵). 대신 OAuth 클라이언트 등록·검증 부담이 없는 **이메일 릴레이 동기화(SYNC-2)**를 먼저 구현해 서버리스 멀티 기기 요구를 우선 해소했습니다 — 두 방식 모두 비밀 값은 암호문으로만 전달됩니다
-- **DOM 기반 자동 캡처**(브라우저 확장): 권한 모델·프라이버시 설계 검증 후 도입
+- **암호화 금고 내보내기/가져오기**(구현 완료): 암호문 번들 파일을 개인 클라우드·USB로 옮겨 다른 기기에서 마스터 비밀번호로 열기 - 서버 없는 멀티 기기
+- **데스크톱 앱**(PyWebView, `desktop/app.py`): 네이티브 창으로 로컬 실행 + 실행 파일 패키징(cx_Freeze, Windows) 완료 - [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에서 다운로드. macOS/Linux 패키징은 후속
+- (**보류**) **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드(로드맵). 대신 OAuth 클라이언트 등록·검증 부담이 없는 **이메일 릴레이 동기화(SYNC-2)**를 먼저 구현해 서버리스 멀티 기기 요구를 우선 해소했습니다 - 두 방식 모두 비밀 값은 암호문으로만 전달됩니다
+- (**보류**) **DOM 기반 자동 캡처**(브라우저 확장): 권한 모델·프라이버시 설계 검증 후 도입
 - 더 많은 서비스 지식베이스, 런타임 주입(SDK)
 
 ## 라이선스
 
-MIT — [LICENSE](./LICENSE) 참조.
+MIT - [LICENSE](./LICENSE) 참조.
 서드파티 의존성 및 참고 출처는 [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md)에 정리되어 있습니다.

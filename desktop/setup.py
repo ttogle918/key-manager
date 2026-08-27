@@ -27,12 +27,16 @@ sys.path.insert(0, str(ROOT / "backend"))
 include_files = [
     (str(ROOT / "frontend" / "dist"), "frontend/dist"),
     (str(ROOT / "backend" / "knowledge"), "backend/knowledge"),
+    # CORE-3(백엔드 RapidOCR 이전) 이후 필요 — 빠뜨리면 exe 안에서 "모델이 벤더링 안 됨" 오류.
+    (str(ROOT / "backend" / "app" / "ocr_models"), "app/ocr_models"),
 ]
 
 build_exe_options = {
     "packages": [
         "app", "uvicorn", "fastapi", "starlette", "pydantic", "pydantic_core",
         "cryptography", "yaml", "webview", "anyio", "click", "h11", "plyer",
+        # RapidOCR(CORE-3, 백엔드 이전) — C 확장·동적 임포트가 많아 cx_Freeze 자동 추적이 놓치기 쉬움.
+        "rapidocr", "onnxruntime", "cv2", "numpy", "PIL", "shapely", "pyclipper",
     ],
     "include_files": include_files,
     "excludes": ["tkinter", "unittest", "pytest", "test"],
@@ -43,7 +47,7 @@ base = "gui" if sys.platform == "win32" else None
 
 setup(
     name="KeyLens",
-    version="0.2.0",
+    version="0.3.0",
     description="KeyLens — 로컬 자격증명 분류·암호화 금고 (데스크톱)",
     options={"build_exe": build_exe_options},
     executables=[Executable(str(Path(__file__).parent / "app.py"), base=base, target_name="KeyLens")],

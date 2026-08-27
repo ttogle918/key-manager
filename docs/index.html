@@ -274,7 +274,7 @@ SPDX-License-Identifier: MIT
       <div class="feat">
         <span class="tag">분류</span>
         <h3>스크린샷·URL·텍스트에서 인식</h3>
-        <p>콘솔 화면을 그대로 던지면 됩니다. OCR은 브라우저 안에서 돌아가 이미지가 기기를 떠나지 않습니다.</p>
+        <p>콘솔 화면을 그대로 던지면 됩니다. OCR은 로컬 백엔드(127.0.0.1)에서 돌아가 이미지가 기기를 떠나지 않습니다.</p>
       </div>
       <div class="feat">
         <span class="tag">분류</span>
@@ -316,6 +316,11 @@ SPDX-License-Identifier: MIT
         <h3>새 서비스는 파일 하나</h3>
         <p>서비스 정의가 YAML이라 코드를 고치지 않고 추가할 수 있습니다. 현재 9종을 지원합니다.</p>
       </div>
+      <div class="feat">
+        <span class="tag">이해</span>
+        <h3>이 화면 자체가 뭔지 설명</h3>
+        <p>화면 전체를 박스+라벨로 짚어줍니다. 모르는 서비스는 로컬 Ollama가 추정하고, 원하면 웹 검색으로 다시 확인합니다 — 둘 다 옵트인, 안 켜면 기존처럼 전부 로컬에서 끝납니다.</p>
+      </div>
     </div>
   </section>
 
@@ -341,7 +346,7 @@ SPDX-License-Identifier: MIT
         </div>
         <div>
           <dt>네트워크</dt>
-          <dd>백엔드는 <code>127.0.0.1</code>에서만 동작합니다. 키 유효성 확인을 직접 누를 때를 빼면 밖으로 나가는 통신이 없습니다.</dd>
+          <dd>백엔드는 <code>127.0.0.1</code>에서만 동작합니다. 키 유효성 확인을 직접 누를 때, 그리고 옵트인 기능(화면 설명의 웹 검색 확인·이메일 동기화)을 직접 켰을 때를 빼면 밖으로 나가는 통신이 없습니다.</dd>
         </div>
       </dl>
       <p class="note">

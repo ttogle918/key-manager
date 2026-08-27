@@ -9,6 +9,50 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-27
+
+### Added (기능)
+- **화면 설명("이 화면 설명해줘")**: 스크린샷 전체를 박스+라벨 오버레이로 설명. 지식베이스에
+  있는 서비스는 즉시 라벨링하고, 모르는 영역은 사용자가 이미 실행 중인 **로컬 Ollama**에게
+  짧은 설명 + 서비스명 추측을 요청한다(옵트인, `OLLAMA_MODEL` 없으면 버튼 자체가 안 보임).
+- **Tavily 검색 확인 + 로컬 발견 캐시(화면 설명 2·3단계, 옵트인)**: `TAVILY_API_KEY`를 설정하면
+  Ollama의 서비스명 추측을 웹 검색으로 재검증해 `ai_verified` 등급 + 공식 문서 링크를 붙인다
+  (도메인 제한 없음 — 검색 결과가 실제로 맞는지는 다시 Ollama가 판단). 사용자가 화면에서
+  승인한 추정만 로컬 캐시(`local_discoveries.yaml`, git 추적 안 함)에 남아 다음번엔 재검색
+  없이 재사용된다.
+- **보관함 프로젝트별 그룹핑**: 서비스별 목록 대신 프로젝트별 아코디언으로 재구성, 서비스
+  로고 태그로 다중 필터링(simple-icons, CC0-1.0).
+- **금고 완전 초기화**: 사이드바에서 마스터 비밀번호 재확인 후 저장된 모든 자격증명·감사
+  이력·프로젝트 접근 승인 기록을 완전히 삭제(공용/교육용 PC 시나리오).
+- **이메일 릴레이 동기화(SYNC-2)**: 계정·DB 없이 SMTP로만 암호화 금고 번들을 목적지 이메일로
+  전달(`manager-relay/`, 독립 배포·옵트인).
+- 분석 결과 요약을 MUI DataGrid로 표시.
+
+### Changed (변경)
+- **스크린샷 OCR을 백엔드 RapidOCR로 이전(CORE-3)**: 브라우저 `tesseract.js`는 한글 단일 글자
+  라벨 오독 문제가 있어, 백엔드에서 한국어 PP-OCRv5 인식 모델로 정확도를 개선했다. 이미지는
+  여전히 로컬(127.0.0.1)에서만 처리된다.
+- SQLite 삭제된 행이 `VACUUM` 전까지 디스크에 포렌식 복구 가능하게 남던 문제를
+  `PRAGMA secure_delete` + `VACUUM`으로 보완.
+
+### Security (보안)
+- 화면 설명 파이프라인에서 로컬 모델이 값(시크릿)을 서비스명으로 잘못 추측해도 Tavily 검색
+  쿼리로 내보내지 않도록 검증 로직 추가.
+- 로컬 발견 캐시의 값-토큰 정규화 규칙을 보강해, 서로 다른 라벨이 동일 패턴으로 뭉개지거나
+  일부 시크릿이 평문으로 캐시 파일에 남던 문제를 수정.
+
+## [0.2.0] - 2026-08-10
+
+### Added (기능)
+- **keylens-env**: `.env` 파일 없이 실행 중인 KeyLens 금고에서 값을 읽어오는 런타임 SDK
+  (`pip install "git+...#subdirectory=keylens-env"`, 새 런타임 의존성 없음).
+- **프로젝트 접근 관리**: 프로젝트별 허용 디렉토리 등록, 미등록 디렉토리의 최초 요청 시
+  승인 팝업(작업표시줄 깜빡임 + OS 토스트), SDK 조회도 감사 이력에 기록.
+
+### Fixed (수정)
+- 개발 모드에서 보관함 항목 삭제·메모/만료일 수정이 CORS 프리플라이트 거부로 동작하지
+  않던 문제 수정.
+
 ## [0.1.1] - 2026-07-31
 
 ### Added (기능)
@@ -55,6 +99,8 @@ SPDX-License-Identifier: MIT
 - 라이선스 카피레프트 0건(reuse lint 통과·SBOM), 의존성 취약점(SCA) 전 영역 0건(pip-audit·npm audit).
 - 마스킹 노출 축소·감사 이력·잠금 정책 등 [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) 항목 해소.
 
-[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.1.1...main
+[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.3.0...main
+[0.3.0]: https://github.com/ttogle918/key-manager/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/ttogle918/key-manager/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/ttogle918/key-manager/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ttogle918/key-manager/releases/tag/v0.1.0
