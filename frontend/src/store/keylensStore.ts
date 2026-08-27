@@ -148,6 +148,11 @@ interface KeylensState {
   syncOpen: boolean
   /** 이메일로 내보내기(SYNC-2 재설계) 모달 열림 여부. */
   emailSyncOpen: boolean
+  /** 금고 완전 초기화 확인 모달 상태(VAULT-RESET) — 교육·공용 PC용, 비밀번호 재확인 필수. */
+  resetVaultOpen: boolean
+  resetVaultPw: string
+  resetVaultErr: string
+  resettingVault: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
@@ -285,6 +290,12 @@ interface KeylensState {
   openExplain: () => Promise<void>
   closeExplain: () => void
 
+  /** 금고 완전 초기화(VAULT-RESET). */
+  openResetVault: () => void
+  closeResetVault: () => void
+  setResetVaultPw: (v: string) => void
+  confirmResetVault: () => Promise<void>
+
   resetProto: () => void
 }
 
@@ -373,6 +384,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     envOpen: false,
     syncOpen: false,
     emailSyncOpen: false,
+    resetVaultOpen: false,
+    resetVaultPw: '',
+    resetVaultErr: '',
+    resettingVault: false,
     knowledgeReady: false,
     pendingRequests: [],
     sdkProjects: [],
@@ -1260,6 +1275,29 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     closeExplain: () => set({ explainOpen: false, explainBoxes: [] }),
 
+    // ── 금고 완전 초기화(VAULT-RESET) ──
+    openResetVault: () => set({ resetVaultOpen: true, resetVaultPw: '', resetVaultErr: '' }),
+    closeResetVault: () => set({ resetVaultOpen: false, resetVaultPw: '', resetVaultErr: '' }),
+    setResetVaultPw: (v) => set({ resetVaultPw: v, resetVaultErr: '' }),
+    confirmResetVault: async () => {
+      if (get().resettingVault) return
+      if (!get().resetVaultPw) {
+        set({ resetVaultErr: '마스터 비밀번호를 입력해 주세요.' })
+        return
+      }
+      set({ resettingVault: true, resetVaultErr: '' })
+      try {
+        await vaultApi.reset(get().resetVaultPw)
+        get().resetProto()
+      } catch (e) {
+        let msg = vaultErrorText(e, '초기화 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
+        if (e instanceof VaultApiError && e.status === 401) {
+          msg = '마스터 비밀번호가 올바르지 않아요.'
+        }
+        set({ resettingVault: false, resetVaultErr: msg })
+      }
+    },
+
     resetProto: () => {
       set({
         vault: [],
@@ -1290,6 +1328,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
         setupErr: '',
         lockPw: '',
         lockErr: '',
+        resetVaultOpen: false,
+        resetVaultPw: '',
+        resetVaultErr: '',
+        resettingVault: false,
         deleteTarget: null,
         dupTarget: null,
         rotateTarget: null,
