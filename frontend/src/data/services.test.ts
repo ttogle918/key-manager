@@ -137,4 +137,50 @@ describe('applyKnowledge', () => {
     // 미선언 호스트 URL 은 resolveIssueUrl 도 null
     expect(reg.resolveIssueUrl('https://evil.example/x', 'id')).toBeNull()
   })
+
+  it('로고가 있는 6종은 SVC_LOGO가 채워진다', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.SVC_LOGO['Notion']).toBeTruthy()
+    expect(reg.SVC_LOGO['GitHub']).toBeTruthy()
+    expect(reg.SVC_LOGO['Stripe']).toBeTruthy()
+  })
+
+  it('OpenAI는 simple-icons에 로고가 없어 SVC_LOGO 키가 생기지 않는다(폴백 타일 용도)', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.SVC_LOGO['OpenAI']).toBeUndefined()
+  })
+
+  it('로고가 없는 서비스는 SVC_LOGO에 키가 생기지 않는다(폴백 타일 용도)', () => {
+    reg.applyKnowledge({
+      services: [
+        {
+          service: 'foobar',
+          display_name: 'FooBar',
+          credentials: [cred('api_key', 'API Key', 'FOOBAR_API_KEY')],
+        },
+      ],
+    })
+    expect(reg.SVC_LOGO['FooBar']).toBeUndefined()
+  })
+
+  it('AWS·Slack은 로고가 없지만 SVC_META에 브랜드색이 큐레이션돼 있다(해시 자동색 아님)', () => {
+    reg.applyKnowledge({
+      services: [
+        {
+          service: 'aws',
+          display_name: 'AWS',
+          credentials: [cred('access_key_id', 'Access Key ID', 'AWS_ACCESS_KEY_ID')],
+        },
+        {
+          service: 'slack',
+          display_name: 'Slack',
+          credentials: [cred('bot_token', 'Bot Token', 'SLACK_BOT_TOKEN')],
+        },
+      ],
+    })
+    expect(reg.SVC_META['AWS']).toEqual({ tile: 'A', bg: '#FF9900', fg: '#161E2D' })
+    expect(reg.SVC_META['Slack']).toEqual({ tile: 'S', bg: '#4A154B', fg: '#FFFFFF' })
+    expect(reg.SVC_LOGO['AWS']).toBeUndefined()
+    expect(reg.SVC_LOGO['Slack']).toBeUndefined()
+  })
 })
