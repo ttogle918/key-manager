@@ -5,6 +5,10 @@ import { Modal } from '@/components/ui/Modal'
 import { useKeylens } from '@/store/keylensStore'
 import { isAllowedUrl, isSafeExternalUrl } from '@/data/services'
 
+// 백엔드 explain.py의 UNKNOWN_LABEL과 반드시 일치해야 한다 — "확인 실패" 결과를 캐시에 저장하면
+// 재검증 경로 없이 영구 고정되므로, 저장 버튼 자체를 아예 안 보여준다(백엔드도 방어 심화로 거부).
+const UNKNOWN_LABEL = '알 수 없음'
+
 const TIER_STYLE: Record<string, { border: string; bg: string; badge: string }> = {
   known: { border: '2px solid #3ECF8E', bg: 'rgba(62,207,142,.08)', badge: '분류됨' },
   ai_verified: { border: '2px dashed #E3B341', bg: 'rgba(227,179,65,.08)', badge: 'AI 추정(확인)' },
@@ -87,7 +91,7 @@ export function ExplainModal() {
                         문서
                       </a>
                     )}
-                    {b.tier !== 'known' && !approvedIndices.has(i) && (
+                    {b.tier !== 'known' && b.label !== UNKNOWN_LABEL && !approvedIndices.has(i) && (
                       <button
                         type="button"
                         onClick={(e) => {

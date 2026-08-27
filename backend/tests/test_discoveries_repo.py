@@ -1,7 +1,9 @@
-# SPDX-FileCopyrightText: 2026 ttogle918
+# SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """local_discoveries.yaml 읽기/쓰기 — 항상 confirmed: false로 저장되는지, 정규화 매칭이 값은
 무시하고 라벨 문구만 비교하는지가 핵심."""
+import threading
+
 from app.discoveries_repo import append_discovery, find_by_pattern, normalize_pattern
 
 
@@ -71,3 +73,62 @@ def test_find_by_pattern_skips_non_dict_entries(tmp_path):
     path = tmp_path / "local_discoveries.yaml"
     path.write_text("- oops\n- 42\n", encoding="utf-8")
     assert find_by_pattern(path, "아무 패턴") is None
+
+
+def test_normalize_pattern_preserves_underscored_label_without_digits():
+    """"Project_ID"처럼 _만 있고 숫자가 없는 라벨 문구는 더 이상 지워지지 않는다 — 예전 정규식은
+    이걸 지워서 서로 다른 라벨("Project_ID" vs "Database_ID")이 동일한 <VALUE> 패턴으로 뭉개졌다."""
+    assert normalize_pattern("Project_ID: abc123def456") == "Project_ID: <VALUE>"
+    assert normalize_pattern("Database_ID: xyz789ghi012") == "Database_ID: <VALUE>"
+
+
+def test_normalize_pattern_redacts_long_hex_only_token_without_digits():
+    """숫자가 하나도 없어도 8자 이상 순수 16진수 문자열(예: 헥스 시크릿)은 값으로 취급해 지운다."""
+    assert normalize_pattern("Secret: deadbeefcafebabe") == "Secret: <VALUE>"
+
+
+def test_find_by_pattern_skips_entry_missing_required_key(tmp_path):
+    """tier 키가 아예 없는 손상된 항목은 조회 시 건너뛴다(과거엔 KeyError로 파이프라인이 깨졌음)."""
+    path = tmp_path / "local_discoveries.yaml"
+    path.write_text("- pattern: 'API Key: <VALUE>'\n  label: 예시\n", encoding="utf-8")
+    assert find_by_pattern(path, "API Key: <VALUE>") is None
+
+
+def test_find_by_pattern_skips_entry_with_invalid_tier(tmp_path):
+    """tier 값이 알려진 3종(known/ai_verified/ai_unverified) 밖이면 건너뛴다(과거엔 ExplainBox
+    생성 시 Pydantic ValidationError로 파이프라인이 깨졌음)."""
+    path = tmp_path / "local_discoveries.yaml"
+    path.write_text(
+        "- pattern: 'X'\n  label: 예시\n  tier: bogus\n  docs_url: null\n", encoding="utf-8"
+    )
+    assert find_by_pattern(path, "X") is None
+
+
+def test_append_discovery_survives_concurrent_calls_without_losing_entries(tmp_path):
+    """"저장" 버튼을 여러 개 거의 동시에 눌러도(스레드풀에서 병렬 실행) 항목이 유실되지 않는다 —
+    write_lock이 read-modify-write 구간을 직렬화해야 한다."""
+    path = tmp_path / "local_discoveries.yaml"
+    threads = [
+        threading.Thread(
+            target=append_discovery,
+            kwargs=dict(path=path, pattern=f"P{i}", label=f"라벨{i}", tier="ai_unverified", docs_url=None),
+        )
+        for i in range(20)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    for i in range(20):
+        found = find_by_pattern(path, f"P{i}")
+        assert found is not None, f"P{i} 항목이 동시 쓰기로 유실됨"
+        assert found["label"] == f"라벨{i}"
+
+
+def test_append_discovery_leaves_no_tmp_file_behind(tmp_path):
+    """원자적 쓰기(임시 파일 + os.replace)가 정상 경로에서 .tmp 파일을 남기지 않는지 확인."""
+    path = tmp_path / "local_discoveries.yaml"
+    append_discovery(path, pattern="A", label="B", tier="ai_unverified", docs_url=None)
+    assert not (tmp_path / "local_discoveries.yaml.tmp").exists()
+    assert path.exists()

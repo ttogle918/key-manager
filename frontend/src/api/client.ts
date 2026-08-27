@@ -248,8 +248,11 @@ export async function explainStatusApi(timeoutMs = 3000): Promise<boolean> {
   }
 }
 
-/** POST /explain/image — 로컬 LLM 추론이 걸릴 수 있어 타임아웃을 넉넉히 잡는다. */
-export async function explainImageApi(image: Blob, timeoutMs = 45000): Promise<ExplainBox[]> {
+// 로컬 Ollama 1차 추론(최대 30초) + Tavily 검증(이미지당 최대 3건, 건당 검색 최대 10초 + Ollama
+// 2차 호출 최대 30초)까지 이어지면 최악의 경우 30 + 3*40 = 150초에 근접할 수 있어 넉넉히 잡는다
+// (backend/app/explain.py의 _MAX_VERIFICATIONS_PER_IMAGE와 함께 조정할 것).
+/** POST /explain/image — 로컬 LLM 추론 + Tavily 검증이 걸릴 수 있어 타임아웃을 넉넉히 잡는다. */
+export async function explainImageApi(image: Blob, timeoutMs = 180000): Promise<ExplainBox[]> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   try {

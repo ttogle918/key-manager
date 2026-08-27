@@ -112,6 +112,23 @@ def test_explain_discoveries_rejects_known_tier(monkeypatch):
     assert exc_info.value.status_code == 422
 
 
+def test_explain_discoveries_rejects_unknown_label(monkeypatch):
+    """확인되지 않은("알 수 없음") 추정은 캐시에 영구 고정될 수 있으므로 저장을 거부한다."""
+    from app import explain
+    from app.models import ExplainDiscoveryApprove
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            main.explain_discoveries_endpoint(
+                ExplainDiscoveryApprove(
+                    text="뭔가 알 수 없는 줄", label=explain.UNKNOWN_LABEL,
+                    tier="ai_unverified", docs_url=None,
+                )
+            )
+        )
+    assert exc_info.value.status_code == 422
+
+
 def test_explain_discoveries_appends_to_cache(monkeypatch, tmp_path):
     from app import discoveries_repo
     from app.models import ExplainDiscoveryApprove

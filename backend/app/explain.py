@@ -20,7 +20,20 @@ from .ocr import run_ocr_lines
 from .ollama_client import OllamaConfig
 from .tavily_client import TavilyConfig
 
-_UNKNOWN_LABEL = "알 수 없음"
+# main.py의 /explain/discoveries 엔드포인트가 "알 수 없음" 라벨 저장을 거부하는 데도 이 상수를
+# 그대로 참조한다(값이 어긋나면 안 되므로 별도 문자열을 복제하지 않음) — 공개 이름으로 노출.
+UNKNOWN_LABEL = "알 수 없음"
+
+# 이미지 1건당 Tavily+Ollama 2차 검증을 시도하는 최대 줄 수 — 검증 1건이 최악의 경우 검색(최대 10초)
+# + Ollama 2차 호출(최대 30초)까지 걸릴 수 있어, 무제한으로 돌리면 미분류 줄이 많은 화면에서 프론트
+# 타임아웃을 훌쩍 넘긴다. 초과분은 기존 1차 추론 결과(ai_unverified)로 남는다 — 오류가 아니라 폴백.
+_MAX_VERIFICATIONS_PER_IMAGE = 3
+
+# 추측한 서비스명이 실제로는 값(시크릿 등)처럼 보이면 Tavily에 보내지 않는다 — 로컬 소형 모델이
+# "이 줄이 특정 서비스처럼 보이면 서비스명을 추측하라"는 프롬프트에 API 키 자체를 서비스명으로
+# 잘못 답할 수 있고, 그러면 시크릿이 그대로 제3자(Tavily) 검색 쿼리로 나간다. discoveries_repo의
+# 값-토큰 휴리스틱을 재사용해 "정규화하면 달라지는(=값처럼 보이는) 문자열"을 걸러낸다.
+_MAX_GUESSED_SERVICE_LEN = 40
 
 _GUESS_PROMPT_TEMPLATE = """다음은 스크린샷에서 인식됐지만 아직 어떤 서비스의 값인지 모르는 텍스트 줄입니다.
 각 줄이 화면에서 어떤 역할을 하는지 한국어로 아주 짧게(15자 이내) 설명하세요. 정말 모르겠으면
@@ -113,30 +126,56 @@ def _ask_ollama_guess(config: OllamaConfig, unknown_lines: list[dict]) -> dict[i
     if not unknown_lines:
         return {}
     numbered = "\n".join(f"[{i}] {line['text']}" for i, line in enumerate(unknown_lines))
-    prompt = _GUESS_PROMPT_TEMPLATE.format(unknown=_UNKNOWN_LABEL, lines=numbered)
+    prompt = _GUESS_PROMPT_TEMPLATE.format(unknown=UNKNOWN_LABEL, lines=numbered)
     raw = ollama_client.generate(config, prompt)
     return _parse_guess_labels(raw)
 
 
+def _looks_like_value(text: str) -> bool:
+    """Ollama가 추측한 서비스명이 실제로는 값(시크릿 등)처럼 보이면 True.
+
+    discoveries_repo.normalize_pattern()이 값-토큰을 <VALUE>로 치환하므로, 정규화 전후가 다르면
+    그 문자열 안에 값처럼 보이는 조각이 있다는 뜻 — Tavily 검색 쿼리로 내보내면 안 된다. 비정상적
+    으로 긴 "서비스명"도 같은 이유로 걸러낸다(정상적인 서비스명은 몇 단어를 넘지 않는다).
+    """
+    if len(text) > _MAX_GUESSED_SERVICE_LEN:
+        return True
+    return discoveries_repo.normalize_pattern(text) != text
+
+
 def _verify_with_search(
-    ollama_config: OllamaConfig, tavily_config: TavilyConfig, line_text: str, guessed_service: str
+    ollama_config: OllamaConfig,
+    tavily_config: TavilyConfig,
+    line_text: str,
+    guessed_service: str,
+    search_cache: dict[str, list[dict]],
 ) -> dict | None:
     """Tavily로 검색 → 결과를 Ollama에게 다시 줘서 검증. 검색 결과가 없거나 검증 실패면 None.
 
     Tavily search()는 예외를 던지지 않으므로(설계 판단) 여기서 별도 try/except 불필요. Ollama
     2차 호출이 실패(OllamaUnavailableError)하면 그대로 위로 전파한다 — 1차 호출과 동일 정책.
+
+    search_cache: 이미지 1건 처리 중 같은 guessed_service로 중복 검색하지 않도록 재사용한다(검색
+    결과는 서비스명에만 의존하고 원본 줄 텍스트와 무관하므로 캐시해도 안전). Ollama 2차 호출은
+    줄마다 원본 텍스트가 달라 결과가 달라지므로 캐시하지 않는다 — 호출 부담은 verification 개수
+    상한(_MAX_VERIFICATIONS_PER_IMAGE)으로 따로 제어한다.
     """
-    results = tavily_client.search(tavily_config, f"{guessed_service} 공식 문서")
+    cache_key = guessed_service.strip().lower()
+    if cache_key in search_cache:
+        results = search_cache[cache_key]
+    else:
+        results = tavily_client.search(tavily_config, f"{guessed_service} 공식 문서")
+        search_cache[cache_key] = results
     if not results:
         return None
     search_text = "\n".join(f"- {r['title']} ({r['url']}): {r['content'][:200]}" for r in results)
     prompt = _VERIFY_PROMPT_TEMPLATE.format(
         guessed_service=guessed_service, line_text=line_text,
-        search_results=search_text, unknown=_UNKNOWN_LABEL,
+        search_results=search_text, unknown=UNKNOWN_LABEL,
     )
     raw = ollama_client.generate(ollama_config, prompt)
     verified = _parse_verify_result(raw)
-    if verified is None or verified["label"] == _UNKNOWN_LABEL:
+    if verified is None or verified["label"] == UNKNOWN_LABEL:
         return None
     return verified
 
@@ -187,13 +226,22 @@ def explain_image(
 
     guesses = _ask_ollama_guess(ollama_config, remaining)
     ai_boxes: list[ExplainBox] = []
+    search_cache: dict[str, list[dict]] = {}
+    verification_count = 0
     for i, line in enumerate(remaining):
-        guess = guesses.get(i, {"label": _UNKNOWN_LABEL, "guessed_service": None})
+        guess = guesses.get(i, {"label": UNKNOWN_LABEL, "guessed_service": None})
         x, y, w, h = _bbox(line["box"])
         label, tier, docs_url = guess["label"], "ai_unverified", None
 
-        if tavily_config is not None and guess["guessed_service"]:
-            verified = _verify_with_search(ollama_config, tavily_config, line["text"], guess["guessed_service"])
+        service = guess["guessed_service"]
+        if (
+            tavily_config is not None
+            and service
+            and not _looks_like_value(service)
+            and verification_count < _MAX_VERIFICATIONS_PER_IMAGE
+        ):
+            verification_count += 1
+            verified = _verify_with_search(ollama_config, tavily_config, line["text"], service, search_cache)
             if verified is not None:
                 label, tier, docs_url = verified["label"], "ai_verified", verified["docs_url"]
 

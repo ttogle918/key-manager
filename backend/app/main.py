@@ -223,6 +223,10 @@ async def explain_discoveries_endpoint(body: ExplainDiscoveryApprove) -> None:
     """사용자가 화면에서 승인한 AI 추정 1건을 로컬 발견 캐시에 저장(설계 판단 D)."""
     if body.tier == "known":
         raise HTTPException(status_code=422, detail="known 등급은 저장 대상이 아니에요")
+    if body.label == explain.UNKNOWN_LABEL:
+        # 프론트가 "알 수 없음" 라벨엔 저장 버튼 자체를 안 보여주지만(방어 심화), 여기서도 막는다 —
+        # 한 번 캐시되면 재검증 없이 계속 재사용되므로("확인 실패" 패턴이 영구 고정됨) 방지 가치가 큼.
+        raise HTTPException(status_code=422, detail="확인되지 않은 추정은 저장 대상이 아니에요")
     pattern = discoveries_repo.normalize_pattern(body.text)
     await run_in_threadpool(
         discoveries_repo.append_discovery,
