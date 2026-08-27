@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 import { useKeylens } from '@/store/keylensStore'
+import { projectKey } from '@/lib/format'
 
 /** 보관함 + 현재 입력 중인 프로젝트명을 합쳐 정렬한 고유 목록. */
 export function useProjectNames(): string[] {
@@ -8,7 +9,8 @@ export function useProjectNames(): string[] {
   const projVal = useKeylens((s) => s.projVal)
   const set: string[] = []
   vault.forEach((v) => {
-    if (v.project && !set.includes(v.project)) set.push(v.project)
+    const k = projectKey(v)
+    if (!set.includes(k)) set.push(k)
   })
   if (projVal.trim() && !set.includes(projVal.trim())) set.push(projVal.trim())
   set.sort()

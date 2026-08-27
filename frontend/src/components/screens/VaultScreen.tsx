@@ -166,7 +166,7 @@ export function VaultScreen() {
                 style={{
                   borderColor: active ? '#3ECF8E' : 'rgba(255,255,255,.08)',
                   boxShadow: active ? '0 0 0 1px #3ECF8E' : 'none',
-                  background: meta?.bg ?? '#232931',
+                  background: logo ? '#EDEEF0' : (meta?.bg ?? '#232931'),
                 }}
               >
                 {logo ? (
@@ -251,7 +251,9 @@ export function VaultScreen() {
             <header className="flex items-center gap-[10px] border-b border-line bg-panel-head px-4 py-[11px]">
               <button
                 type="button"
-                onClick={() => s.toggleProjectSection(pg.name, isOpen)}
+                onClick={() => {
+                  if (!filterActive) s.toggleProjectSection(pg.name, isOpen)
+                }}
                 className="flex flex-1 cursor-pointer items-center gap-[10px] border-none bg-none p-0 text-left"
               >
                 <span

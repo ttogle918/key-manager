@@ -9,16 +9,23 @@ SPDX-License-Identifier: MIT
 > 판정 기준: **배포물에 포함되는 런타임 의존성** 중심. 빌드·테스트 전용(devDependencies)은 산출물에
 > 실리지 않으므로 §4에 참고로 분리했다.
 >
-> 검증(2026-07-05): 백엔드 `pip-licenses`, 프론트 `license-checker --production` 전수 스캔 →
-> **런타임 트리 카피레프트 0건**. (빌드 CSS 도구가 끌어오던 MPL-2.0 `lightningcss`는 tailwind 계열을
-> devDependencies 로 재분류해 런타임 트리에서 제외 — 배포물에 애초에 실리지 않는 빌드타임 트랜스포머다.)
+> 검증(2026-08-27, CORE-3 백엔드 OCR·MUI 도입 반영): 백엔드 `pip-licenses`, 프론트
+> `license-checker --production` 전수 스캔 → **강한 카피레프트(GPL/AGPL) 0건**. 단, 스크린샷 OCR을
+> 백엔드 RapidOCR로 전환하며 유입된 전이 의존성 중 **약한 카피레프트(MPL-2.0) 2건**(`tqdm`·`certifi`)이
+> 있다 — 둘 다 **수정 없이 그대로 사용**해 CLAUDE.md 조건부 허용 기준을 충족하며, 안전 근거는
+> [THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md#스크린샷-ocr-backend-core-3--한국어-라벨-인식-정확도-개선)에
+> 상세 기록했다. (빌드 CSS 도구가 끌어오던 MPL-2.0 `lightningcss`는 tailwind 계열을 devDependencies 로
+> 재분류해 런타임 트리에서 제외 — 배포물에 애초에 실리지 않는 빌드타임 트랜스포머다.)
 
 ## 판정 요약
 
-| 영역 | 패키지 수 | 카피레프트 | 판정 |
-|---|---|---|---|
-| 백엔드(Python, 런타임+테스트) | 22 | 0 | ✅ |
-| 프론트(npm, production 트리) | ~64 | 0 | ✅ |
+| 영역 | 패키지 수(직접) | 강한 카피레프트 | 약한 카피레프트(조건부 허용) | 판정 |
+|---|---|---|---|---|
+| 백엔드(Python, 런타임) | 9 (+ RapidOCR 전이 트리) | 0 | 2건(tqdm·certifi, MPL-2.0 — 미수정 사용) | ✅ |
+| 프론트(npm, production 트리) | 12 | 0 | 0 | ✅ |
+
+> 정확한 전체(전이 포함) 개수는 스택 변경이 잦아 고정 숫자 대신 "재생성 방법"(하단)으로 그때그때
+> 재산출한다. 위 표는 직접 의존성 기준.
 
 ---
 
@@ -34,8 +41,26 @@ SPDX-License-Identifier: MIT
 | 4 | pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic | 스키마 검증·직렬화 |
 | 5 | PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml | 지식베이스 YAML 로드 |
 | 6 | cryptography | 50.0.1 | Apache-2.0 OR BSD-3-Clause (BSD-3 선택) | https://github.com/pyca/cryptography | 금고 암호화(Argon2id + AES-256-GCM) — PYSEC-2026-3552 패치본 |
+| 7 | python-multipart | 0.0.32 | Apache-2.0 | https://github.com/Kludex/python-multipart | FastAPI `UploadFile`(스크린샷 이미지 업로드, CORE-3 백엔드 OCR)에 필요 |
+| 8 | rapidocr | 3.9.2 | Apache-2.0 | https://github.com/RapidAI/RapidOCR | 스크린샷 OCR(백엔드) — PP-OCR(det/cls/rec) ONNX 추론 래퍼 |
+| 9 | onnxruntime | 1.29.0 | MIT | https://github.com/microsoft/onnxruntime | rapidocr 추론 엔진 |
 
-### 1-2. 전이 의존성 (런타임)
+### 1-1b. `rapidocr` 전이 의존성 중 약한 카피레프트(조건부 허용)
+
+CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사용** — 안전 근거는
+[THIRD-PARTY-NOTICES.md](../THIRD-PARTY-NOTICES.md) 참고.
+
+| # | 라이브러리명 | 라이선스 | 유입 경로 | 안전 근거 요약 |
+|---|---|---|---|---|
+| ※1 | tqdm | MPL-2.0(파일 단위 카피레프트) | ← rapidocr 필수 전이 의존성 | 소스 미수정, pip 의존성으로만 사용 → 이 프로젝트(MIT) 코드로 비전염 |
+| ※2 | certifi | MPL-2.0(파일 단위 카피레프트) | ← rapidocr → requests 전이 의존성 | CA 인증서 데이터 패키지, 소스 미수정 → 비전염(cryptography 자체는 certifi를 끌어오지 않음) |
+
+> `opencv-python`(rapidocr 필수 전이 의존성)도 Windows 휠에 LGPL-2.1 `FFmpeg`가 동봉되나, cv2 본체와
+> **분리된 재교체 가능 플러그인 DLL**로 동적 로드돼(`opencv_videoio_ffmpeg500_64.dll`) LGPL 재링크
+> 요건을 충족한다 — 상세는 THIRD-PARTY-NOTICES.md. pip-licenses는 이 패키지를 Apache-2.0으로만
+> 인식하므로 위 표(pip-licenses 결과 기준)에는 별도 행으로 잡히지 않는다.
+
+### 1-2. 전이 의존성 (런타임, fastapi/uvicorn/cryptography 계열만 — rapidocr 전이 트리는 위 1-1b·THIRD-PARTY-NOTICES.md 참고)
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 유입 |
 |---|---|---|---|---|---|
@@ -72,11 +97,15 @@ SPDX-License-Identifier: MIT
 | 1 | react | 19.2.7 | MIT | https://github.com/facebook/react | UI 프레임워크 |
 | 2 | react-dom | 19.2.7 | MIT | https://github.com/facebook/react | DOM 렌더러 |
 | 3 | zustand | 5.0.14 | MIT | https://github.com/pmndrs/zustand | 상태 관리 |
-| 4 | tesseract.js | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js | 브라우저 OCR |
+| 4 | tesseract.js | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js | ⚠️ **레거시** — CORE-3에서 백엔드 RapidOCR로 대체, 현재 분석 흐름에서 미호출(재구성 로직 유닛테스트만 참조) |
 | 5 | @radix-ui/react-dialog | 1.1.18 | MIT | https://github.com/radix-ui/primitives | 접근성 다이얼로그 |
 | 6 | @radix-ui/react-select | 2.3.2 | MIT | https://github.com/radix-ui/primitives | 접근성 셀렉트 |
 | 7 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx | 클래스 병합 |
 | 8 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge | Tailwind 클래스 충돌 해소 |
+| 9 | @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui | 분석 결과 요약 DataGrid UI(`frontend/src/mui/theme.ts`) |
+| 10 | @mui/x-data-grid | 9.12.0 | MIT(Community 등급) | https://github.com/mui/mui-x | 결과 목록 표(`ResultsGrid.tsx`) — ⚠️ Pro/Premium 유료 등급 미사용, Community만 사용 |
+| 11 | @emotion/react | 11.14.0 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
+| 12 | @emotion/styled | 11.14.1 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
 
 ### 2-2. 주요 전이 의존성 (런타임)
 
@@ -101,10 +130,12 @@ SPDX-License-Identifier: MIT
 
 | 자산 | 버전 | 라이선스 | 출처 | 사용 목적 |
 |---|---|---|---|---|
-| Tesseract 학습 데이터 (eng·kor `.traineddata`) | tessdata_fast | Apache-2.0 | https://github.com/tesseract-ocr/tessdata_fast | OCR 언어 모델(로컬 벤더링) |
-| tesseract.js WASM core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | OCR 추론 엔진(WASM) |
+| PP-OCRv5 한국어 인식 모델(가중치) | v3.9.2 릴리스 | Apache-2.0 | https://www.modelscope.cn/models/RapidAI/RapidOCR | 백엔드 OCR(RapidOCR) 한국어 인식 — 현재 활성 경로, `backend/scripts/vendor_ocr_models.py`가 해시 검증 후 로컬 벤더링(커밋 제외) |
+| Tesseract 학습 데이터 (eng·kor `.traineddata`) | tessdata_fast | Apache-2.0 | https://github.com/tesseract-ocr/tessdata_fast | ⚠️ 레거시(브라우저 OCR, 현재 미사용 경로) — 로컬 벤더링 |
+| tesseract.js WASM core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | ⚠️ 레거시(브라우저 OCR, 현재 미사용 경로) |
 | Pretendard (Variable) | 1.3.9 | OFL-1.1 | https://github.com/orioncactus/pretendard | 본문 폰트(로컬 벤더링) |
 | JetBrains Mono | 2.304 | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono | 값·키 모노 폰트(로컬 벤더링) |
+| simple-icons | 16.28.0 | CC0-1.0 | https://github.com/simple-icons/simple-icons | 서비스 로고 SVG 6종(Notion·Kakao·GCP·Ollama·GitHub·Stripe) — devDependency, `frontend/scripts/vendor-logos.mjs`가 수정 없이 `frontend/src/assets/logos/*.svg`로 로컬 벤더링해 빌드 산출물에 포함(런타임 코드는 import하지 않음) |
 
 > 폰트는 **CDN 대신 빌드 시 로컬 벤더링**(`frontend/scripts/vendor-fonts.mjs` → `public/fonts/`, same-origin 서빙)으로
 > 런타임 외부 요청 0(local-first). OFL-1.1 은 permissive(임베드·배포 허용, 폰트 단독 판매 금지·예약명칭 유지).

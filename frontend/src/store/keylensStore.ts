@@ -297,10 +297,17 @@ export const useKeylens = create<KeylensState>((set, get) => {
   }
 
   // 값(full)은 로컬에 두지 않으므로 중복은 변수명+프로젝트(메타데이터)로만 판단한다.
-  const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined =>
-    get().vault.find(
-      (v) => v.varName === varName && (v.project || '') === (r.project || '').trim(),
+  // project 미지정 저장은 백엔드가 오늘(UTC) 날짜를 기본값으로 배정하므로, 아직 저장 전인 pending
+  // 결과(r.project === '')는 각 기존 항목이 실제로 배정받은 addedAt 과 비교해 매칭한다("오늘 날짜"를
+  // 프론트에서 별도로 재계산하지 않는다 — 로컬 today()는 UTC 자정 경계에서 백엔드와 어긋날 수 있다).
+  const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined => {
+    const rp = (r.project || '').trim()
+    return get().vault.find(
+      (v) =>
+        v.varName === varName &&
+        (rp ? (v.project || '') === rp : !v.project || v.project === v.addedAt),
     )
+  }
 
   // .env 내보내기용으로 각 항목의 값을 복호화해 채운다(잠금/실패 항목은 제외).
   const withValues = async (items: VaultItem[]): Promise<VaultItem[]> => {
