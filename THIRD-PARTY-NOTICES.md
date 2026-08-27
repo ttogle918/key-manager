@@ -69,27 +69,35 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 0BSD AND MIT AND Zlib AND CC0-1.0, 전 구성요소 허용목록 내) · pyclipper·six (MIT) · Pillow
 (MIT-CMU) · flatbuffers·requests (Apache-2.0).
 
-### 약한 카피레프트 2건 — 의도적 포함(안전 근거 명시)
+### 약한 카피레프트 3건 — 의도적 포함(안전 근거 명시)
 
 - **tqdm** (rapidocr 필수 전이 의존성) — 라이선스 **MPL-2.0**(핵심 코드, 일부 deprecated shim
   파일만 MIT). **파일 단위(weak) 카피레프트**: MPL이 요구하는 건 "MPL 커버 파일 자체를 수정해서
   재배포할 때 그 수정 파일을 공개"뿐이다. 우리는 tqdm 소스를 수정하지 않고 pip 의존성으로 그대로
   사용하므로 이 프로젝트(MIT) 코드에는 전염되지 않는다.
+- **certifi** (rapidocr → requests 전이 의존성) — 라이선스 **MPL-2.0**. CA 루트 인증서 번들만
+  담은 데이터 패키지로, requests가 HTTPS 검증용으로 import해 그대로 쓴다. tqdm과 동일한 이유로
+  안전 — 소스를 수정하지 않고 pip 의존성으로만 사용, 파일 단위 카피레프트라 이 프로젝트(MIT) 코드로
+  전염되지 않는다. (참고: `cryptography` 자체는 certifi를 끌어오지 않는다 — 아래 "cryptography"
+  절 참고. certifi는 rapidocr가 유일한 경로다.)
 - **opencv-python** (rapidocr 필수 전이 의존성) — 파이썬 바인딩 코드 자체는 Apache-2.0이나, Windows
   휠에 **FFmpeg(LGPL-2.1)** 가 동봉된다. 단, FFmpeg는 cv2 본체에 정적으로 박히지 않고 **별도의
   교체 가능한 플러그인 DLL**(`cv2/opencv_videoio_ffmpeg500_64.dll`)로 동적 로드된다 — OpenCV팀이
   LGPL의 "재링크 가능성 보장" 요건을 만족시키려 의도적으로 설계한 구조다. cx_Freeze 데스크톱 패키징도
   이 DLL을 실행파일과 분리된 개별 파일로 배치해(정적 병합 없음) 재교체 가능성이 유지된다.
-- CLAUDE.md 규칙: **강한 카피레프트(GPL/AGPL)는 여전히 절대 금지**. 위 두 건은 "미수정 의존성
+- CLAUDE.md 규칙: **강한 카피레프트(GPL/AGPL)는 여전히 절대 금지**. 위 세 건은 "미수정 의존성
   사용 + 재링크 가능 구조 유지"라는 조건을 만족하는 예외로, 새로 카피레프트 의존성을 볼 때마다
-  이 기준으로 개별 판단한다(자동으로 전부 허용되는 게 아님).
+  이 기준으로 개별 판단한다(자동으로 전부 허용되는 게 아님). CI(`ALLOWED_WEAK_COPYLEFT`)도 이
+  두 패키지명(tqdm, certifi)만 명시 허용한다 — opencv-python은 pip-licenses에 라이선스가
+  Apache-2.0으로만 잡혀 그 검사에 걸리지 않는다(LGPL 부분은 별도 바이너리 DLL이라 위 근거로 대신
+  기록).
 
 ## 암호화 저장소 (backend, VAULT-1)
 
 ### cryptography
-- 버전: 49.0.0
+- 버전: 50.0.1 (49.0.0은 PYSEC-2026-3552 취약점이 있어 패치본으로 고정 — pip-audit)
 - 라이선스: Apache-2.0 OR BSD-3-Clause (듀얼 — 본 프로젝트는 **BSD-3-Clause를 선택 적용**)
-- 출처: https://pypi.org/project/cryptography/49.0.0/ · https://github.com/pyca/cryptography
+- 출처: https://pypi.org/project/cryptography/50.0.1/ · https://github.com/pyca/cryptography
 - 용도: Argon2id 키 유도(KDF) + AES-256-GCM 항목별 암호화. 코드 복사 없이 공개 API만 호출
   (`hazmat.primitives.kdf.argon2.Argon2id`, `hazmat.primitives.ciphers.aead.AESGCM`).
 - 전이 의존성: cffi 2.0.0 (MIT), pycparser 3.0 (BSD-3-Clause). certifi/MPL/카피레프트 없음.

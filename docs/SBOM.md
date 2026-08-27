@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT
 | 3 | uvicorn | 0.34.0 | BSD-3-Clause | https://github.com/encode/uvicorn | ASGI 서버(로컬 실행) |
 | 4 | pydantic | 2.10.4 | MIT | https://github.com/pydantic/pydantic | 스키마 검증·직렬화 |
 | 5 | PyYAML | 6.0.2 | MIT | https://github.com/yaml/pyyaml | 지식베이스 YAML 로드 |
-| 6 | cryptography | 49.0.0 | Apache-2.0 OR BSD-3-Clause (BSD-3 선택) | https://github.com/pyca/cryptography | 금고 암호화(Argon2id + AES-256-GCM) |
+| 6 | cryptography | 50.0.1 | Apache-2.0 OR BSD-3-Clause (BSD-3 선택) | https://github.com/pyca/cryptography | 금고 암호화(Argon2id + AES-256-GCM) — PYSEC-2026-3552 패치본 |
 
 ### 1-2. 전이 의존성 (런타임)
 

@@ -113,7 +113,7 @@ jobs:
 
           # 새 의존성이 LGPL/MPL로 걸리면: 미수정 사용인지·재링크 가능 구조인지 확인해
           # THIRD-PARTY-NOTICES.md에 근거를 남긴 뒤에만 여기 추가한다(자동 통과 금지).
-          ALLOWED_WEAK_COPYLEFT="tqdm"
+          ALLOWED_WEAK_COPYLEFT="tqdm certifi"
           tail -n +2 licenses-backend.csv | while IFS=',' read -r name _ license; do
             name=$(echo "$name" | tr -d '"')
             license=$(echo "$license" | tr -d '"')
