@@ -175,10 +175,16 @@ def init_vault(conn: sqlite3.Connection, password: str) -> bytes:
 
 
 def unlock(conn: sqlite3.Connection, password: str) -> bytes:
-    """비밀번호로 금고 열기 — 검증기 복호화로 확인. 틀리면 crypto.DecryptError."""
-    row = conn.execute("SELECT * FROM meta WHERE id = 1").fetchone()
-    if row is None:
+    """비밀번호로 금고 열기 — 검증기 복호화로 확인. 틀리면 crypto.DecryptError.
+
+    is_initialized()로 먼저 확인한다: meta 테이블 자체가 없는 진짜 미초기화 db(테이블이 아직 한
+    번도 생성된 적 없음)와 reset_vault() 이후처럼 테이블은 있으나 행이 비어 있는 경우를 모두
+    ValueError로 통일해서 처리하기 위함(둘 다 그냥 SELECT하면 후자만 처리되고 전자는
+    sqlite3.OperationalError로 새어나간다).
+    """
+    if not is_initialized(conn):
         raise ValueError("초기화되지 않은 금고입니다")
+    row = conn.execute("SELECT * FROM meta WHERE id = 1").fetchone()
     key = crypto.derive_key(password, _params_from_meta(row))
     # 검증기 복호화 실패 = 오답 비밀번호 → DecryptError 전파.
     crypto.decrypt(key, row["verifier_nonce"], row["verifier_ct"])
@@ -493,3 +499,33 @@ def change_password(conn: sqlite3.Connection, old_password: str, new_password: s
     except Exception:
         conn.rollback()
         raise
+
+
+def reset_vault(conn: sqlite3.Connection) -> None:
+    """금고를 완전히 비우고 미초기화 상태로 되돌린다(원자적).
+
+    항목·메타(마스터 비밀번호 검증기·KDF 파라미터)·감사이력·SDK 디렉토리 승인 기록(RUNTIME-1)까지
+    전부 삭제한다. meta 행이 사라지면 is_initialized()가 자동으로 False가 된다. vault.db 파일 자체는
+    남는다(같은 파일에 다시 /vault/init 가능) — 교육·공용 PC에서 다음 사용자에게 이전 사용자의 흔적을
+    남기지 않기 위한 용도(VAULT-RESET).
+    """
+    conn.execute("PRAGMA secure_delete = ON")
+    try:
+        conn.execute("DELETE FROM access_log")
+        conn.execute("DELETE FROM entries")
+        conn.execute("DELETE FROM meta")
+        conn.execute("DELETE FROM sdk_project_dirs")
+        conn.execute("DELETE FROM sdk_pending_requests")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    # DELETE만으로는 SQLite가 지운 행의 바이트를 프리리스트에 남겨두므로(VACUUM 전까지
+    # 평문 메타데이터가 파일에서 포렌식 복구 가능) — 커밋된 트랜잭션 밖에서 VACUUM으로 실제
+    # 페이지를 정리한다. DELETE가 실패해 롤백된 경로에서는 실행되지 않는다.
+    # VACUUM 자체가 실패해도(디스크 부족 등) 이미 커밋된 삭제는 되돌리지 않는다 — 호출자에게
+    # "리셋 실패"로 잘못 보고되면 안 되므로(실제로는 데이터가 이미 지워졌음) 조용히 넘어간다.
+    try:
+        conn.execute("VACUUM")
+    except sqlite3.Error:
+        pass

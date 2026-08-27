@@ -206,6 +206,8 @@ export const vaultApi = {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     }),
+  reset: (password: string) =>
+    vreq<VaultStatus>('/vault/reset', { method: 'POST', body: JSON.stringify({ password }) }),
 }
 
 // ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 프로젝트별 디렉토리 사전등록 ──

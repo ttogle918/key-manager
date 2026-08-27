@@ -291,6 +291,22 @@ class VaultService:
             conn.close()
         self.lock()  # 변경 후 재인증 요구
 
+    def reset(self, password: str) -> None:
+        """비밀번호를 재검증한 뒤 금고를 완전히 비우고 미초기화 상태로 되돌린다(VAULT-RESET).
+
+        change_password와 동일하게 세션 unlock 여부와 무관하게 비밀번호 자체로만 인증한다 — 교육·
+        공용 PC에서 잠금 해제된 채 방치된 세션만으로 완전 삭제가 가능하면 안 되기 때문.
+        - 비밀번호 불일치: crypto.DecryptError
+        - 애초에 미초기화 금고: ValueError
+        """
+        conn = self._conn()
+        try:
+            vault_repo.unlock(conn, password)  # 검증 전용 — 반환된 키는 쓰지 않고 버림
+            vault_repo.reset_vault(conn)
+        finally:
+            conn.close()
+        self.lock()
+
     # ── RUNTIME-1: SDK 접근 관리 ──
     def sdk_env(self, project: str, path: str) -> dict[str, str]:
         """keylens-env SDK 진입점. path가 project에 대해 승인되지 않았으면 대기열에 등록하고
