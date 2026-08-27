@@ -6,7 +6,7 @@ SPDX-License-Identifier: MIT
 
 이 프로젝트(MIT)는 다음 서드파티 구성요소를 사용합니다. 각 구성요소는 해당 라이선스 조건을 따릅니다.
 대부분 허용적(permissive) 라이선스이며, GPL/AGPL 같은 **강한 카피레프트는 전혀 포함하지 않습니다**.
-`backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 2건**을 의도적으로
+`backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 3건**을 의도적으로
 포함합니다 — 아래 "스크린샷 OCR(backend)" 절에 왜 안전한지 근거를 명시합니다.
 
 ## 브라우저 OCR (frontend, CORE-3)
