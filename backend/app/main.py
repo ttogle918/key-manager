@@ -15,12 +15,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import crypto, explain, ollama_client
+from . import crypto, discoveries_repo, explain, ollama_client
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
 from .models import (
     AnalyzeRequest,
     AnalyzeResponse,
+    ExplainDiscoveryApprove,
     ExplainImageResponse,
     ExplainStatusResponse,
     HealthResponse,
@@ -46,6 +47,7 @@ from .models import (
 )
 from .ocr import OcrUnavailableError, run_ocr
 from .ollama_client import OllamaConfig
+from .tavily_client import TavilyConfig
 from .vault_session import SdkApprovalPending, VaultLocked, VaultRateLimited, VaultService
 
 app = FastAPI(title="KeyLens API", version="0.1.0")
@@ -167,6 +169,11 @@ async def analyze_image_endpoint(
 # 모델도 번들하지 않는다. 설계 근거: docs/superpowers/specs/2026-08-27-screenshot-explain-design.md
 
 OLLAMA_CONFIG = OllamaConfig.from_env()
+TAVILY_CONFIG = TavilyConfig.from_env()
+DISCOVERIES_PATH = os.environ.get(
+    "KEYLENS_LOCAL_DISCOVERIES_PATH",
+    str(Path(__file__).resolve().parent.parent / "local_discoveries.yaml"),
+)
 
 
 @app.get("/explain/status", response_model=ExplainStatusResponse)
@@ -194,7 +201,9 @@ async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageR
     try:
         # RapidOCR 추론 + Ollama HTTP 호출(최대 30s)은 동기 블로킹이라 이벤트 루프에서
         # 직접 돌리면 그 사이 다른 요청(RUNTIME-1 SDK 큐 포함)이 전부 멈춘다 — 스레드풀로 위임.
-        boxes = await run_in_threadpool(explain.explain_image, data, KB, OLLAMA_CONFIG)
+        boxes = await run_in_threadpool(
+            explain.explain_image, data, KB, OLLAMA_CONFIG, TAVILY_CONFIG, DISCOVERIES_PATH
+        )
     except OcrUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e)) from None
     except ollama_client.OllamaUnavailableError:
@@ -207,6 +216,19 @@ async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageR
             status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
         ) from None
     return ExplainImageResponse(boxes=boxes)
+
+
+@app.post("/explain/discoveries", status_code=204)
+async def explain_discoveries_endpoint(body: ExplainDiscoveryApprove) -> None:
+    """사용자가 화면에서 승인한 AI 추정 1건을 로컬 발견 캐시에 저장(설계 판단 D)."""
+    if body.tier == "known":
+        raise HTTPException(status_code=422, detail="known 등급은 저장 대상이 아니에요")
+    pattern = discoveries_repo.normalize_pattern(body.text)
+    await run_in_threadpool(
+        discoveries_repo.append_discovery,
+        DISCOVERIES_PATH,
+        pattern=pattern, label=body.label, tier=body.tier, docs_url=body.docs_url,
+    )
 
 
 # ── 금고 (VAULT-1/2) ─────────────────────────────────────────────

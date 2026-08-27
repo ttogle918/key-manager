@@ -98,3 +98,38 @@ def test_explain_image_endpoint_503_when_ollama_connection_fails(monkeypatch):
         asyncio.run(main.explain_image_endpoint(image=_FakeUploadFile("image/png", b"fake")))
     assert exc_info.value.status_code == 503
     assert exc_info.value.detail == "로컬 LLM에 연결할 수 없어요 — Ollama가 실행 중인지 확인하세요"
+
+
+def test_explain_discoveries_rejects_known_tier(monkeypatch):
+    from app.models import ExplainDiscoveryApprove
+
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(
+            main.explain_discoveries_endpoint(
+                ExplainDiscoveryApprove(text="sk-...", label="OpenAI API 키", tier="known", docs_url=None)
+            )
+        )
+    assert exc_info.value.status_code == 422
+
+
+def test_explain_discoveries_appends_to_cache(monkeypatch, tmp_path):
+    from app import discoveries_repo
+    from app.models import ExplainDiscoveryApprove
+
+    cache_path = tmp_path / "local_discoveries.yaml"
+    monkeypatch.setattr(main, "DISCOVERIES_PATH", str(cache_path))
+
+    asyncio.run(
+        main.explain_discoveries_endpoint(
+            ExplainDiscoveryApprove(
+                text="API Key: abcdefgh12345678", label="예시 서비스 안내",
+                tier="ai_verified", docs_url="https://example.com/docs",
+            )
+        )
+    )
+
+    pattern = discoveries_repo.normalize_pattern("API Key: abcdefgh12345678")
+    found = discoveries_repo.find_by_pattern(cache_path, pattern)
+    assert found is not None
+    assert found["label"] == "예시 서비스 안내"
+    assert found["confirmed"] is False

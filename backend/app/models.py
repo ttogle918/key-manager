@@ -294,3 +294,12 @@ class ExplainStatusResponse(BaseModel):
     """Ollama 가용 여부 — 프론트가 '이 화면 설명해줘' 버튼 표시 여부를 판단하는 데 씀."""
 
     available: bool
+
+
+class ExplainDiscoveryApprove(BaseModel):
+    """사용자가 승인한 AI 추정 1건 — local_discoveries.yaml에 append된다(항상 confirmed: false)."""
+
+    text: str
+    label: str
+    tier: Literal["known", "ai_verified", "ai_unverified"]
+    docs_url: Optional[str] = None
