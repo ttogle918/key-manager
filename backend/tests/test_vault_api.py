@@ -202,6 +202,44 @@ def test_reset_succeeds_and_uninitializes(vault):
     assert st.initialized is False
 
 
+def test_reset_works_while_locked(vault):
+    """세션이 실제로 잠긴 상태에서도 비밀번호만으로 reset이 동작해야 한다(판단 2의 핵심 주장)."""
+    main.vault_init(VaultInit(password=MASTER))
+    main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    vault.lock()
+    result = main.vault_reset(VaultPassword(password=MASTER))
+    assert result.initialized is False
+
+
+def test_reset_clears_access_log(vault):
+    """reset은 감사 이력(access_log)도 완전히 비운다 — 재초기화한 금고의 이력이 비어 있어야 함."""
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    assert main.vault_history(meta.id) != []  # "register" 이벤트가 남아 있음
+    main.vault_reset(VaultPassword(password=MASTER))
+    main.vault_init(VaultInit(password=MASTER))
+    new_meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    # reset 이후 새로 부여되는 id는 AUTOINCREMENT가 초기화되어 이전과 같은 id일 수 있으므로,
+    # 새로 등록한 항목 자신의 "register" 이벤트 1건만 있어야 한다(옛 이력이 섞여 있지 않음).
+    hist = main.vault_history(new_meta.id)
+    assert len(hist) == 1
+    assert hist[0].event == "등록"
+
+
+def test_reset_purges_plaintext_metadata_from_db_file(vault):
+    """DELETE만으로는 SQLite 프리리스트에 평문 메타데이터가 남는다 — VACUUM으로 실제 제거되는지
+    raw .db 파일 바이트를 직접 검사해 확인한다(API 응답 검사로는 이 회귀를 못 잡는다)."""
+    main.vault_init(VaultInit(password=MASTER))
+    distinctive = "Xk9-VeryDistinctiveProjectName-Zq7"
+    main.vault_add(
+        VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY, project=distinctive)
+    )
+    main.vault_reset(VaultPassword(password=MASTER))
+
+    raw = open(vault.db_path, "rb").read()
+    assert distinctive.encode("utf-8") not in raw
+
+
 def test_reset_then_reinit_works(vault):
     """reset 후 같은(또는 다른) 비밀번호로 다시 init 가능 — 파일이 아니라 데이터만 지워짐."""
     main.vault_init(VaultInit(password=MASTER))

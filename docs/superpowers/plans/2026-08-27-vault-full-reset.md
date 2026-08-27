@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2026 [Your Name]
+SPDX-License-Identifier: MIT
+-->
+
 # 금고 완전 초기화(VAULT-RESET) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

@@ -11,8 +11,8 @@ SPDX-License-Identifier: MIT
 | 한눈에 | |
 |---|---|
 | 지원 서비스 / 자격증명 종류 | **9종 / 22종류** (Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe) |
-| 백엔드 API 엔드포인트 | **28개** (분석 2 · 화면설명 2 · 지식베이스 1 · 금고 16 · SDK 7) + 매니저 릴레이(별도 배포) 2개 |
-| 테스트 | 백엔드 pytest **258** · 프론트 vitest **45** + 브라우저 E2E |
+| 백엔드 API 엔드포인트 | **30개** (헬스체크 1 · 분석 2 · 화면설명 2 · 지식베이스 1 · 금고 16 · SDK 8) + 매니저 릴레이(별도 배포) 2개 |
+| 테스트 | 백엔드 pytest **266** · 프론트 vitest **49** + 브라우저 E2E |
 | 라이선스 / 보안 | 강한 카피레프트 **0** · 약한 카피레프트 2건(조건부 허용, 근거 THIRD-PARTY-NOTICES.md) · 알려진 CVE **0** · 런타임 외부 요청 **0**(옵트인 기능 제외) |
 
 ## 전체 구조
@@ -35,9 +35,9 @@ flowchart LR
     S1 --> S2[Stage2 맥락 기반]
     KB[("knowledge/*.yaml — 9종 22종류")] --> S1 & S2
     EXP[/explain/image/] --> OLLAMA["로컬 Ollama (옵트인)"]
-    V[/vault API 15종/] --> CR[Argon2id + AES-256-GCM]
+    V[/vault API 16종/] --> CR[Argon2id + AES-256-GCM]
     CR --> DB[("SQLite — 암호문만")]
-    SDK[/sdk API 7종/] --> DB
+    SDK[/sdk API 8종/] --> DB
   end
   IMG --> OCR --> AN
   STORE -- JSON --> AN
@@ -254,7 +254,7 @@ KeyLens 앱 자체가 서버를 운영하지 않고, 이 기능을 쓰고 싶은
 
 ## API 엔드포인트 전체
 
-### 백엔드 (`backend/app/main.py`, 28개)
+### 백엔드 (`backend/app/main.py`, 30개)
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|

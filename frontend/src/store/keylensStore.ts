@@ -1342,6 +1342,12 @@ export const useKeylens = create<KeylensState>((set, get) => {
         selectedSdkProject: null,
         sdkDirs: [],
         newDirPath: '',
+        manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
+        inputMode: 'auto',
+        explainBoxes: [],
+        explainOpen: false,
+        sourceLabel: '',
+        emailSyncOpen: false,
       })
     },
   }

@@ -509,6 +509,7 @@ def reset_vault(conn: sqlite3.Connection) -> None:
     남는다(같은 파일에 다시 /vault/init 가능) — 교육·공용 PC에서 다음 사용자에게 이전 사용자의 흔적을
     남기지 않기 위한 용도(VAULT-RESET).
     """
+    conn.execute("PRAGMA secure_delete = ON")
     try:
         conn.execute("DELETE FROM access_log")
         conn.execute("DELETE FROM entries")
@@ -519,3 +520,7 @@ def reset_vault(conn: sqlite3.Connection) -> None:
     except Exception:
         conn.rollback()
         raise
+    # DELETE만으로는 SQLite가 지운 행의 바이트를 프리리스트에 남겨두므로(VACUUM 전까지
+    # 평문 메타데이터가 파일에서 포렌식 복구 가능) — 커밋된 트랜잭션 밖에서 VACUUM으로 실제
+    # 페이지를 정리한다. DELETE가 실패해 롤백된 경로에서는 실행되지 않는다.
+    conn.execute("VACUUM")
