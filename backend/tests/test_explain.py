@@ -63,17 +63,20 @@ def test_unknown_line_gets_ai_label_from_ollama(kb, notion_image, monkeypatch):
     assert any(b.label == "안내 문구" for b in ai_boxes) or not ai_boxes
 
 
-def test_ollama_unavailable_falls_back_to_unknown_label(kb, notion_image, monkeypatch):
-    """Ollama 연결 실패 시 전체 요청은 안 죽고, 미분류 줄은 '알 수 없음'으로 표시된다."""
+def test_ollama_connection_failure_propagates_as_exception(kb, notion_image, monkeypatch):
+    """Ollama 연결 실패는 '알 수 없음'으로 조용히 낮추지 않고 그대로 위로 전파돼야 한다 —
+
+    연결 자체가 안 되는 것(사용자가 알아야 할 문제, main.py에서 503으로 변환됨)과 응답은
+    받았지만 내용이 JSON이 아닌 것(_parse_labels가 처리하는 별개의 정상적인 저하 경로)은
+    설계상 구분되는 실패 모드라서다.
+    """
     def raise_unavailable(config, prompt, timeout=30.0):
         raise OllamaUnavailableError("연결 실패")
 
     monkeypatch.setattr(ollama_client, "generate", raise_unavailable)
 
-    boxes = explain.explain_image(notion_image, kb, CONFIG)
-
-    ai_boxes = [b for b in boxes if b.tier == "ai_unverified"]
-    assert all(b.label == "알 수 없음" for b in ai_boxes)
+    with pytest.raises(OllamaUnavailableError):
+        explain.explain_image(notion_image, kb, CONFIG)
 
 
 def test_malformed_ollama_json_falls_back_gracefully(kb, notion_image, monkeypatch):

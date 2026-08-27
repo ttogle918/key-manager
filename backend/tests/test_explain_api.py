@@ -14,7 +14,7 @@ from fastapi import HTTPException
 
 from app import main
 from app.ocr import _KOREAN_REC_MODEL
-from app.ollama_client import OllamaConfig
+from app.ollama_client import OllamaConfig, OllamaUnavailableError
 
 DEMO_DIR = Path(__file__).parent.parent.parent / "docs" / "demo"
 
@@ -70,3 +70,31 @@ def test_explain_image_endpoint_returns_boxes(monkeypatch):
         main.explain_image_endpoint(image=_FakeUploadFile("image/png", image_bytes))
     )
     assert len(result.boxes) > 0
+
+
+def test_explain_image_endpoint_422_on_generic_explain_failure(monkeypatch):
+    """/analyze/image 와 동일하게, OCR 실패 외의 알 수 없는 예외도 422로 친절히 감싼다."""
+    monkeypatch.setattr(main, "OLLAMA_CONFIG", OllamaConfig("http://x", "m"))
+
+    def boom(*a, **kw):
+        raise RuntimeError("corrupt image")
+
+    monkeypatch.setattr(main.explain, "explain_image", boom)
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(main.explain_image_endpoint(image=_FakeUploadFile("image/png", b"fake")))
+    assert exc_info.value.status_code == 422
+    assert exc_info.value.detail == "이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+
+
+def test_explain_image_endpoint_503_when_ollama_connection_fails(monkeypatch):
+    """Ollama 연결 실패(OllamaUnavailableError)는 OCR/이미지 문제와 구분되는 503으로 응답한다."""
+    monkeypatch.setattr(main, "OLLAMA_CONFIG", OllamaConfig("http://x", "m"))
+
+    def boom(*a, **kw):
+        raise OllamaUnavailableError("연결 실패")
+
+    monkeypatch.setattr(main.explain, "explain_image", boom)
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(main.explain_image_endpoint(image=_FakeUploadFile("image/png", b"fake")))
+    assert exc_info.value.status_code == 503
+    assert exc_info.value.detail == "로컬 LLM에 연결할 수 없어요 — Ollama가 실행 중인지 확인하세요"

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { useKeylens } from '@/store/keylensStore'
+import { isAllowedUrl } from '@/data/services'
 
 const TIER_STYLE: Record<string, { border: string; bg: string; badge: string }> = {
   known: { border: '2px solid #3ECF8E', bg: 'rgba(62,207,142,.08)', badge: '분류됨' },
@@ -42,6 +43,9 @@ export function ExplainModal() {
           {naturalSize &&
             boxes.map((b, i) => {
               const style = TIER_STYLE[b.tier] ?? TIER_STYLE.ai_unverified
+              // 🟢 known 등급은 지식베이스 docs_url을 그대로 표시(설계 스펙 tier 표) — 화이트리스트
+              // 통과분만(KeyHelp.tsx의 docsUrl 처리와 동일한 방어적 패턴).
+              const docsUrl = b.tier === 'known' && isAllowedUrl(b.docs_url) ? b.docs_url : null
               return (
                 <div
                   key={i}
@@ -57,10 +61,21 @@ export function ExplainModal() {
                   }}
                 >
                   <span
-                    className="absolute -top-[18px] left-0 whitespace-nowrap rounded-[3px] px-[4px] text-[10px] font-semibold text-white"
+                    className="absolute -top-[18px] left-0 flex items-center gap-[4px] whitespace-nowrap rounded-[3px] px-[4px] text-[10px] font-semibold text-white"
                     style={{ background: style.border.split(' ')[2] }}
                   >
                     {b.label}
+                    {docsUrl && (
+                      <a
+                        href={docsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="공식 문서 열기"
+                        className="underline decoration-dotted underline-offset-2 text-white/90 hover:text-white"
+                      >
+                        문서
+                      </a>
+                    )}
                   </span>
                 </div>
               )

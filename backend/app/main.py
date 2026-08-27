@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import crypto, explain, ollama_client
@@ -190,9 +191,20 @@ async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageR
         raise HTTPException(status_code=422, detail="이미지가 너무 커요(15MB 제한)")
 
     try:
-        boxes = explain.explain_image(data, KB, OLLAMA_CONFIG)
+        # RapidOCR 추론 + Ollama HTTP 호출(최대 30s)은 동기 블로킹이라 이벤트 루프에서
+        # 직접 돌리면 그 사이 다른 요청(RUNTIME-1 SDK 큐 포함)이 전부 멈춘다 — 스레드풀로 위임.
+        boxes = await run_in_threadpool(explain.explain_image, data, KB, OLLAMA_CONFIG)
     except OcrUnavailableError as e:
         raise HTTPException(status_code=503, detail=str(e)) from None
+    except ollama_client.OllamaUnavailableError:
+        raise HTTPException(
+            status_code=503,
+            detail="로컬 LLM에 연결할 수 없어요 — Ollama가 실행 중인지 확인하세요",
+        ) from None
+    except Exception:
+        raise HTTPException(
+            status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+        ) from None
     return ExplainImageResponse(boxes=boxes)
 
 

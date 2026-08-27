@@ -14,7 +14,7 @@ from .classify.pipeline import analyze
 from .knowledge import KnowledgeBase
 from .models import AnalyzeRequest, ExplainBox
 from .ocr import run_ocr_lines
-from .ollama_client import OllamaConfig, OllamaUnavailableError
+from .ollama_client import OllamaConfig
 
 _UNKNOWN_LABEL = "알 수 없음"
 
@@ -60,14 +60,18 @@ def _parse_labels(raw: str) -> dict[int, str]:
 
 
 def _ask_ollama(config: OllamaConfig, unknown_lines: list[dict]) -> dict[int, str]:
+    """Ollama에게 미분류 줄 라벨을 요청한다.
+
+    연결 실패(OllamaUnavailableError)는 여기서 삼키지 않고 그대로 위로 전파한다 —
+    "Ollama가 아예 안 떠 있다"는 사실이 "모델이 이 줄을 모른다"는 것과 다른 문제이기
+    때문(설계 스펙 에러 처리 절 참고). 응답은 받았지만 내용이 JSON이 아닌 경우는
+    _parse_labels()가 별도로 처리하며, 그 경우는 그대로 "알 수 없음"으로 낮춘다.
+    """
     if not unknown_lines:
         return {}
     numbered = "\n".join(f"[{i}] {line['text']}" for i, line in enumerate(unknown_lines))
     prompt = _PROMPT_TEMPLATE.format(unknown=_UNKNOWN_LABEL, lines=numbered)
-    try:
-        raw = ollama_client.generate(config, prompt)
-    except OllamaUnavailableError:
-        return {}
+    raw = ollama_client.generate(config, prompt)
     return _parse_labels(raw)
 
 

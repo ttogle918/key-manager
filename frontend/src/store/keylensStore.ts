@@ -651,6 +651,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
           if (!get().analyzing) return
           const { results, unknowns } = toAnalysisResults(resp.items, memo, project)
           set({ analyzing: false, analyzed: true, results, unknowns })
+          // 부팅 후 Ollama가 뒤늦게 켜졌을 수 있으니 실제 스크린샷 분석마다 가용 여부를 다시 확인
+          // (버튼이 부팅 시 확인 결과에 영구히 묶이지 않도록 — fire-and-forget, 폴링 아님).
+          void get().checkExplainAvailable()
         } catch (e) {
           if (!get().analyzing) return
           if (!(e instanceof ApiError)) console.error('[KeyLens] 이미지 분석 요청 실패:', e)
