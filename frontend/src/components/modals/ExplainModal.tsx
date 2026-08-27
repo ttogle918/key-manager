@@ -18,6 +18,8 @@ export function ExplainModal() {
   const boxes = useKeylens((s) => s.explainBoxes)
   const image = useKeylens((s) => s.analyzedImage)
   const close = useKeylens((s) => s.closeExplain)
+  const approvedIndices = useKeylens((s) => s.explainApprovedIndices)
+  const approveDiscovery = useKeylens((s) => s.approveDiscovery)
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
 
   return (
@@ -84,6 +86,22 @@ export function ExplainModal() {
                       >
                         문서
                       </a>
+                    )}
+                    {b.tier !== 'known' && !approvedIndices.has(i) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void approveDiscovery(i)
+                        }}
+                        title="이 추정을 저장해 다음번에 재검색 없이 재사용"
+                        className="cursor-pointer rounded-[2px] bg-white/20 px-[3px] text-white hover:bg-white/35"
+                      >
+                        저장
+                      </button>
+                    )}
+                    {b.tier !== 'known' && approvedIndices.has(i) && (
+                      <span className="text-white/70">✓ 저장됨</span>
                     )}
                   </span>
                 </div>
