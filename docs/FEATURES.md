@@ -246,7 +246,7 @@ KeyLens 앱 자체가 서버를 운영하지 않고, 이 기능을 쓰고 싶은
 
 - **CI**(GitHub Actions): push/PR마다 백엔드 pytest · 프론트 lint/test/build ·
   reuse lint + 카피레프트 검사 · 취약점(pip-audit/npm audit)
-- 전 소스 SPDX 헤더(REUSE 3.3 준수, 218/218) · [SBOM](./SBOM.md) ·
+- 전 소스 SPDX 헤더(REUSE 3.3 준수, 222/222) · [SBOM](./SBOM.md) ·
   [THIRD-PARTY-NOTICES](../THIRD-PARTY-NOTICES.md) · [SECURITY.md](../SECURITY.md)
 - 데모는 전부 더미 값(`docs/demo/`) — 골든 픽스처로 분류 계약 회귀 검증
 

@@ -523,4 +523,9 @@ def reset_vault(conn: sqlite3.Connection) -> None:
     # DELETE만으로는 SQLite가 지운 행의 바이트를 프리리스트에 남겨두므로(VACUUM 전까지
     # 평문 메타데이터가 파일에서 포렌식 복구 가능) — 커밋된 트랜잭션 밖에서 VACUUM으로 실제
     # 페이지를 정리한다. DELETE가 실패해 롤백된 경로에서는 실행되지 않는다.
-    conn.execute("VACUUM")
+    # VACUUM 자체가 실패해도(디스크 부족 등) 이미 커밋된 삭제는 되돌리지 않는다 — 호출자에게
+    # "리셋 실패"로 잘못 보고되면 안 되므로(실제로는 데이터가 이미 지워졌음) 조용히 넘어간다.
+    try:
+        conn.execute("VACUUM")
+    except sqlite3.Error:
+        pass
