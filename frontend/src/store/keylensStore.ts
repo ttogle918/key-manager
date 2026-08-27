@@ -22,7 +22,7 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
-import { envText, jwtExp, passwordPolicyError, today } from '@/lib/format'
+import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
@@ -131,6 +131,10 @@ interface KeylensState {
   vault: VaultItem[]
   search: string
   projFilter: string
+  /** 프로젝트 아코디언 수동 펼침/접힘 오버라이드(이름→열림 여부). 없으면 기본값(가장 최근=열림). */
+  projectOpenOverrides: Record<string, boolean>
+  /** 상단 서비스 로고 태그 다중 선택 필터(비어있으면 전체 서비스). */
+  serviceTagFilter: Set<string>
   revealed: Record<string, boolean>
   expandedId: string | null
 
@@ -236,6 +240,11 @@ interface KeylensState {
 
   setSearch: (v: string) => void
   setProjFilter: (v: string) => void
+  /** 드롭다운에서 프로젝트 선택 — 그 섹션을 강제로 펼친다(스크롤은 VaultScreen이 처리). */
+  expandProject: (name: string) => void
+  toggleProjectSection: (name: string, currentlyOpen: boolean) => void
+  toggleServiceTag: (name: string) => void
+  clearServiceTagFilter: () => void
   reveal: (id: string) => void
   copy: (text: string, label: string) => void
   setVaultField: (id: string, key: keyof VaultItem, v: unknown) => void
@@ -254,7 +263,10 @@ interface KeylensState {
   closeEnv: () => void
   envCopyAll: () => void
   envDownload: () => void
-  envCopyGroup: (name: string) => void
+  /** 한 프로젝트 섹션 안의 특정 서비스만 .env로 복사(project+service 둘 다 일치하는 항목만). */
+  envCopyGroup: (project: string, service: string) => void
+  /** 한 프로젝트의 모든 서비스를 합쳐 .env로 복사. */
+  envCopyProject: (project: string) => void
   /** .env 모달 미리보기용 — 선택 항목을 복호화해 반환(모달 렌더링 전용, 클립보드/다운로드와 별개 호출). */
   loadEnvPreview: () => Promise<VaultItem[]>
 
@@ -344,6 +356,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     vault: [],
     search: '',
     projFilter: '',
+    projectOpenOverrides: {},
+    serviceTagFilter: new Set(),
     revealed: {},
     expandedId: null,
     deleteTarget: null,
@@ -906,6 +920,25 @@ export const useKeylens = create<KeylensState>((set, get) => {
     // ── 보관함 ──
     setSearch: (v) => set({ search: v }),
     setProjFilter: (v) => set({ projFilter: v }),
+    expandProject: (name) =>
+      set((s) => ({
+        projFilter: name,
+        projectOpenOverrides: name
+          ? { ...s.projectOpenOverrides, [name]: true }
+          : s.projectOpenOverrides,
+      })),
+    toggleProjectSection: (name, currentlyOpen) =>
+      set((s) => ({
+        projectOpenOverrides: { ...s.projectOpenOverrides, [name]: !currentlyOpen },
+      })),
+    toggleServiceTag: (name) =>
+      set((s) => {
+        const next = new Set(s.serviceTagFilter)
+        if (next.has(name)) next.delete(name)
+        else next.add(name)
+        return { serviceTagFilter: next }
+      }),
+    clearServiceTagFilter: () => set({ serviceTagFilter: new Set() }),
     reveal: async (id) => {
       if (get().locked) {
         get().showToast('잠금 상태에서는 값을 볼 수 없어요 — 먼저 잠금을 해제하세요')
@@ -1104,9 +1137,20 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('다운로드에 실패했어요')
       }
     },
-    envCopyGroup: async (name) => {
-      const items = await withValues(envItems().filter((i) => i.service === name))
-      get().copy(envText(items), name + ' 그룹 .env 복사됨')
+    // vault를 직접 필터링한다(envItems()를 재사용하지 않음) — envItems()는 projFilter(드롭다운으로
+    // 마지막에 이동한 프로젝트)로 스코프되는데, 이 두 버튼은 지금 렌더링 중인 프로젝트/서비스 섹션
+    // 기준이라 서로 다른 개념이다. envItems()를 재사용하면 두 스코프가 어긋날 때(예: A 섹션에서
+    // 복사했는데 projFilter는 예전에 이동한 B로 남아있는 경우) 교집합이 비어 조용히 빈 .env가
+    // 복사되는 버그가 생긴다.
+    envCopyGroup: async (project, service) => {
+      const items = await withValues(
+        get().vault.filter((i) => projectKey(i) === project && i.service === service),
+      )
+      get().copy(envText(items), `${project} · ${service} .env 복사됨`)
+    },
+    envCopyProject: async (project) => {
+      const items = await withValues(get().vault.filter((i) => projectKey(i) === project))
+      get().copy(envText(items), project + ' 프로젝트 .env 복사됨')
     },
     loadEnvPreview: () => withValues(envItems()),
 
@@ -1223,6 +1267,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         locked: false,
         search: '',
         projFilter: '',
+        projectOpenOverrides: {},
+        serviceTagFilter: new Set(),
         revealed: {},
         expandedId: null,
         attachedImage: null,
