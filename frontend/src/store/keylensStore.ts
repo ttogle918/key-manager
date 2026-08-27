@@ -1362,6 +1362,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
         inputMode: 'auto',
         explainBoxes: [],
+        explainApprovedIndices: new Set(),
         explainOpen: false,
         sourceLabel: '',
         emailSyncOpen: false,
