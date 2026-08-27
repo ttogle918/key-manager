@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -250,6 +251,11 @@ def vault_lock() -> VaultStatus:
     return VaultStatus(**VAULT.status())
 
 
+def _today() -> str:
+    """프로젝트 미지정 저장의 기본값(UTC) — keylens-env 컬렉션명으로도 그대로 쓰일 수 있다."""
+    return datetime.now(timezone.utc).date().isoformat()
+
+
 @app.get("/vault/entries", response_model=list[VaultEntryMeta])
 def vault_list() -> list[VaultEntryMeta]:
     return [VaultEntryMeta(**m) for m in VAULT.list_entries()]
@@ -257,10 +263,11 @@ def vault_list() -> list[VaultEntryMeta]:
 
 @app.post("/vault/entries", response_model=VaultEntryMeta)
 def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
+    project = (body.project or "").strip() or _today()
     try:
         eid = VAULT.add_entry(
             service=body.service, kind=body.kind, official_name=body.official_name,
-            value=body.value, label=body.label, project=body.project, memo=body.memo,
+            value=body.value, label=body.label, project=project, memo=body.memo,
             expires_at=body.expires_at,
         )
     except VaultLocked:
@@ -270,9 +277,15 @@ def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
 
 @app.patch("/vault/entries/{entry_id}", response_model=VaultEntryMeta)
 def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
+    project = (body.project or "").strip()
+    if not project:
+        # project를 비우면 "오늘"이 아니라 그 항목의 등록일로 되돌린다 — 수정 행위 자체가
+        # 그룹핑 날짜를 오늘로 밀어버리면 안 되므로.
+        current = next((m for m in VAULT.list_entries() if m["id"] == entry_id), None)
+        project = current["created_at"][:10] if current else _today()
     try:
         ok = VAULT.update_meta(
-            entry_id, project=body.project, memo=body.memo, expires_at=body.expires_at
+            entry_id, project=project, memo=body.memo, expires_at=body.expires_at
         )
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None

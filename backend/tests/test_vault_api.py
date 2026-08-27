@@ -139,6 +139,32 @@ def test_add_stores_project_memo(vault):
     assert meta.project == "블로그" and meta.memo == "6월 발급"
 
 
+def test_add_without_project_defaults_to_today(vault, monkeypatch):
+    """프로젝트 미지정 저장 — 등록일(UTC)이 실제 project 값으로 채워진다(keylens-env 컬렉션명으로도 씀)."""
+    monkeypatch.setattr(main, "_today", lambda: "2026-08-27")
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
+    assert meta.project == "2026-08-27"
+
+
+def test_add_with_blank_project_also_defaults_to_today(vault, monkeypatch):
+    """공백만 있는 project도 미지정과 동일하게 취급."""
+    monkeypatch.setattr(main, "_today", lambda: "2026-08-27")
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY, project="   "))
+    assert meta.project == "2026-08-27"
+
+
+def test_update_clearing_project_falls_back_to_created_at_date(vault):
+    """PATCH로 project를 비우면 '오늘'이 아니라 그 항목의 등록일(created_at)로 되돌아간다."""
+    main.vault_init(VaultInit(password=MASTER))
+    meta = main.vault_add(
+        VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY, project="블로그")
+    )
+    updated = main.vault_update(meta.id, VaultEntryUpdate(project=""))
+    assert updated.project == meta.created_at[:10]
+
+
 def test_update_meta(vault):
     main.vault_init(VaultInit(password=MASTER))
     meta = main.vault_add(VaultEntryCreate(official_name="OPENAI_API_KEY", value=DUMMY))
