@@ -135,7 +135,7 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 | tesseract.js WASM core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | ⚠️ 레거시(브라우저 OCR, 현재 미사용 경로) |
 | Pretendard (Variable) | 1.3.9 | OFL-1.1 | https://github.com/orioncactus/pretendard | 본문 폰트(로컬 벤더링) |
 | JetBrains Mono | 2.304 | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono | 값·키 모노 폰트(로컬 벤더링) |
-| simple-icons | 16.28.0 | CC0-1.0 | https://github.com/simple-icons/simple-icons | 서비스 로고 SVG 6종(Notion·Kakao·GCP·Ollama·GitHub·Stripe) — devDependency, `frontend/scripts/vendor-logos.mjs`가 수정 없이 `frontend/src/assets/logos/*.svg`로 로컬 벤더링해 빌드 산출물에 포함(런타임 코드는 import하지 않음) |
+| simple-icons | 16.28.0 | CC0-1.0 | https://github.com/simple-icons/simple-icons | 서비스 로고 SVG 6종(Notion·Kakao·GCP·Ollama·GitHub·Stripe) — devDependency, `frontend/scripts/vendor-logos.mjs`가 수정 없이 `frontend/src/assets/logos/*.svg`로 로컬 벤더링해 빌드 산출물에 포함(npm 패키지 `simple-icons` 자체는 런타임에 import하지 않음 — 벤더링된 SVG 파일만 로드) |
 
 > 폰트는 **CDN 대신 빌드 시 로컬 벤더링**(`frontend/scripts/vendor-fonts.mjs` → `public/fonts/`, same-origin 서빙)으로
 > 런타임 외부 요청 0(local-first). OFL-1.1 은 permissive(임베드·배포 허용, 폰트 단독 판매 금지·예약명칭 유지).
