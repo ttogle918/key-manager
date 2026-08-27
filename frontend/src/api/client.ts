@@ -281,3 +281,27 @@ export async function explainImageApi(image: Blob, timeoutMs = 45000): Promise<E
     clearTimeout(timer)
   }
 }
+
+/** POST /explain/discoveries — 사용자가 승인한 AI 추정 1건을 로컬 발견 캐시에 저장. */
+export async function explainDiscoveryApi(box: ExplainBox, timeoutMs = 10000): Promise<void> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API_BASE}/explain/discoveries`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: box.text, label: box.label, tier: box.tier, docs_url: box.docs_url ?? null,
+      }),
+      signal: ctrl.signal,
+    })
+    if (!res.ok) {
+      throw new ApiError(`저장하지 못했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`)
+    }
+  } catch (e) {
+    if (e instanceof ApiError) throw e
+    throw new ApiError('저장하지 못했어요 — 잠시 후 다시 시도해 보세요.')
+  } finally {
+    clearTimeout(timer)
+  }
+}
