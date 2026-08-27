@@ -7,6 +7,9 @@ SPDX-License-Identifier: MIT
 
 > 대회 제출(2026-08-27) 시점에는 미구현. `docs/RESULT_REPORT.md` §8·`docs/RESULT_REPORT_제출양식.md`
 > 로드맵 ⑤에 정직하게 명시해뒀다. 아래 프롬프트를 그대로 붙여넣어 착수한다.
+>
+> **구현 완료(2026-08-27)** — `docs/superpowers/specs/2026-08-27-vault-full-reset-design.md`(설계)·
+> `docs/superpowers/plans/2026-08-27-vault-full-reset.md`(구현 계획) 참고.
 
 ```
 교육·공용 PC 시나리오를 위한 "금고 원클릭 완전 초기화" 기능을 구현하고 싶어.
