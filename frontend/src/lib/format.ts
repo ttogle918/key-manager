@@ -3,6 +3,15 @@
 import { SERVICE_ORDER } from '@/data/services'
 import type { VaultItem } from '@/types'
 
+/**
+ * 보관함 그룹핑용 프로젝트 키. project 미지정 항목은 등록일로 묶는다 — 백엔드가 새 저장 시
+ * 실제 project 값을 등록일로 채워주지만(main.vault_add), 마이그레이션하지 않은 기존 항목은
+ * 여전히 project가 빈 문자열일 수 있어 화면에서도 동일 규칙으로 방어한다.
+ */
+export function projectKey(it: VaultItem): string {
+  return it.project || it.addedAt
+}
+
 /** 오늘 날짜(YYYY-MM-DD, 로컬). */
 export function today(): string {
   const d = new Date()
