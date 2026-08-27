@@ -46,7 +46,10 @@ def search(config: TavilyConfig, query: str, max_results: int = 3, timeout: floa
     try:
         with urllib.request.urlopen(req, timeout=timeout) as res:
             payload = json.loads(res.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, json.JSONDecodeError):
+    except (urllib.error.URLError, OSError, json.JSONDecodeError, UnicodeDecodeError):
+        # UnicodeDecodeError: 응답 본문이 UTF-8이 아닐 때(예: 프록시/방화벽이 끼워 넣은 에러
+        # 페이지). search()는 절대 예외를 던지지 않는다는 계약이라 json.JSONDecodeError 옆에
+        # 명시적으로 같이 잡아야 한다 — ValueError의 서로 다른 서브클래스라 하나만 잡으면 샌다.
         return []
     if not isinstance(payload, dict):
         return []

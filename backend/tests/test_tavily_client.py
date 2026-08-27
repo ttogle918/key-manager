@@ -87,3 +87,45 @@ def test_search_returns_empty_list_when_results_key_missing(monkeypatch):
         "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(payload)
     )
     assert search(CONFIG, "아무 쿼리") == []
+
+
+def test_search_returns_empty_list_on_non_utf8_response(monkeypatch):
+    """프록시/방화벽이 끼워 넣은 에러 페이지 등 UTF-8이 아닌 응답 본문도 예외 없이 빈 리스트."""
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(b"\xff\xfe\x00\x01")
+    )
+    assert search(CONFIG, "아무 쿼리") == []
+
+
+def test_search_returns_empty_list_when_results_not_a_list(monkeypatch):
+    payload = json.dumps({"results": "oops"}).encode("utf-8")
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(payload)
+    )
+    assert search(CONFIG, "아무 쿼리") == []
+
+
+def test_search_returns_empty_list_when_top_level_not_a_dict(monkeypatch):
+    payload = json.dumps([1, 2, 3]).encode("utf-8")
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(payload)
+    )
+    assert search(CONFIG, "아무 쿼리") == []
+
+
+def test_search_skips_malformed_entries_in_results_list(monkeypatch):
+    payload = json.dumps(
+        {
+            "results": [
+                {"title": "정상 결과", "url": "https://example.com", "content": "..."},
+                "이건 dict가 아님",
+                {"title": "url 없음"},
+                None,
+            ]
+        }
+    ).encode("utf-8")
+    monkeypatch.setattr(
+        "urllib.request.urlopen", lambda req, timeout=None: _FakeResponse(payload)
+    )
+    results = search(CONFIG, "아무 쿼리")
+    assert results == [{"title": "정상 결과", "url": "https://example.com", "content": "..."}]
