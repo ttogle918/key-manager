@@ -128,6 +128,26 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
   `public/fonts/`로 받아 same-origin 서빙한다(외부 요청 0). 폰트 파일은 저장소에 커밋하지 않는다(.gitignore).
 > OFL 전문: https://openfontlicense.org/
 
+## 서비스 로고 아이콘 (frontend, 보관함 서비스 태그)
+
+### simple-icons
+- 버전: 16.28.0
+- 라이선스: **CC0-1.0**(저작권 전면 포기) — 단, 라이선스 본문 4조 1항에 "상표권·특허권은 이 문서로
+  포기·양도되지 않는다"고 명시. 즉 SVG 아이콘의 **저작권만 CC0**이고, Notion·GCP·OpenAI 등 각 로고가
+  나타내는 **브랜드 상표권은 여전히 해당 회사 소유**다.
+- 출처: https://github.com/simple-icons/simple-icons (npm `simple-icons@16.28.0`)
+- 용도: 보관함 화면 상단 "서비스별 필터" 태그의 아이콘(6종: Notion·Kakao·GCP·Ollama·GitHub·Stripe).
+  원본 SVG를 수정 없이 `frontend/scripts/vendor-logos.mjs`로 복사해 `frontend/src/assets/logos/*.svg`에
+  커밋(빌드타임 devDependency일 뿐 런타임 코드는 import하지 않음 — 런타임 의존성 0).
+- **상표 사용 근거(nominative fair use)**: "이 자격증명이 어느 서비스 것인지" 식별하는 지시적 용도로만
+  쓴다(로고를 변형·재판매하거나 KeyLens가 해당 회사와 제휴한 것처럼 표시하지 않음). 비밀번호 관리자·
+  OAuth 로그인 화면 등에서 서비스 식별용으로 원본 브랜드 마크를 그대로 보여주는 건 업계 보편적 관행이다.
+- **OpenAI·Slack·AWS는 이 세트에 없다** — simple-icons가 브랜드 요청으로 해당 아이콘을 완전히
+  제거했다(`node_modules/simple-icons/DISCLAIMER.md`의 "Removal of Brands" 참고, `icons/` 폴더에
+  파일 자체가 없음 — 다른 slug로 남아있지도 않음). 이 세 서비스는 KeyLens에서 로고 없이 기존 컬러
+  이니셜 타일(`SVC_META` 폴백)을 그대로 쓴다 — 별도 대응 불필요, 코드가 이미 그렇게 폴백하도록
+  설계돼 있다(Task 5).
+
 ## 백엔드 런타임 (FastAPI 로컬 서버)
 
 | 패키지 | 버전 | 라이선스 | 출처 |
