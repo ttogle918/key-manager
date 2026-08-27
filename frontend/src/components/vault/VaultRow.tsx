@@ -46,11 +46,6 @@ export function VaultRow({ it }: { it: VaultItem }) {
         {/* 종류 + 변수명 */}
         <div className="min-w-0">
           <div className="flex items-center gap-[6px] text-[11.5px] text-muted-2">
-            {it.project && (
-              <span className="max-w-[110px] overflow-hidden text-ellipsis whitespace-nowrap rounded-[4px] border border-[rgba(143,163,191,.22)] bg-[rgba(143,163,191,.1)] px-[6px] py-px text-[10px] font-semibold text-blue-tag">
-                {it.project}
-              </span>
-            )}
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.type}</span>
             {cur?.exposure === 'secret' && <ExposureBadge exposure="secret" />}
           </div>
