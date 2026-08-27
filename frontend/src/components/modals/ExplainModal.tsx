@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { useKeylens } from '@/store/keylensStore'
-import { isAllowedUrl } from '@/data/services'
+import { isAllowedUrl, isSafeExternalUrl } from '@/data/services'
 
 const TIER_STYLE: Record<string, { border: string; bg: string; badge: string }> = {
   known: { border: '2px solid #3ECF8E', bg: 'rgba(62,207,142,.08)', badge: '분류됨' },
@@ -44,8 +44,17 @@ export function ExplainModal() {
             boxes.map((b, i) => {
               const style = TIER_STYLE[b.tier] ?? TIER_STYLE.ai_unverified
               // 🟢 known 등급은 지식베이스 docs_url을 그대로 표시(설계 스펙 tier 표) — 화이트리스트
-              // 통과분만(KeyHelp.tsx의 docsUrl 처리와 동일한 방어적 패턴).
-              const docsUrl = b.tier === 'known' && isAllowedUrl(b.docs_url) ? b.docs_url : null
+              // 통과분만(KeyHelp.tsx의 docsUrl 처리와 동일한 방어적 패턴). ai_verified는 Tavily
+              // 검색으로 확인된 링크라 도메인 화이트리스트 대상이 아니다(설계 판단 A) — https
+              // 프로토콜만 검증한다.
+              const docsUrl =
+                b.tier === 'known'
+                  ? isAllowedUrl(b.docs_url)
+                    ? b.docs_url
+                    : null
+                  : isSafeExternalUrl(b.docs_url)
+                    ? b.docs_url
+                    : null
               return (
                 <div
                   key={i}

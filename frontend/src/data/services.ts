@@ -228,6 +228,18 @@ export function isAllowedUrl(u: string | null | undefined): boolean {
   }
 }
 
+/** https 프로토콜만 검증(도메인 제한 없음) — Tavily 검색으로 확인된 링크처럼 신뢰 경계가
+ * 도메인 화이트리스트가 아니라 LLM 재검증인 경우에 쓴다(설계 판단 A). javascript: 등
+ * 위험한 스킴만 막고, 지식베이스에 없는 새 서비스의 공식 문서 도메인도 통과시킨다. */
+export function isSafeExternalUrl(u: string | null | undefined): boolean {
+  if (!u) return false
+  try {
+    return new URL(u).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 /** 플레이스홀더가 남은 쿼리 파라미터를 제거(치환 못 하면 깨진 링크 대신 기본 콘솔로). */
 function stripPlaceholders(u: string): string {
   try {
