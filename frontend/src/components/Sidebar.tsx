@@ -39,10 +39,19 @@ export function Sidebar() {
         <div className="flex size-7 flex-none items-center justify-center rounded-lg [background:linear-gradient(135deg,#3ECF8E,#28A671)]">
           <KeyholeMark />
         </div>
-        <div>
+        <div className="flex-1">
           <div className="text-[14.5px] font-bold tracking-[-.01em]">KeyLens</div>
           <div className="mt-px text-[10.5px] text-faint-2">로컬 자격증명 렌즈</div>
         </div>
+        <a
+          href="https://ttogle918.github.io/key-manager/onboarding-guide.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="시작 가이드 열기"
+          className="flex size-[18px] flex-none cursor-pointer items-center justify-center rounded-full border border-border text-[10.5px] font-bold text-faint-2 no-underline hover:border-border-strong hover:text-fg-soft"
+        >
+          i
+        </a>
       </div>
 
       {/* 내비게이션 */}
