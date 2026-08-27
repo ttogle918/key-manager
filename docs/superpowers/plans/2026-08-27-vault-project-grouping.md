@@ -8,7 +8,9 @@
 **Architecture:** `VaultItem.project`(이미 존재하는 필드)를 1차 그룹 키로 쓴다. 프로젝트 미지정 저장은
 백엔드가 등록일(UTC `YYYY-MM-DD`)을 실제 `project` 값으로 채운다. 프론트는 `projectKey(it) =
 it.project || it.addedAt` 헬퍼로 그룹핑·필터·`.env` 복사를 전부 일관되게 계산한다. 서비스 로고는
-simple-icons(CC0) SVG 9개를 로컬에 커밋해 정적 자산으로 쓴다(런타임 네트워크 요청 없음).
+simple-icons(CC0) SVG 6개를 로컬에 커밋해 정적 자산으로 쓴다(런타임 네트워크 요청 없음). 나머지
+3종(OpenAI·Slack·AWS)은 simple-icons에서 상표권 이슈로 제거되어 있어 로고 없이 기존 폴백 타일을 쓴다
+— Task 4 착수 중 실제 npm 설치로 확인됨, 설계 스펙 작성 당시의 조사 오류.
 
 **Tech Stack:** FastAPI(백엔드), React + TypeScript + Zustand + Tailwind(프론트), simple-icons(빌드
 타임 전용 devDependency, 런타임 코드는 import하지 않음).
@@ -566,13 +568,15 @@ EOF
 **Files:**
 - Modify: `frontend/package.json` (devDependencies·scripts)
 - Create: `frontend/scripts/vendor-logos.mjs`
-- Create: `frontend/src/assets/logos/{notion,kakao,gcp,openai,ollama,github,aws,slack,stripe}.svg`
+- Create: `frontend/src/assets/logos/{notion,kakao,gcp,ollama,github,stripe}.svg`
   (스크립트 실행 결과물 — 커밋 대상)
 - Modify: `THIRD-PARTY-NOTICES.md`
 
 **Interfaces:**
 - Consumes: 없음.
-- Produces: `frontend/src/assets/logos/*.svg` 9개 파일(Task 5에서 import).
+- Produces: `frontend/src/assets/logos/*.svg` 6개 파일(Task 5에서 import). OpenAI·Slack·AWS는
+  simple-icons에 아이콘 자체가 없어(상표권 이슈로 제거됨) 로고 파일을 만들지 않는다 — Task 5/7에서
+  이 세 서비스는 자동으로 기존 컬러 이니셜 타일 폴백을 쓴다.
 
 - [ ] **Step 1: `simple-icons` devDependency 추가**
 
@@ -615,10 +619,14 @@ Expected: `node_modules/simple-icons`가 생기고 `package-lock.json`에 `simpl
 // SPDX-License-Identifier: MIT
 /**
  * simple-icons(CC0-1.0 — 저작권은 포기되지만 상표권은 각 브랜드사 소유, THIRD-PARTY-NOTICES.md
- * 참고)에서 KeyLens가 쓰는 9개 서비스 로고만 뽑아 src/assets/logos/ 에 커밋 대상 정적 파일로
+ * 참고)에서 KeyLens가 쓰는 6개 서비스 로고만 뽑아 src/assets/logos/ 에 커밋 대상 정적 파일로
  * 복사한다. 런타임 코드는 simple-icons를 import하지 않는다(devDependency 전용) — 결과 SVG
- * 파일 9개(수 KB)만 저장소에 커밋하고, tesseract 모델처럼 매 빌드마다 다시 뽑을 필요는 없다.
+ * 파일 6개(수 KB)만 저장소에 커밋하고, tesseract 모델처럼 매 빌드마다 다시 뽑을 필요는 없다.
  * 새 서비스 로고가 필요해지면 LOGOS에 한 줄 추가 후 수동 실행: npm run vendor:logos
+ *
+ * OpenAI·Slack·AWS는 simple-icons에 아이콘 자체가 없다(브랜드 요청으로 제거됨 —
+ * node_modules/simple-icons/DISCLAIMER.md의 "Removal of Brands" 참고). 이 세 서비스는
+ * KeyLens에서 로고 없이 기존 컬러 이니셜 타일 폴백을 쓴다(services.ts, 자동).
  */
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -628,16 +636,14 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const src = join(root, 'node_modules', 'simple-icons', 'icons')
 const dst = join(root, 'src', 'assets', 'logos')
 
-// KeyLens 서비스 id(backend/knowledge/*.yaml 의 `service:`) → simple-icons slug
+// KeyLens 서비스 id(backend/knowledge/*.yaml 의 `service:`) → simple-icons slug.
+// openai/aws/slack은 simple-icons에 없어(브랜드 요청 제거) 의도적으로 뺐다 — 폴백 타일 사용.
 const LOGOS = {
   notion: 'notion',
   kakao: 'kakao',
   gcp: 'googlecloud',
-  openai: 'openai',
   ollama: 'ollama',
   github: 'github',
-  aws: 'amazonaws',
-  slack: 'slack',
   stripe: 'stripe',
 }
 
@@ -657,12 +663,11 @@ for (const [id, slug] of Object.entries(LOGOS)) {
 console.log(`[vendor-logos] ${Object.keys(LOGOS).length}개 로고 → src/assets/logos/`)
 ```
 
-- [ ] **Step 3: 실행해서 실제로 9개가 뽑히는지 확인**
+- [ ] **Step 3: 실행해서 실제로 6개가 뽑히는지 확인**
 
 Run (`frontend/`에서): `npm run vendor:logos`
-Expected: `[vendor-logos] 9개 로고 → src/assets/logos/` 출력, `frontend/src/assets/logos/`에
-`notion.svg, kakao.svg, gcp.svg, openai.svg, ollama.svg, github.svg, aws.svg, slack.svg,
-stripe.svg` 9개 파일 생성.
+Expected: `[vendor-logos] 6개 로고 → src/assets/logos/` 출력, `frontend/src/assets/logos/`에
+`notion.svg, kakao.svg, gcp.svg, ollama.svg, github.svg, stripe.svg` 6개 파일 생성.
 
 만약 `icons/googlecloud.svg 없음` 같은 에러가 나면 simple-icons 버전이 바뀌어 slug가 달라진 것 —
 `node_modules/simple-icons/icons/`를 직접 훑어(`ls node_modules/simple-icons/icons | grep -i cloud`
@@ -691,13 +696,17 @@ stripe.svg` 9개 파일 생성.
   포기·양도되지 않는다"고 명시. 즉 SVG 아이콘의 **저작권만 CC0**이고, Notion·GCP·OpenAI 등 각 로고가
   나타내는 **브랜드 상표권은 여전히 해당 회사 소유**다.
 - 출처: https://github.com/simple-icons/simple-icons (npm `simple-icons@16.28.0`)
-- 용도: 보관함 화면 상단 "서비스별 필터" 태그의 아이콘(9종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·
-  AWS·Slack·Stripe). 원본 SVG를 수정 없이 `frontend/scripts/vendor-logos.mjs`로 복사해
-  `frontend/src/assets/logos/*.svg`에 커밋(빌드타임 devDependency일 뿐 런타임 코드는 import하지 않음
-  — 런타임 의존성 0).
+- 용도: 보관함 화면 상단 "서비스별 필터" 태그의 아이콘(6종: Notion·Kakao·GCP·Ollama·GitHub·Stripe).
+  원본 SVG를 수정 없이 `frontend/scripts/vendor-logos.mjs`로 복사해 `frontend/src/assets/logos/*.svg`에
+  커밋(빌드타임 devDependency일 뿐 런타임 코드는 import하지 않음 — 런타임 의존성 0).
 - **상표 사용 근거(nominative fair use)**: "이 자격증명이 어느 서비스 것인지" 식별하는 지시적 용도로만
   쓴다(로고를 변형·재판매하거나 KeyLens가 해당 회사와 제휴한 것처럼 표시하지 않음). 비밀번호 관리자·
   OAuth 로그인 화면 등에서 서비스 식별용으로 원본 브랜드 마크를 그대로 보여주는 건 업계 보편적 관행이다.
+- **OpenAI·Slack·AWS는 이 세트에 없다** — simple-icons가 브랜드 요청으로 해당 아이콘을 완전히
+  제거했다(`node_modules/simple-icons/DISCLAIMER.md`의 "Removal of Brands" 참고, `icons/` 폴더에
+  파일 자체가 없음 — 다른 slug로 남아있지도 않음). 이 세 서비스는 KeyLens에서 로고 없이 기존 컬러
+  이니셜 타일(`SVC_META` 폴백)을 그대로 쓴다 — 별도 대응 불필요, 코드가 이미 그렇게 폴백하도록
+  설계돼 있다(Task 5).
 
 ## 백엔드 런타임 (FastAPI 로컬 서버)
 ```
@@ -708,12 +717,13 @@ stripe.svg` 9개 파일 생성.
 git add frontend/package.json frontend/package-lock.json frontend/scripts/vendor-logos.mjs \
   frontend/src/assets/logos THIRD-PARTY-NOTICES.md
 git commit -m "$(cat <<'EOF'
-feat(vault): 서비스 로고 SVG 9종 벤더링(simple-icons, CC0)
+feat(vault): 서비스 로고 SVG 6종 벤더링(simple-icons, CC0)
 
 simple-icons는 로고 파일을 한 번 뽑아오는 devDependency일 뿐 런타임
-코드는 import하지 않는다 — 결과 SVG 9개만 커밋. 저작권은 CC0지만
+코드는 import하지 않는다 — 결과 SVG 6개만 커밋. 저작권은 CC0지만
 상표권은 각사 소유라 THIRD-PARTY-NOTICES.md에 지시적 사용 근거를
-기록.
+기록. OpenAI·Slack·AWS는 simple-icons에 로고 자체가 없다(브랜드
+요청으로 제거됨) — 이 셋은 폴백 타일로 대신한다(Task 5).
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 EOF
@@ -729,9 +739,11 @@ EOF
 - Test: `frontend/src/data/services.test.ts`
 
 **Interfaces:**
-- Consumes: `frontend/src/assets/logos/*.svg`(Task 4).
+- Consumes: `frontend/src/assets/logos/*.svg`(Task 4, 6개뿐 — OpenAI·AWS·Slack은 없음).
 - Produces: `SVC_LOGO: Record<string, string>`(표시명 → 로고 URL, `SVC_META`와 동일한 라이브 바인딩
-  패턴) — 로고가 없는 서비스는 키 자체가 없다(Task 7에서 폴백 처리).
+  패턴) — 로고가 없는 서비스는 키 자체가 없다(Task 7에서 폴백 처리). AWS·Slack은 로고가 없는 대신
+  `CURATED_META`에 브랜드 색을 큐레이션해서(해시 기반 자동색 대신) 폴백 타일이라도 실제 브랜드
+  색으로 보이게 한다 — OpenAI는 이미 기존 `CURATED_META`에 브랜드색이 있어 손댈 필요 없음.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
@@ -739,12 +751,16 @@ EOF
 바로 앞에 추가:
 
 ```typescript
-  it('9종 커버 서비스(원래 5종 + 확장 4종)는 SVC_LOGO가 채워진다', () => {
+  it('로고가 있는 6종은 SVC_LOGO가 채워진다', () => {
     reg.applyKnowledge(PAYLOAD)
     expect(reg.SVC_LOGO['Notion']).toBeTruthy()
-    expect(reg.SVC_LOGO['OpenAI']).toBeTruthy()
     expect(reg.SVC_LOGO['GitHub']).toBeTruthy()
     expect(reg.SVC_LOGO['Stripe']).toBeTruthy()
+  })
+
+  it('OpenAI는 simple-icons에 로고가 없어 SVC_LOGO 키가 생기지 않는다(폴백 타일 용도)', () => {
+    reg.applyKnowledge(PAYLOAD)
+    expect(reg.SVC_LOGO['OpenAI']).toBeUndefined()
   })
 
   it('로고가 없는 서비스는 SVC_LOGO에 키가 생기지 않는다(폴백 타일 용도)', () => {
@@ -759,14 +775,66 @@ EOF
     })
     expect(reg.SVC_LOGO['FooBar']).toBeUndefined()
   })
+
+  it('AWS·Slack은 로고가 없지만 SVC_META에 브랜드색이 큐레이션돼 있다(해시 자동색 아님)', () => {
+    reg.applyKnowledge({
+      services: [
+        {
+          service: 'aws',
+          display_name: 'AWS',
+          credentials: [cred('access_key_id', 'Access Key ID', 'AWS_ACCESS_KEY_ID')],
+        },
+        {
+          service: 'slack',
+          display_name: 'Slack',
+          credentials: [cred('bot_token', 'Bot Token', 'SLACK_BOT_TOKEN')],
+        },
+      ],
+    })
+    expect(reg.SVC_META['AWS']).toEqual({ tile: 'A', bg: '#FF9900', fg: '#161E2D' })
+    expect(reg.SVC_META['Slack']).toEqual({ tile: 'S', bg: '#4A154B', fg: '#FFFFFF' })
+    expect(reg.SVC_LOGO['AWS']).toBeUndefined()
+    expect(reg.SVC_LOGO['Slack']).toBeUndefined()
+  })
 ```
 
 - [ ] **Step 2: 테스트 실행 → 실패 확인**
 
 Run (`frontend/`에서): `npx vitest run src/data/services.test.ts`
-Expected: FAIL — `reg.SVC_LOGO` is undefined(export 자체가 없음)
+Expected: FAIL — `reg.SVC_LOGO` is undefined(export 자체가 없음), AWS·Slack 색상 케이스는
+`toEqual` 불일치(지금은 `autoMeta()` 해시색이 나옴)
 
-- [ ] **Step 3: `SVC_LOGO` 구현**
+- [ ] **Step 3: `CURATED_META`에 AWS·Slack 브랜드색 추가**
+
+`frontend/src/data/services.ts`의 기존 `CURATED_META` 정의:
+
+```typescript
+const CURATED_META: Record<string, SvcMeta> = {
+  notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
+  kakao: { tile: 'K', bg: '#F2D14B', fg: '#241D00' },
+  gcp: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
+  openai: { tile: 'O', bg: '#17B597', fg: '#03211B' },
+  ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
+}
+```
+
+다음으로 교체(로고 파일이 없는 AWS·Slack도 실제 브랜드색으로 — 해시 기반 자동색 대신):
+
+```typescript
+const CURATED_META: Record<string, SvcMeta> = {
+  notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
+  kakao: { tile: 'K', bg: '#F2D14B', fg: '#241D00' },
+  gcp: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
+  openai: { tile: 'O', bg: '#17B597', fg: '#03211B' },
+  ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
+  // simple-icons에 로고 파일이 없는(브랜드 요청으로 제거됨, Task 4 참고) 서비스 — 폴백 타일이라도
+  // 해시 기반 자동색(autoMeta) 대신 실제 브랜드 색을 쓴다.
+  aws: { tile: 'A', bg: '#FF9900', fg: '#161E2D' },
+  slack: { tile: 'S', bg: '#4A154B', fg: '#FFFFFF' },
+}
+```
+
+- [ ] **Step 4: `SVC_LOGO` 구현**
 
 `frontend/src/data/services.ts` 맨 위 import 블록(1-4번째 줄):
 
@@ -784,16 +852,17 @@ import type { Confidence, SvcMeta, TypeOption } from '@/types'
 // SPDX-License-Identifier: MIT
 import type { KnowledgeResponse } from '@/api/types'
 import type { Confidence, SvcMeta, TypeOption } from '@/types'
-import awsLogo from '@/assets/logos/aws.svg'
 import gcpLogo from '@/assets/logos/gcp.svg'
 import githubLogo from '@/assets/logos/github.svg'
 import kakaoLogo from '@/assets/logos/kakao.svg'
 import notionLogo from '@/assets/logos/notion.svg'
 import ollamaLogo from '@/assets/logos/ollama.svg'
-import openaiLogo from '@/assets/logos/openai.svg'
-import slackLogo from '@/assets/logos/slack.svg'
 import stripeLogo from '@/assets/logos/stripe.svg'
 ```
+
+(OpenAI·AWS·Slack은 import하지 않는다 — Task 4에서 확인된 대로 simple-icons에 해당 로고 파일이
+없다. `frontend/src/assets/logos/`에 `openai.svg`/`aws.svg`/`slack.svg`가 없는데 이 셋을 import하면
+빌드가 그 자리에서 깨진다.)
 
 `SERVICE_BY_ID` 정의(69-75번째 줄) 뒤, `CONSOLE_URL` 정의(78번째 줄) 앞에 추가:
 
@@ -803,25 +872,21 @@ export let SVC_LOGO: Record<string, string> = {
   Notion: notionLogo,
   Kakao: kakaoLogo,
   GCP: gcpLogo,
-  OpenAI: openaiLogo,
   Ollama: ollamaLogo,
 }
 ```
 
-`CURATED_META`/`CURATED_ORDER` 정의(86-95번째 줄) 사이, `CURATED_ORDER` 선언 뒤에 추가:
+`CURATED_META`/`CURATED_ORDER` 정의 사이, `CURATED_ORDER` 선언 뒤에 추가:
 
 ```typescript
-// 큐레이션 서비스 id → 로고(9종 전부 커버). CURATED_META와 달리 확장 4종(github/aws/slack/stripe)도
-// 로고는 있다 — 이 프로젝트가 CORE-4에서 이미 정식 지원하는 지식베이스 서비스라서.
+// 큐레이션 서비스 id → 로고. simple-icons에 실제 파일이 있는 6종만(OpenAI·AWS·Slack 제외 —
+// 위 CURATED_META에서 이 셋은 로고 대신 브랜드색 폴백 타일을 쓴다).
 const CURATED_LOGO: Record<string, string> = {
   notion: notionLogo,
   kakao: kakaoLogo,
   gcp: gcpLogo,
-  openai: openaiLogo,
   ollama: ollamaLogo,
   github: githubLogo,
-  aws: awsLogo,
-  slack: slackLogo,
   stripe: stripeLogo,
 }
 ```
@@ -859,21 +924,23 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
   SVC_LOGO = svcLogo
 ```
 
-- [ ] **Step 4: 테스트 실행 → 통과 확인**
+- [ ] **Step 5: 테스트 실행 → 통과 확인**
 
 Run: `npx vitest run src/data/services.test.ts`
 Expected: PASS(전부 — 기존 케이스 포함)
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 6: 커밋**
 
 ```bash
 git add frontend/src/data/services.ts frontend/src/data/services.test.ts
 git commit -m "$(cat <<'EOF'
 feat(vault): SVC_LOGO — 서비스 표시명→로고 SVG 라이브 바인딩
 
-CURATED_META와 같은 패턴으로 9종 커버. 로고 없는(=/knowledge로
-새로 추가된) 서비스는 키 자체가 안 생겨 컴포넌트가 자연히 폴백
-타일로 그린다.
+CURATED_META와 같은 패턴으로 로고 있는 6종을 커버. 로고 없는
+서비스는 SVC_LOGO 키가 안 생겨 컴포넌트가 자연히 폴백 타일로
+그린다. AWS·Slack은 simple-icons에 로고 파일 자체가 없어(브랜드
+요청 제거) CURATED_META에 실제 브랜드색을 큐레이션해 해시 기반
+자동색 대신 쓰게 했다.
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
 EOF
@@ -1327,9 +1394,10 @@ Expected: 넷 다 에러 없이 통과.
    여러 개를 동시에 펼쳐둘 수 있는지 확인.
 4. 검색창에 특정 변수명을 입력했을 때 접혀 있던 다른 프로젝트 섹션이 자동으로 펼쳐지는지, 검색어를
    지우면 원래(최근 프로젝트만 펼침) 상태로 돌아가는지 확인.
-5. 상단 서비스 로고 태그를 클릭 — 로고 이미지가 보이는지(9종 다 있으면 전부, 아니면 폴백 이니셜
-   타일이 보이는지), 여러 개를 동시에 선택했을 때 AND가 아니라 OR로(선택한 서비스들 전부) 걸러지는지
-   확인. 태그에 마우스를 올렸을 때 "Notion", "GCP" 같은 이름이 툴팁으로 뜨는지 확인.
+5. 상단 서비스 로고 태그를 클릭 — Notion·Kakao·GCP·Ollama·GitHub·Stripe는 실제 로고 이미지가,
+   OpenAI·AWS·Slack은 각 브랜드색 폴백 이니셜 타일(O/A/S)이 보이는지 확인. 여러 개를 동시에
+   선택했을 때 AND가 아니라 OR로(선택한 서비스들 전부) 걸러지는지 확인. 태그에 마우스를 올렸을 때
+   "Notion", "GCP", "AWS" 같은 이름이 툴팁으로 뜨는지 확인(로고든 폴백 타일이든 동일).
 6. "프로젝트로 이동" 드롭다운에서 프로젝트를 선택하면 그 섹션으로 스크롤되고 펼쳐지는지 확인.
 7. 프로젝트 섹션 헤더의 ".env 복사"를 눌러 클립보드에 그 프로젝트 전체가 복사되는지, 서비스 소그룹
    헤더의 ".env 복사"는 그 프로젝트의 그 서비스만 복사되는지 확인(다른 프로젝트/서비스 값이 섞여
