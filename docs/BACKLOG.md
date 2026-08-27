@@ -11,7 +11,7 @@ SPDX-License-Identifier: MIT
 
 ## 전제 — 아키텍처 & 스택 (전부 permissive 라이선스)
 
-- **형태**: 로컬 우선(local-first). 데이터는 사용자 기기에 **SQLite**로 암호화 저장. 외부 서버 없음(로컬 백엔드만).
+- **형태**: 로컬 우선(local-first). 데이터는 사용자 기기에 **SQLite**로 암호화 저장. 우리가 운영하는 외부 서버 없음(로컬 백엔드만) — 단 화면 설명의 Tavily 검색 확인·이메일 동기화(SYNC-2)는 사용자가 직접 켜야만 동작하는 옵트인 예외(자세한 건 `docs/AI_MODEL_DISCLOSURE.md` 2-3절).
 - **백엔드**: FastAPI (MIT) — 분류·OCR·암호화 로직
 - **프론트**: React + TypeScript (MIT)
 - **OCR**: Tesseract 또는 PaddleOCR (Apache-2.0) — ⚠️ 클라우드 OCR 대신 OSS 사용(라이선스·오프라인·프라이버시)

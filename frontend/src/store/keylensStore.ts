@@ -10,6 +10,7 @@ import {
   analyzeApi,
   analyzeImageApi,
   ApiError,
+  explainDiscoveryApi,
   explainImageApi,
   explainStatusApi,
   fetchKnowledge,
@@ -109,6 +110,8 @@ interface KeylensState {
   explainOpen: boolean
   explainLoading: boolean
   explainBoxes: ExplainBox[]
+  /** 이번 세션에 "저장" 승인한 박스의 인덱스(explainBoxes 배열 기준) — 중복 승인 방지용. */
+  explainApprovedIndices: Set<number>
 
   // 직접 입력 탭 — 자동 분류 없이 이름=값을 바로 선언(RUNTIME-1과 무관, UI 전용)
   inputMode: InputMode
@@ -289,6 +292,8 @@ interface KeylensState {
   checkExplainAvailable: () => Promise<void>
   openExplain: () => Promise<void>
   closeExplain: () => void
+  /** 특정 AI 추정 박스를 로컬 발견 캐시에 저장(사용자 승인). */
+  approveDiscovery: (index: number) => Promise<void>
 
   /** 금고 완전 초기화(VAULT-RESET). */
   openResetVault: () => void
@@ -361,6 +366,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     explainOpen: false,
     explainLoading: false,
     explainBoxes: [],
+    explainApprovedIndices: new Set(),
     inputMode: 'auto',
     manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
     analyzing: false,
@@ -1263,7 +1269,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().showToast('실제 스크린샷이 있을 때만 화면 설명을 볼 수 있어요')
         return
       }
-      set({ explainOpen: true, explainLoading: true, explainBoxes: [] })
+      set({ explainOpen: true, explainLoading: true, explainBoxes: [], explainApprovedIndices: new Set() })
       try {
         const blob = await (await fetch(img)).blob()
         const boxes = await explainImageApi(blob)
@@ -1274,6 +1280,17 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
     },
     closeExplain: () => set({ explainOpen: false, explainBoxes: [] }),
+    approveDiscovery: async (index) => {
+      const box = get().explainBoxes[index]
+      if (!box || box.tier === 'known' || get().explainApprovedIndices.has(index)) return
+      try {
+        await explainDiscoveryApi(box)
+        set((s) => ({ explainApprovedIndices: new Set(s.explainApprovedIndices).add(index) }))
+        get().showToast('저장했어요 — 다음번엔 재검색 없이 재사용해요')
+      } catch (e) {
+        get().showToast(e instanceof ApiError ? e.message : '저장하지 못했어요')
+      }
+    },
 
     // ── 금고 완전 초기화(VAULT-RESET) ──
     openResetVault: () => set({ resetVaultOpen: true, resetVaultPw: '', resetVaultErr: '' }),
@@ -1345,6 +1362,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         manualRows: [{ id: crypto.randomUUID(), name: '', value: '' }],
         inputMode: 'auto',
         explainBoxes: [],
+        explainApprovedIndices: new Set(),
         explainOpen: false,
         sourceLabel: '',
         emailSyncOpen: false,

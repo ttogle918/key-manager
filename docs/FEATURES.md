@@ -11,15 +11,16 @@ SPDX-License-Identifier: MIT
 | 한눈에 | |
 |---|---|
 | 지원 서비스 / 자격증명 종류 | **9종 / 22종류** (Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe) |
-| 백엔드 API 엔드포인트 | **30개** (헬스체크 1 · 분석 2 · 화면설명 2 · 지식베이스 1 · 금고 16 · SDK 8) + 매니저 릴레이(별도 배포) 2개 |
-| 테스트 | 백엔드 pytest **266** · 프론트 vitest **49** + 브라우저 E2E |
+| 백엔드 API 엔드포인트 | **31개** (헬스체크 1 · 분석 2 · 화면설명 3 · 지식베이스 1 · 금고 16 · SDK 8) + 매니저 릴레이(별도 배포) 2개 |
+| 테스트 | 백엔드 pytest **303** · 프론트 vitest **49** + 브라우저 E2E |
 | 라이선스 / 보안 | 강한 카피레프트 **0** · 약한 카피레프트 2건(조건부 허용, 근거 THIRD-PARTY-NOTICES.md) · 알려진 CVE **0** · 런타임 외부 요청 **0**(옵트인 기능 제외) |
 
 ## 전체 구조
 
 로컬 백엔드(FastAPI, 127.0.0.1)가 OCR·분류·암호화·화면 설명을 전부 처리하고, 프론트(React)는
 UI와 상태만 담당합니다. 이미지·키·폰트까지 전부 로컬에 머물며, 유일한 아웃바운드는 사용자가
-명시적으로 실행하는 키 유효성 검증(TRUST-1)과, 옵트인으로 켠 화면 설명(로컬 Ollama)·이메일
+명시적으로 실행하는 키 유효성 검증(TRUST-1)과, 옵트인으로 켠 화면 설명(로컬 Ollama, 지식베이스에
+없는 서비스를 만났을 때만 추측한 서비스명을 Tavily 검색으로 확인하는 것도 포함)·이메일
 동기화(SYNC-2, 별도 배포)뿐입니다.
 
 ```mermaid
@@ -35,6 +36,7 @@ flowchart LR
     S1 --> S2[Stage2 맥락 기반]
     KB[("knowledge/*.yaml — 9종 22종류")] --> S1 & S2
     EXP[/explain/image/] --> OLLAMA["로컬 Ollama (옵트인)"]
+    OLLAMA -.미확인 추측만.-> TAVILY["Tavily 검색 (옵트인, 도메인 제한 없음)"]
     V[/vault API 16종/] --> CR[Argon2id + AES-256-GCM]
     CR --> DB[("SQLite — 암호문만")]
     SDK[/sdk API 8종/] --> DB
@@ -98,11 +100,21 @@ OCR이 **로컬 백엔드**(127.0.0.1, PP-OCRv5 한국어 인식 모델)에서 �
 
 "이 화면 설명해줘" 버튼으로 스크린샷 전체를 박스+라벨 오버레이로 설명합니다. 지식베이스에
 이미 등록된 서비스는 즉시 라벨링하고, 미등록 영역만 사용자가 이미 실행 중인 **로컬 Ollama**에
-짧은 설명을 요청합니다. 앱은 어떤 LLM 가중치도 포함하지 않으며, `OLLAMA_MODEL` 환경변수가
-없으면 버튼 자체가 화면에 나타나지 않습니다(조용한 저성능 대체 없음).
+짧은 설명 + 서비스명 추측을 요청합니다(`ai_unverified` 등급). 앱은 어떤 LLM 가중치도 포함하지
+않으며, `OLLAMA_MODEL` 환경변수가 없으면 버튼 자체가 화면에 나타나지 않습니다(조용한 저성능
+대체 없음).
+
+**Tavily 검색 확인(옵트인, `TAVILY_API_KEY` 필요)**: Ollama가 서비스명을 추측하면 그 이름으로
+Tavily 웹 검색(도메인 제한 없음 — 검색 결과가 실제로 맞는지는 다시 Ollama가 재검증) →
+확인되면 `ai_verified` 등급 + 공식 문서 링크가 붙습니다. `TAVILY_API_KEY`가 없으면 검색 단계
+자체를 건너뛰고 1단계와 동일하게 동작합니다. **이 단계에서 추측한 서비스명(값 자체가 아님)이
+Tavily 서버로 전송됩니다** — 값처럼 보이는 추측은 검색을 보내기 전에 걸러냅니다. 사용자가
+확인된 추정을 "저장" 버튼으로 승인하면 `backend/local_discoveries.yaml`(로컬 전용, git 추적
+안 함)에 캐시해 같은 화면을 다시 볼 때 재검색 없이 재사용합니다.
 
 관련: `frontend/src/components/modals/ExplainModal.tsx` · `backend/app/explain.py` ·
-`backend/app/ollama_client.py` · `docs/AI_MODEL_DISCLOSURE.md`
+`backend/app/ollama_client.py` · `backend/app/tavily_client.py` ·
+`backend/app/discoveries_repo.py` · `docs/AI_MODEL_DISCLOSURE.md`
 
 ---
 
@@ -254,7 +266,7 @@ KeyLens 앱 자체가 서버를 운영하지 않고, 이 기능을 쓰고 싶은
 
 ## API 엔드포인트 전체
 
-### 백엔드 (`backend/app/main.py`, 30개)
+### 백엔드 (`backend/app/main.py`, 31개)
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
@@ -263,7 +275,8 @@ KeyLens 앱 자체가 서버를 운영하지 않고, 이 기능을 쓰고 싶은
 | POST | `/analyze` | 텍스트·URL 분류(Stage1+2) |
 | POST | `/analyze/image` | 스크린샷 분류(백엔드 OCR 경유) |
 | GET | `/explain/status` | 화면 설명 기능 사용 가능 여부(`OLLAMA_MODEL` 설정 여부) |
-| POST | `/explain/image` | 화면 설명(박스+라벨) |
+| POST | `/explain/image` | 화면 설명(박스+라벨, `TAVILY_API_KEY` 있으면 검색 확인까지) |
+| POST | `/explain/discoveries` | 사용자가 승인한 AI 추정 1건을 로컬 캐시에 저장(`known` 등급은 거부) |
 | GET | `/vault/status` | initialized · unlocked |
 | POST | `/vault/init` | 금고 생성 |
 | POST | `/vault/unlock` / `/vault/lock` | 잠금 해제 / 세션 폐기 |

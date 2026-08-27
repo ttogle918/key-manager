@@ -3,7 +3,11 @@
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { useKeylens } from '@/store/keylensStore'
-import { isAllowedUrl } from '@/data/services'
+import { isAllowedUrl, isSafeExternalUrl } from '@/data/services'
+
+// 백엔드 explain.py의 UNKNOWN_LABEL과 반드시 일치해야 한다 — "확인 실패" 결과를 캐시에 저장하면
+// 재검증 경로 없이 영구 고정되므로, 저장 버튼 자체를 아예 안 보여준다(백엔드도 방어 심화로 거부).
+const UNKNOWN_LABEL = '알 수 없음'
 
 const TIER_STYLE: Record<string, { border: string; bg: string; badge: string }> = {
   known: { border: '2px solid #3ECF8E', bg: 'rgba(62,207,142,.08)', badge: '분류됨' },
@@ -18,6 +22,8 @@ export function ExplainModal() {
   const boxes = useKeylens((s) => s.explainBoxes)
   const image = useKeylens((s) => s.analyzedImage)
   const close = useKeylens((s) => s.closeExplain)
+  const approvedIndices = useKeylens((s) => s.explainApprovedIndices)
+  const approveDiscovery = useKeylens((s) => s.approveDiscovery)
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null)
 
   return (
@@ -44,8 +50,17 @@ export function ExplainModal() {
             boxes.map((b, i) => {
               const style = TIER_STYLE[b.tier] ?? TIER_STYLE.ai_unverified
               // 🟢 known 등급은 지식베이스 docs_url을 그대로 표시(설계 스펙 tier 표) — 화이트리스트
-              // 통과분만(KeyHelp.tsx의 docsUrl 처리와 동일한 방어적 패턴).
-              const docsUrl = b.tier === 'known' && isAllowedUrl(b.docs_url) ? b.docs_url : null
+              // 통과분만(KeyHelp.tsx의 docsUrl 처리와 동일한 방어적 패턴). ai_verified는 Tavily
+              // 검색으로 확인된 링크라 도메인 화이트리스트 대상이 아니다(설계 판단 A) — https
+              // 프로토콜만 검증한다.
+              const docsUrl =
+                b.tier === 'known'
+                  ? isAllowedUrl(b.docs_url)
+                    ? b.docs_url
+                    : null
+                  : isSafeExternalUrl(b.docs_url)
+                    ? b.docs_url
+                    : null
               return (
                 <div
                   key={i}
@@ -75,6 +90,22 @@ export function ExplainModal() {
                       >
                         문서
                       </a>
+                    )}
+                    {b.tier !== 'known' && b.label !== UNKNOWN_LABEL && !approvedIndices.has(i) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void approveDiscovery(i)
+                        }}
+                        title="이 추정을 저장해 다음번에 재검색 없이 재사용"
+                        className="cursor-pointer rounded-[2px] bg-white/20 px-[3px] text-white hover:bg-white/35"
+                      >
+                        저장
+                      </button>
+                    )}
+                    {b.tier !== 'known' && approvedIndices.has(i) && (
+                      <span className="text-white/70">✓ 저장됨</span>
                     )}
                   </span>
                 </div>
