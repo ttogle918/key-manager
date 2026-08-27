@@ -38,6 +38,7 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 - **만료일 관리 (TRUST-2)**: 만료일 수동 입력 + JWT 계열은 `exp` 클레임에서 만료일 자동 추출
 - **키 유효성 검증 (TRUST-1)**: 사용자가 요청할 때 서비스의 read-only 엔드포인트(예: OpenAI `/v1/models`)로 **1회만** 호출해 키가 살아있는지(active/invalid/unknown) 확인. 값은 노출되지 않고 상태만 표시하며, 자동 주기 호출은 하지 않음. 검증 엔드포인트도 지식베이스 `verify:` 블록으로 선언 — 코드 수정 없이 서비스 확장
 - **서버리스 멀티 기기 (SYNC-0)**: 금고 전체를 **암호화 번들 파일**(`.klvault.json`)로 내보내 USB·개인 클라우드로 옮기고, 다른 기기에서 마스터 비밀번호로 가져오기(교체/병합). 파일은 전부 암호문이라 비밀번호 없이는 못 열림 — 우리 서버 없이 제로 널리지로 동기화(KeePass+Dropbox 패턴)
+- **이메일 릴레이 동기화 (SYNC-2, 옵트인)**: 계정·DB 없이 SMTP로만 암호화 번들을 목적지 이메일로 전달(`manager-relay/`, 독립 배포). KeyLens 앱 자체는 서버를 운영하지 않고, 쓰고 싶은 사람이 자기 SMTP 자격증명으로 직접 배포합니다. 비밀 값은 암호문으로만 전달됩니다
 - **확장 가능한 지식베이스 (현재 9종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe)**: 서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트가 YAML로 선언되어 있어, **YAML 파일 하나 추가로 백엔드·프론트 양쪽에 자동 반영** (프론트는 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 동적 구성 — 코드 수정 불필요)
 
 ## 아키텍처
@@ -183,6 +184,13 @@ credentials:
 
 자세한 절차는 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참고하세요. 기여 환영합니다.
 
+### AI 백엔드 교체 가능
+
+"이 화면 설명해줘" 기능(화면 설명)은 로컬 Ollama 연동이 `backend/app/ollama_client.py` 한 파일에만
+담겨 있습니다. 나머지 코드(`explain.py`, API 라우트)는 이 파일이 노출하는 `generate()`·
+`is_available()` 인터페이스만 보고 동작하므로, 이 파일만 다른 로컬 LLM 런타임의 API 형식에 맞게
+바꾸면 Ollama 대신 다른 모델/런타임으로 교체할 수 있습니다.
+
 - **전체 기능 문서**: [docs/FEATURES.md](./docs/FEATURES.md) — 기능 카탈로그 + 아키텍처·흐름 다이어그램(mermaid) + API 18종
 - 기여 가이드: [CONTRIBUTING.md](./CONTRIBUTING.md) · 행동 강령: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
 - 보안 취약점 신고: [SECURITY.md](./SECURITY.md) (공개 이슈 금지, 비공개로)
@@ -200,7 +208,7 @@ KeyLens는 **각 사용자가 자기 기기에서 실행**하는 로컬 앱입�
 
 - ✅ **암호화 금고 내보내기/가져오기**(구현 완료): 암호문 번들 파일을 개인 클라우드·USB로 옮겨 다른 기기에서 마스터 비밀번호로 열기 — 서버 없는 멀티 기기
 - ✅ **데스크톱 앱**(PyWebView, `desktop/app.py`): 네이티브 창으로 로컬 실행 + 실행 파일 패키징(cx_Freeze, Windows) 완료 — [GitHub Releases](https://github.com/ttogle918/key-manager/releases/latest)에서 다운로드. macOS/Linux 패키징은 후속
-- **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드. 복호화 열쇠는 항상 로컬의 마스터 비밀번호이며, 자체 서버는 만들지 않음
+- **Google Drive 제로 널리지 동기화**: 사용자 본인의 Drive 앱 전용 폴더(appDataFolder)에 암호문만 자동 업로드/다운로드(로드맵). 대신 OAuth 클라이언트 등록·검증 부담이 없는 **이메일 릴레이 동기화(SYNC-2)**를 먼저 구현해 서버리스 멀티 기기 요구를 우선 해소했습니다 — 두 방식 모두 비밀 값은 암호문으로만 전달됩니다
 - **DOM 기반 자동 캡처**(브라우저 확장): 권한 모델·프라이버시 설계 검증 후 도입
 - 더 많은 서비스 지식베이스, 런타임 주입(SDK)
 
