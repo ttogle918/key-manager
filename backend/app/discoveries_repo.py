@@ -36,11 +36,15 @@ def _looks_like_value(token: str) -> bool:
     숫자가 하나라도 있으면 값으로 간주(대부분의 실제 키·ID는 숫자를 포함) — "Project_ID"·
     "Database_ID" 같이 `_`만 포함한 라벨 문구는 숫자가 없어 더 이상 지워지지 않는다(과거엔 지워져서
     서로 다른 라벨이 동일한 <VALUE> 패턴으로 뭉개졌다). 숫자가 없어도 8자 이상 순수 16진수 문자열은
-    (예: "deadbeefcafebabe") 값으로 간주 — 흔한 라벨 단어는 이 조건에 안 걸린다.
+    (예: "deadbeefcafebabe") 값으로 간주. 숫자도 16진수도 아니지만 -/_ 를 포함한 12자 이상 토큰도
+    값으로 간주("sk-proj-AbCdEfGhIjKl" 같은 접두어형 키는 숫자 없이도 흔하다) — 흔한 라벨 단어는
+    보통 -/_ 로 이어붙인 12자 이상 복합어가 아니라 이 조건엔 거의 안 걸린다.
     """
     if any(c.isdigit() for c in token):
         return True
-    return len(token) >= 8 and bool(_HEX_ONLY.match(token))
+    if len(token) >= 8 and bool(_HEX_ONLY.match(token)):
+        return True
+    return len(token) >= 12 and ("-" in token or "_" in token)
 
 
 def normalize_pattern(text: str) -> str:
@@ -52,12 +56,16 @@ def normalize_pattern(text: str) -> str:
 def _is_valid_entry(entry: dict) -> bool:
     """필수 키가 다 있고 tier가 알려진 값인지 확인 — 손상되거나 사람이 잘못 손댄 항목이 파이프라인을
     깨뜨리지 않도록(ExplainBox 생성 시 KeyError/Pydantic ValidationError로 이어질 수 있었음) 조회
-    시점에 걸러낸다."""
+    시점에 걸러낸다. docs_url은 키 자체가 없어도 되지만(과거 항목 호환), 있다면 str이거나 None이어야
+    한다 — 그 외 타입(숫자 등)은 ExplainBox 생성 시 그대로 같은 ValidationError를 재현한다."""
     if not all(key in entry for key in _REQUIRED_KEYS):
         return False
     if not isinstance(entry.get("pattern"), str) or not isinstance(entry.get("label"), str):
         return False
-    return entry.get("tier") in _VALID_TIERS
+    if entry.get("tier") not in _VALID_TIERS:
+        return False
+    docs_url = entry.get("docs_url")
+    return docs_url is None or isinstance(docs_url, str)
 
 
 def _load(path: str | Path) -> list[dict]:

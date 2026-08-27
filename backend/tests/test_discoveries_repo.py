@@ -132,3 +132,19 @@ def test_append_discovery_leaves_no_tmp_file_behind(tmp_path):
     append_discovery(path, pattern="A", label="B", tier="ai_unverified", docs_url=None)
     assert not (tmp_path / "local_discoveries.yaml.tmp").exists()
     assert path.exists()
+
+
+def test_normalize_pattern_redacts_dashed_prefix_token_without_digits(tmp_path):
+    """"sk-proj-AbCdEfGhIjKl"처럼 숫자도 순수 16진수도 아니지만 -/_ 를 포함한 12자 이상 접두어형
+    토큰도 값으로 취급한다 — API 키 접두어(sk-, ghp_ 등)는 숫자 없이도 흔하다."""
+    assert normalize_pattern("Key: sk-proj-AbCdEfGhIjKl") == "Key: <VALUE>"
+
+
+def test_find_by_pattern_skips_entry_with_non_string_docs_url(tmp_path):
+    """docs_url이 문자열도 null도 아니면(예: 숫자) 건너뛴다 — 그대로 뒀으면 ExplainBox 생성 시
+    Pydantic ValidationError로 파이프라인이 깨졌을 것."""
+    path = tmp_path / "local_discoveries.yaml"
+    path.write_text(
+        "- pattern: 'X'\n  label: 예시\n  tier: known\n  docs_url: 42\n", encoding="utf-8"
+    )
+    assert find_by_pattern(path, "X") is None
