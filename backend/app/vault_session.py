@@ -346,6 +346,7 @@ class VaultService:
         이미 등록된 경로면 실제 저장된 행(예: source='approved')을 그대로 돌려준다 —
         호출자가 넘긴 인자를 그대로 되돌려주지 않는다(멱등 재등록 시 잘못된 값을 보고하지 않기 위함).
         """
+        self._require_key()
         conn = self._conn()
         try:
             dir_id = sdk_repo.add_project_dir(conn, project, path, source="manual")
@@ -382,6 +383,8 @@ class VaultService:
             conn.close()
 
     def approve_pending(self, pending_id: int) -> bool:
+        """대기 요청 승인 - **잠금 해제 필요**(add_project_dir와 같은 이유: 권한 부여다)."""
+        self._require_key()
         conn = self._conn()
         try:
             return sdk_repo.approve_pending(conn, pending_id)

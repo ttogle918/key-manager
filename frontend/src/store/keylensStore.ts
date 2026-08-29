@@ -73,10 +73,15 @@ const CLIP_CLEAR_MS = 30_000
 
 // ── 비반응(non-reactive) 타이머 핸들 ──
 let timers: ReturnType<typeof setTimeout>[] = []
+/** 승인 대기 폴링 타이머 - SDK 요청은 앱 밖(다른 터미널)에서 오므로 주기 조회가 없으면
+ *  사이드바 뱃지가 영영 0으로 남는다. 데스크톱 앱은 OS 알림도 뜨지만 dev(브라우저) 모드는
+ *  그마저 없어서 요청이 온 걸 알 방법이 아예 없었다. */
+let pendingPollT: ReturnType<typeof setInterval> | null = null
+const PENDING_POLL_MS = 5000
 let toastT: ReturnType<typeof setTimeout> | null = null
 let clipClearT: ReturnType<typeof setTimeout> | null = null
 const revealTimers: Record<string, ReturnType<typeof setTimeout>> = {}
-// 메타데이터(프로젝트·메모·만료) 편집을 디바운스해 백엔드에 저장한다(키 입력마다 요청 방지).
+// 메타데이터(컬렉션·메모·만료) 편집을 디바운스해 백엔드에 저장한다(키 입력마다 요청 방지).
 const metaSaveT: Record<string, ReturnType<typeof setTimeout>> = {}
 
 interface KeylensState {
@@ -134,7 +139,7 @@ interface KeylensState {
   vault: VaultItem[]
   search: string
   projFilter: string
-  /** 프로젝트 아코디언 수동 펼침/접힘 오버라이드(이름→열림 여부). 없으면 기본값(가장 최근=열림). */
+  /** 컬렉션 아코디언 수동 펼침/접힘 오버라이드(이름→열림 여부). 없으면 기본값(가장 최근=열림). */
   projectOpenOverrides: Record<string, boolean>
   /** 상단 서비스 로고 태그 다중 선택 필터(비어있으면 전체 서비스). */
   serviceTagFilter: Set<string>
@@ -158,14 +163,17 @@ interface KeylensState {
   resettingVault: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
-  /** RUNTIME-1 승인 대기 목록(값 없음 — 프로젝트·경로 문자열만). */
+  /** RUNTIME-1 승인 대기 목록(값 없음 — 컬렉션·경로 문자열만). */
   pendingRequests: PendingRequest[]
-  // RUNTIME-1 — 프로젝트 접근 설정 화면
-  /** 금고에 프로젝트가 지정된 항목이 있는 프로젝트 목록. */
+  // RUNTIME-1 — 컬렉션 접근 설정 화면
+  // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
+  // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
+  // 그래서 아래 식별자들도 sdkProject* 이름을 유지한다.
+  /** 금고에 컬렉션이 지정된 항목이 있는 컬렉션 목록. */
   sdkProjects: SdkProjectSummary[]
-  /** 설정 화면에서 선택된 프로젝트(없으면 null). */
+  /** 설정 화면에서 선택된 컬렉션(없으면 null). */
   selectedSdkProject: string | null
-  /** 선택된 프로젝트의 허용 디렉토리 목록. */
+  /** 선택된 컬렉션의 허용 디렉토리 목록. */
   sdkDirs: SdkDir[]
   /** 디렉토리 추가 입력 필드 값. */
   newDirPath: string
@@ -190,20 +198,22 @@ interface KeylensState {
   /** 승인 대기 화면으로 전환하고 목록을 새로 불러온다(데스크톱 알림이 evaluate_js로 호출하는 경로). */
   goPending: () => void
   /** 승인 대기 목록을 백엔드에서 다시 불러온다(값 없음 — 잠금 상태에서도 동작). */
+  /** 승인 대기 목록 주기 조회 시작(중복 기동 안전). cleanup()에서 정지. */
+  startPendingPoll: () => void
   loadPending: () => Promise<void>
   /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
   approvePending: (id: number) => Promise<void>
   /** 승인 대기 요청을 거부. */
   denyPending: (id: number) => Promise<void>
-  /** 프로젝트 접근 설정 화면으로 전환하고 프로젝트 목록을 새로 불러온다. */
+  /** 컬렉션 접근 설정 화면으로 전환하고 컬렉션 목록을 새로 불러온다. */
   goProjectAccess: () => void
-  /** SDK 프로젝트 목록을 백엔드에서 다시 불러온다. */
+  /** SDK 컬렉션 목록을 백엔드에서 다시 불러온다. */
   loadSdkProjects: () => Promise<void>
-  /** 프로젝트를 선택하고 그 프로젝트의 허용 디렉토리 목록을 불러온다. */
+  /** 컬렉션을 선택하고 그 컬렉션의 허용 디렉토리 목록을 불러온다. */
   selectSdkProject: (project: string) => void
   /** 새 디렉토리 입력 필드 값 설정. */
   setNewDirPath: (v: string) => void
-  /** 선택된 프로젝트에 디렉토리를 사전 등록(source=manual, 승인 팝업 없이 바로 통과). */
+  /** 선택된 컬렉션에 디렉토리를 사전 등록(source=manual, 승인 팝업 없이 바로 통과). */
   addSdkDir: () => void
   /** 디렉토리 등록 해제. */
   removeSdkDir: (dirId: number) => void
@@ -248,7 +258,7 @@ interface KeylensState {
 
   setSearch: (v: string) => void
   setProjFilter: (v: string) => void
-  /** 드롭다운에서 프로젝트 선택 — 그 섹션을 강제로 펼친다(스크롤은 VaultScreen이 처리). */
+  /** 드롭다운에서 컬렉션 선택 — 그 섹션을 강제로 펼친다(스크롤은 VaultScreen이 처리). */
   expandProject: (name: string) => void
   toggleProjectSection: (name: string, currentlyOpen: boolean) => void
   toggleServiceTag: (name: string) => void
@@ -271,9 +281,9 @@ interface KeylensState {
   closeEnv: () => void
   envCopyAll: () => void
   envDownload: () => void
-  /** 한 프로젝트 섹션 안의 특정 서비스만 .env로 복사(project+service 둘 다 일치하는 항목만). */
+  /** 한 컬렉션 섹션 안의 특정 서비스만 .env로 복사(project+service 둘 다 일치하는 항목만). */
   envCopyGroup: (project: string, service: string) => void
-  /** 한 프로젝트의 모든 서비스를 합쳐 .env로 복사. */
+  /** 한 컬렉션의 모든 서비스를 합쳐 .env로 복사. */
   envCopyProject: (project: string) => void
   /** .env 모달 미리보기용 — 선택 항목을 복호화해 반환(모달 렌더링 전용, 클립보드/다운로드와 별개 호출). */
   loadEnvPreview: () => Promise<VaultItem[]>
@@ -312,8 +322,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     return id
   }
 
-  // 값(full)은 로컬에 두지 않으므로 중복은 변수명+프로젝트(메타데이터)로만 판단한다.
-  // project 미지정 저장은 백엔드가 오늘(UTC) 날짜를 기본값으로 배정하므로, 아직 저장 전인 pending
+  // 값(full)은 로컬에 두지 않으므로 중복은 변수명+컬렉션(메타데이터)으로만 판단한다.
+  // 컬렉션 미지정 저장은 백엔드가 오늘(UTC) 날짜를 기본값으로 배정하므로, 아직 저장 전인 pending
   // 결과(r.project === '')는 각 기존 항목이 실제로 배정받은 addedAt 과 비교해 매칭한다("오늘 날짜"를
   // 프론트에서 별도로 재계산하지 않는다 — 로컬 today()는 UTC 자정 경계에서 백엔드와 어긋날 수 있다).
   const findDup = (r: AnalysisResult, varName: string): VaultItem | undefined => {
@@ -410,6 +420,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     cleanup: () => {
       timers.forEach(clearTimeout)
       timers = []
+      if (pendingPollT) {
+        clearInterval(pendingPollT)
+        pendingPollT = null
+      }
       if (toastT) clearTimeout(toastT)
       if (clipClearT) clearTimeout(clipClearT)
       Object.values(revealTimers).forEach(clearTimeout)
@@ -452,6 +466,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           set({ screen: 'lock', locked: true })
         }
         get().loadPending()
+        get().startPendingPoll()
         get().checkExplainAvailable()
       } catch (e) {
         // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
@@ -489,6 +504,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
         /* 잠금/네트워크 실패는 무시(이력만 비어 보임) */
       }
     },
+    startPendingPoll: () => {
+      if (pendingPollT) return // 중복 기동 방지(재부팅 시)
+      pendingPollT = setInterval(() => {
+        // 실패는 loadPending 안에서 조용히 삼킨다 - 백엔드가 잠깐 죽어도 폴링은 계속.
+        void get().loadPending()
+      }, PENDING_POLL_MS)
+    },
     loadPending: async () => {
       try {
         const rows = await sdkApi.pending()
@@ -510,6 +532,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await get().loadPending()
         get().showToast('요청을 허용했어요 — 이후 자동으로 값을 받아갑니다')
       } catch (e) {
+        // 허용은 권한 부여라 백엔드가 잠금 해제를 요구한다(401) — 잠긴 사실을 UI에 반영한다.
+        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
         get().showToast(vaultErrorText(e, '허용 실패 — 잠시 후 다시 시도해 보세요'))
       }
     },
@@ -561,6 +585,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await get().selectSdkProject(project)
         get().showToast('디렉토리를 등록했어요 — 이후 자동으로 값을 받아갑니다')
       } catch (e) {
+        // 등록도 권한 부여다(위 approvePending 과 같은 이유로 401 가능).
+        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
         get().showToast(vaultErrorText(e, '디렉토리 등록 실패 — 잠시 후 다시 시도해 보세요'))
       }
     },
@@ -1166,7 +1192,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
     },
     // vault를 직접 필터링한다(envItems()를 재사용하지 않음) — envItems()는 projFilter(드롭다운으로
-    // 마지막에 이동한 프로젝트)로 스코프되는데, 이 두 버튼은 지금 렌더링 중인 프로젝트/서비스 섹션
+    // 마지막에 이동한 컬렉션)로 스코프되는데, 이 두 버튼은 지금 렌더링 중인 컬렉션/서비스 섹션
     // 기준이라 서로 다른 개념이다. envItems()를 재사용하면 두 스코프가 어긋날 때(예: A 섹션에서
     // 복사했는데 projFilter는 예전에 이동한 B로 남아있는 경우) 교집합이 비어 조용히 빈 .env가
     // 복사되는 버그가 생긴다.
@@ -1178,7 +1204,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     envCopyProject: async (project) => {
       const items = await withValues(get().vault.filter((i) => projectKey(i) === project))
-      get().copy(envText(items), project + ' 프로젝트 .env 복사됨')
+      get().copy(envText(items), project + ' 컬렉션 .env 복사됨')
     },
     loadEnvPreview: () => withValues(envItems()),
 

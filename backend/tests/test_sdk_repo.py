@@ -355,3 +355,87 @@ def test_is_pending_false_after_approve(conn):
     pid = sdk_repo.add_pending_request(conn, "블로그", "/repo/blog")
     sdk_repo.approve_pending(conn, pid)
     assert sdk_repo.is_pending(conn, "블로그", "/repo/blog") is False
+
+
+# ── 회귀: 동시 요청 시 UNIQUE 제약 위반으로 500이 나던 문제 ──
+# 발단: SELECT로 존재를 확인한 뒤 INSERT 하는 2단계라, 같은 디렉토리에서 여러 프로세스가
+# 동시에 load_env()를 호출하면 둘 다 "없음"을 보고 INSERT 해 IntegrityError -> 500이 났다.
+# 실측: 20병렬 요청 중 1건이 500. ON CONFLICT DO NOTHING 한 문장으로 바꿔 해결.
+
+
+def test_add_pending_request_is_safe_under_concurrency(tmp_path):
+    import sqlite3
+    import threading
+
+    from app import vault_repo
+
+    db = str(tmp_path / "vault.db")
+    conn = vault_repo.connect(db)
+    vault_repo.init_vault(conn, "correct horse battery staple")
+    conn.close()
+
+    errors: list[BaseException] = []
+    ids: list[int] = []
+    barrier = threading.Barrier(12)
+
+    def worker():
+        c = vault_repo.connect(db)
+        try:
+            barrier.wait()
+            ids.append(sdk_repo.add_pending_request(c, "블로그", "/repo/blog"))
+        except BaseException as e:  # noqa: BLE001 - 무엇이 터지든 기록해서 드러낸다
+            errors.append(e)
+        finally:
+            c.close()
+
+    threads = [threading.Thread(target=worker) for _ in range(12)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not [e for e in errors if isinstance(e, sqlite3.IntegrityError)], (
+        f"동시 등록에서 IntegrityError 발생: {errors}"
+    )
+    assert not errors, f"예상치 못한 오류: {errors}"
+    assert len(set(ids)) == 1, "같은 (project, path)는 항상 같은 행 하나여야 한다"
+
+    c = vault_repo.connect(db)
+    try:
+        assert len(sdk_repo.list_pending_requests(c)) == 1
+    finally:
+        c.close()
+
+
+def test_add_project_dir_is_safe_under_concurrency(tmp_path):
+    import threading
+
+    from app import vault_repo
+
+    db = str(tmp_path / "vault.db")
+    conn = vault_repo.connect(db)
+    vault_repo.init_vault(conn, "correct horse battery staple")
+    conn.close()
+
+    errors: list[BaseException] = []
+    ids: list[int] = []
+    barrier = threading.Barrier(12)
+
+    def worker():
+        c = vault_repo.connect(db)
+        try:
+            barrier.wait()
+            ids.append(sdk_repo.add_project_dir(c, "블로그", "/repo/blog", source="manual"))
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+        finally:
+            c.close()
+
+    threads = [threading.Thread(target=worker) for _ in range(12)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors, f"예상치 못한 오류: {errors}"
+    assert len(set(ids)) == 1

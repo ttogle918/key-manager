@@ -458,8 +458,11 @@ def vault_reset(body: VaultPassword) -> VaultStatus:
 
 # ── RUNTIME-1: SDK 접근 관리 ──
 # keylens-env SDK가 프로젝트별로 어떤 디렉토리에서 값을 가져갈 수 있는지 관리한다.
-# /sdk/env 는 실제 값을 반환하므로 인증(잠금 해제) 필수 — 그 외 관리 엔드포인트는
-# 프로젝트명·경로 문자열(비밀 아님)만 다루므로 잠금 상태에서도 접근을 막지 않는다.
+# /sdk/env 는 실제 값을 반환하므로 인증(잠금 해제) 필수.
+# 관리 엔드포인트는 다루는 데이터(문자열)가 아니라 **권한 방향**으로 나눈다:
+#   - 권한을 넓히는 쪽(디렉토리 등록·대기 요청 승인) → 잠금 해제 필수.
+#     열어 두면 아무 로컬 프로세스나 자기 경로를 스스로 승인해 승인 화면을 무력화한다.
+#   - 권한을 좁히는 쪽(등록 해제·거부)과 단순 조회 → 잠금 상태에서도 허용(안전한 방향).
 
 
 @app.post("/sdk/env", response_model=SdkEnvResponse)
@@ -487,7 +490,10 @@ def sdk_list_dirs(project: str) -> list[SdkProjectDir]:
 
 @app.post("/sdk/projects/{project}/directories", response_model=SdkProjectDir)
 def sdk_add_dir(project: str, body: SdkAddDirRequest) -> SdkProjectDir:
-    return SdkProjectDir(**VAULT.add_project_dir(project, body.path))
+    try:
+        return SdkProjectDir(**VAULT.add_project_dir(project, body.path))
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
 
 
 @app.delete("/sdk/projects/{project}/directories/{dir_id}")
@@ -505,7 +511,10 @@ def sdk_list_pending() -> list[SdkPendingRequest]:
 
 @app.post("/sdk/pending/{pending_id}/approve")
 def sdk_approve_pending(pending_id: int) -> dict:
-    ok = VAULT.approve_pending(pending_id)
+    try:
+        ok = VAULT.approve_pending(pending_id)
+    except VaultLocked:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     if not ok:
         raise HTTPException(status_code=404, detail="대기 중인 요청을 찾을 수 없습니다")
     return {"approved": True}

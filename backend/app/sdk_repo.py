@@ -40,18 +40,19 @@ def add_project_dir(conn: sqlite3.Connection, project: str, path: str, source: s
     `path_norm` 컬럼에 별도로 저장해 매칭·중복 판정에만 쓴다.
     """
     norm = _normalize_path(path)
-    row = conn.execute(
-        "SELECT id FROM sdk_project_dirs WHERE project = ? AND path_norm = ?", (project, norm)
-    ).fetchone()
-    if row is not None:
-        return int(row["id"])
-    cur = conn.execute(
+    # SELECT 후 INSERT 로 나누면 두 요청이 동시에 들어올 때 둘 다 "없음"을 보고 INSERT 해
+    # UNIQUE 제약에 걸린다(IntegrityError -> 500). ON CONFLICT DO NOTHING 으로 한 문장에서
+    # 처리하고, 충돌로 아무 행도 안 들어갔으면 기존 행 id를 읽어 돌려준다.
+    conn.execute(
         "INSERT INTO sdk_project_dirs (project, path, path_norm, source, created_at)"
-        " VALUES (?,?,?,?,?)",
+        " VALUES (?,?,?,?,?) ON CONFLICT(project, path_norm) DO NOTHING",
         (project, path, norm, source, _now()),
     )
     conn.commit()
-    return int(cur.lastrowid)
+    row = conn.execute(
+        "SELECT id FROM sdk_project_dirs WHERE project = ? AND path_norm = ?", (project, norm)
+    ).fetchone()
+    return int(row["id"])
 
 
 def remove_project_dir(conn: sqlite3.Connection, project: str, dir_id: int) -> bool:
@@ -98,19 +99,19 @@ def add_pending_request(conn: sqlite3.Connection, project: str, path: str) -> in
     `path`는 원본 문자열 그대로 저장하고, 매칭은 `path_norm`으로 한다(add_project_dir와 동일 패턴).
     """
     norm = _normalize_path(path)
+    # add_project_dir 와 같은 이유로 한 문장에서 처리한다 - 여러 프로세스가 같은 디렉토리에서
+    # 동시에 load_env() 를 호출하는 건 실제로 일어나는 일이고, 예전 구현은 그때 500을 냈다.
+    conn.execute(
+        "INSERT INTO sdk_pending_requests (project, path, path_norm, requested_at)"
+        " VALUES (?,?,?,?) ON CONFLICT(project, path_norm) DO NOTHING",
+        (project, path, norm, _now()),
+    )
+    conn.commit()
     row = conn.execute(
         "SELECT id FROM sdk_pending_requests WHERE project = ? AND path_norm = ?",
         (project, norm),
     ).fetchone()
-    if row is not None:
-        return int(row["id"])
-    cur = conn.execute(
-        "INSERT INTO sdk_pending_requests (project, path, path_norm, requested_at)"
-        " VALUES (?,?,?,?)",
-        (project, path, norm, _now()),
-    )
-    conn.commit()
-    return int(cur.lastrowid)
+    return int(row["id"])
 
 
 def list_pending_requests(conn: sqlite3.Connection) -> list[dict]:

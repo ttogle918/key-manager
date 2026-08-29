@@ -139,11 +139,13 @@ def test_sdk_env_does_not_refresh_auto_lock_timer(tmp_path):
         svc.sdk_env("블로그", "/repo/blog")
 
 
-def test_management_endpoints_available_while_locked(vault):
-    """RUNTIME-1 3차 리뷰: 값을 다루지 않는 관리 메서드는 잠금 상태에서도 동작해야 한다.
+def test_readonly_and_narrowing_management_works_while_locked(vault):
+    """값을 다루지 않고 **권한을 넓히지도 않는** 관리 메서드는 잠금 상태에서도 동작해야 한다.
 
-    지금은 이 7개 메서드가 _require_key()를 호출하지 않아 우연히 참이지만, 테스트가 없으면
-    앞으로 누군가 실수로 하나에 _require_key()를 추가해도 아무것도 실패하지 않는다.
+    조회(list_*)와 권한을 좁히는 쪽(remove_project_dir·deny_pending)이 대상이다.
+    권한을 넓히는 쪽(add_project_dir·approve_pending)은 아래 별도 테스트에서
+    잠금 해제를 요구하는지 확인한다 - 예전엔 그쪽도 잠긴 채로 통과해서, 아무 로컬
+    프로세스나 자기 경로를 스스로 허용 목록에 넣을 수 있었다.
     """
     with pytest.raises(SdkApprovalPending):
         vault.sdk_env("블로그", "/repo/pending-a")
@@ -152,17 +154,45 @@ def test_management_endpoints_available_while_locked(vault):
     pending_ids = [p["id"] for p in vault.list_pending()]
     assert len(pending_ids) == 2
 
+    created = vault.add_project_dir("블로그", "/repo/blog")  # 아직 잠금 해제 상태
+
     vault.lock()
     assert vault.status()["unlocked"] is False
 
-    created = vault.add_project_dir("블로그", "/repo/blog")
-    assert created["path"] == "/repo/blog"
+    # 조회 - 잠긴 상태에서도 가능(값은 나오지 않는다)
     assert any(d["id"] == created["id"] for d in vault.list_project_dirs("블로그"))
-    assert vault.remove_project_dir("블로그", created["id"]) is True
-    assert vault.approve_pending(pending_ids[0]) is True
-    assert vault.deny_pending(pending_ids[1]) is True
     assert isinstance(vault.list_projects(), list)
-    assert vault.list_pending() == []
+    assert len(vault.list_pending()) == 2
+
+    # 권한을 좁히는 쪽 - 잠긴 상태에서도 가능(안전한 방향)
+    assert vault.remove_project_dir("블로그", created["id"]) is True
+    assert vault.deny_pending(pending_ids[1]) is True
+    assert len(vault.list_pending()) == 1
+
+
+def test_granting_management_requires_unlock(vault):
+    """권한 부여(디렉토리 등록·대기 승인)는 잠금 해제를 요구한다.
+
+    회귀 방지: 이게 열려 있으면 승인 대기 화면이 장식이 된다 - 악성 로컬 프로세스가
+    자기 디렉토리를 등록하거나 자기 요청을 스스로 승인한 뒤, 사용자가 다음번 잠금을
+    해제하는 순간 값을 받아갈 수 있었다.
+    """
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/repo/blog")
+    pending_id = vault.list_pending()[0]["id"]
+
+    vault.lock()
+
+    with pytest.raises(VaultLocked):
+        vault.add_project_dir("블로그", "/evil/dir")
+    with pytest.raises(VaultLocked):
+        vault.approve_pending(pending_id)
+
+    # 잠긴 동안 아무 권한도 생기지 않았어야 한다
+    vault.unlock(MASTER)
+    assert vault.list_project_dirs("블로그") == []
+    with pytest.raises(SdkApprovalPending):
+        vault.sdk_env("블로그", "/evil/dir")
 
 
 def test_set_pending_hook_called_once_for_new_request(vault):
