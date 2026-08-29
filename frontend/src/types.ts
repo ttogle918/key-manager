@@ -144,7 +144,7 @@ export interface PendingRequest {
   requestedAt: string
 }
 
-/** SDK 프로젝트 요약(RUNTIME-1, 프론트 내부 표현). */
+/** SDK 컬렉션 요약(RUNTIME-1, 프론트 내부 표현). */
 export interface SdkProjectSummary {
   project: string
   keyCount: number

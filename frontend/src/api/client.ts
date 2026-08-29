@@ -210,7 +210,7 @@ export const vaultApi = {
     vreq<VaultStatus>('/vault/reset', { method: 'POST', body: JSON.stringify({ password }) }),
 }
 
-// ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 프로젝트별 디렉토리 사전등록 ──
+// ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 컬렉션별 디렉토리 사전등록 ──
 
 export const sdkApi = {
   pending: () => vreq<SdkPendingRequest[]>('/sdk/pending'),

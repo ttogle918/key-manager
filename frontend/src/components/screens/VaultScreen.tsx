@@ -8,7 +8,7 @@ import { useProjectNames } from '@/store/selectors'
 import { VaultRow } from '@/components/vault/VaultRow'
 import type { VaultItem } from '@/types'
 
-/** 화면 2: 조회 대시보드(보관함) — 프로젝트별 아코디언, 안은 서비스 소그룹. */
+/** 화면 2: 조회 대시보드(보관함) — 컬렉션별 아코디언, 안은 서비스 소그룹. */
 export function VaultScreen() {
   const s = useKeylens()
   const projectNames = useProjectNames()
@@ -83,7 +83,7 @@ export function VaultScreen() {
           }}
           className="max-w-[170px] cursor-pointer rounded-lg border border-border bg-surface px-[10px] py-[9px] text-[12.5px] text-fg-soft outline-none"
         >
-          <option value="">프로젝트로 이동</option>
+          <option value="">컬렉션으로 이동</option>
           {projectNames.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -93,7 +93,7 @@ export function VaultScreen() {
         <input
           value={search}
           onChange={(e) => s.setSearch(e.target.value)}
-          placeholder="변수명·프로젝트·메모 검색"
+          placeholder="변수명·컬렉션·메모 검색"
           className="w-[180px] rounded-lg border border-border bg-surface px-3 py-[9px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
         />
         <button
@@ -238,7 +238,7 @@ export function VaultScreen() {
         <div className="py-12 text-center text-[13px] text-faint-2">조건에 맞는 항목이 없습니다.</div>
       )}
 
-      {/* 프로젝트별 그룹(아코디언) */}
+      {/* 컬렉션별 그룹(아코디언) */}
       {projectGroups.map((pg, idx) => {
         const isOpen = (projectOpenOverrides[pg.name] ?? idx === 0) || filterActive
         const itemCount = pg.services.reduce((n, g) => n + g.items.length, 0)
@@ -268,7 +268,7 @@ export function VaultScreen() {
               <button
                 type="button"
                 onClick={() => s.envCopyProject(pg.name)}
-                title="이 프로젝트 전체를 .env 형식으로 복사"
+                title="이 컬렉션 전체를 .env 형식으로 복사"
                 className="cursor-pointer rounded-[6px] border border-border bg-none px-[9px] py-1 font-mono text-[10.5px] font-semibold text-faint hover:border-border-strong hover:text-fg-soft"
               >
                 .env 복사

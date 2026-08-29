@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { useProjectNames } from '@/store/selectors'
 
-/** 프로젝트 입력칸들이 공유하는 자동완성 목록(id="kl-projects"). */
+/** 컬렉션 입력칸들이 공유하는 자동완성 목록(id="kl-projects"). */
 export function ProjectsDatalist() {
   const names = useProjectNames()
   return (

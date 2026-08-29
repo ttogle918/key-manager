@@ -141,12 +141,12 @@ export function VaultRow({ it }: { it: VaultItem }) {
             <Row label="등록일">
               <span className="text-fg-soft">{fmtDate(it.addedAt, true)}</span>
             </Row>
-            <Row label="프로젝트">
+            <Row label="컬렉션">
               <input
                 value={it.project}
                 onChange={(e) => setVaultField(it.id, 'project', e.target.value)}
                 list="kl-projects"
-                placeholder="프로젝트 없음"
+                placeholder="컬렉션 없음"
                 className="w-[180px] rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[6px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
               />
             </Row>

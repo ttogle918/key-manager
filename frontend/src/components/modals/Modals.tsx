@@ -55,7 +55,7 @@ export function ResetVaultModal() {
     <Modal open={open} onClose={cancel} title="금고 완전 초기화" className="w-[380px]">
       <div className="text-[15px] font-bold">금고 완전 초기화</div>
       <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
-        저장된 모든 자격증명·감사 이력·프로젝트 접근 승인 기록이 완전히 삭제됩니다.
+        저장된 모든 자격증명·감사 이력·컬렉션 접근 승인 기록이 완전히 삭제됩니다.
         <br />
         <span className="font-semibold text-danger">되돌릴 수 없습니다.</span>
       </p>
@@ -185,7 +185,7 @@ export function DupModal() {
         이미 보관 중인 키
       </div>
       <p className="mt-[10px] text-[12.5px] leading-[1.65] text-muted">
-        <span className="font-mono text-fg-soft">{target?.varName}</span> 이(가) 프로젝트{' '}
+        <span className="font-mono text-fg-soft">{target?.varName}</span> 이(가) 컬렉션{' '}
         <span className="font-semibold text-blue-tag">
           "{target ? target.existing.project || '미분류' : ''}"
         </span>
@@ -194,7 +194,7 @@ export function DupModal() {
         같은 키를 또 추가할까요?
       </p>
       <div className="mt-3 border-t border-line pt-[10px] text-[11.5px] leading-[1.55] text-dim">
-        다른 프로젝트에서 쓰는 키라면, 카드의 <strong className="text-muted-2">프로젝트</strong>를 바꿔
+        다른 컬렉션에서 쓰는 키라면, 카드의 <strong className="text-muted-2">컬렉션</strong>을 바꿔
         저장하면 나란히 구분돼요.
       </div>
       <div className="mt-4 flex justify-end gap-2">
@@ -369,7 +369,7 @@ export function EnvModal() {
       <div className="flex items-baseline gap-[10px]">
         <div className="text-[15px] font-bold">.env 내보내기</div>
         <div className="text-[12px] text-faint-2">
-          {projFilter || '전체 프로젝트'} · {items.length}개 항목
+          {projFilter || '전체 컬렉션'} · {items.length}개 항목
         </div>
       </div>
       <pre className="mt-[14px] max-h-[260px] overflow-y-auto whitespace-pre-wrap break-all rounded-lg border border-line bg-inset px-[14px] py-3 font-mono text-[11px] leading-[1.7] text-[#A8B0BC]">
@@ -436,7 +436,7 @@ export function EmailSyncModal() {
         금고 번들을 입력한 이메일로 보내드려요. 먼저{' '}
         <span className="font-mono text-fg-soft">확인 링크</span>가 담긴 메일이 가고, 그 링크를
         눌러야 실제 파일이 담긴 메일이 한 번 더 발송됩니다. 비밀 값은 암호화되어 있지만,
-        서비스명·라벨·프로젝트명·메모 같은 메타데이터는 평문으로 포함되어 이 메일을 중계하는
+        서비스명·라벨·컬렉션명·메모 같은 메타데이터는 평문으로 포함되어 이 메일을 중계하는
         매니저와 메일 제공자가 볼 수 있어요.
       </p>
       <input

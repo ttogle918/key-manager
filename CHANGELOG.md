@@ -48,6 +48,21 @@ SPDX-License-Identifier: MIT
   요구**한다(권한을 좁히는 등록 해제·거부와 단순 조회는 잠긴 상태에서도 가능).
 
 ### Changed (변경)
+- **용어 통일 — 키 묶음은 "컬렉션"**: 앱 화면·문서·SDK에서 모두 **컬렉션(collection)**으로 부릅니다
+  (예: "프로젝트 접근" → **"컬렉션 접근"**). 이 시스템에는 *키 묶음*과 *그 묶음을 쓸 수 있는 허용
+  디렉토리 목록*이 1:N으로 따로 있는데, 사람들이 "프로젝트"라고 생각하는 건 후자(레포 디렉토리)라
+  앞의 것을 "프로젝트"라 부르면 헷갈렸습니다. 벡터스토어가 네임스페이스를 컬렉션으로 나누는 것과
+  같은 개념입니다. 판단 근거는
+  [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](docs/memo/2026-08-29-runtime1-e2e-bug-audit.md)의
+  "용어 결정" 절 참고.
+  - **호환성에 영향 없음**: HTTP 필드명·엔드포인트 경로(`/sdk/projects`, `{"project": ...}`)와 DB
+    컬럼은 `project` 그대로입니다. `keylens-env`가 다른 레포에 버전 고정으로 설치되므로 와이어
+    포맷을 바꾸면 버전 스큐가 나기 때문입니다. `.keylens.toml`의 `project` 키와
+    `load_env(project=...)`도 계속 동작합니다.
+  - 과거 기록(`CHANGELOG` 0.3.0 이전 항목, `docs/BACKLOG.md`)과 대회 제출 문서
+    (`docs/RESULT_REPORT*.md`)는 당시 표기를 유지합니다.
+- `README.md` 주요 기능에 런타임 키 주입 SDK(`keylens-env`) 항목 추가 — 구현이 끝난 기능인데
+  메인 README에서 빠져 있었습니다.
 - `keylens-env` 버전 0.1.0 → 0.2.0. 주소 결정 책임이 `load_env()` 에서 `client.resolve_base_url()`
   로 이동했다(포트 자동 탐색 도입에 따른 정리).
 - `keylens-env` 문서에 **자동 잠금 주의** 절 추가: 금고는 무활동 5분이면 자동으로 잠기고,

@@ -55,13 +55,14 @@ export function KeyHelp({
 }: {
   service: string
   typeKey: string
-  /** 저장된 프로젝트/ID — 딥링크(GUIDE-1 B) 치환에 사용. ID 형태가 아니면 기본 콘솔로 폴백. */
+  /** 저장된 컬렉션명 — 외부 콘솔의 프로젝트/앱 ID 형태면 딥링크(GUIDE-1 B) 치환에 쓴다.
+   *  ID 형태가 아니면(예: 한글 이름) 치환하지 않고 기본 콘솔로 폴백. */
   project?: string | null
 }) {
   const [open, setOpen] = useState(false)
   const t = TYPE_MAP[service]?.find((o) => o.v === typeKey)
   if (!t) return null
-  // 발급 링크: 항목 project 로 딥링크 해석(치환 or 폴백) + 화이트리스트 통과분만
+  // 발급 링크: 항목 컬렉션명(project 필드)으로 딥링크 해석(치환 or 폴백) + 화이트리스트 통과분만
   const issueUrl = resolveIssueUrl(t.issueUrl || CONSOLE_URL[service], project)
   const docsUrl = isAllowedUrl(t.docsUrl) ? t.docsUrl! : null
   const steps = SVC_STEPS[service] || []

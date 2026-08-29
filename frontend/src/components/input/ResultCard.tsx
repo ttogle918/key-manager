@@ -184,13 +184,13 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
         </div>
       )}
 
-      {/* 프로젝트 · 메모 · 추출정보 토글 */}
+      {/* 컬렉션 · 메모 · 추출정보 토글 */}
       <div className="mx-4 mt-3 flex items-center gap-2">
         <input
           value={r.project}
           onChange={(e) => patchResult(r.id, { project: e.target.value, dupNote: null })}
           list="kl-projects"
-          placeholder="프로젝트"
+          placeholder="컬렉션"
           className="w-[150px] flex-none rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[7px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
         />
         <input

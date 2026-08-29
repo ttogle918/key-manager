@@ -170,7 +170,7 @@ export function InputScreen() {
             )}
           </div>
 
-          {/* URL / 텍스트 / 프로젝트 / 메모 */}
+          {/* URL / 텍스트 / 컬렉션 / 메모 */}
           <div className="flex flex-col gap-3 px-[14px] pt-[14px]">
             <Field label="URL" hint="(선택)">
               <input
@@ -194,7 +194,7 @@ export function InputScreen() {
             </Field>
             <div className="flex gap-3">
               <div className="w-[200px] flex-none">
-                <Field label="프로젝트" hint="(선택)">
+                <Field label="컬렉션" hint="(선택)">
                   <input
                     value={projVal}
                     onChange={(e) => s.setProj(e.target.value)}
