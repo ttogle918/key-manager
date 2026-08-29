@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "keylens-env"
-version = "0.1.0"
+version = "0.2.0"
 description = "Local-first runtime secrets loader for KeyLens — a dotenv-style API backed by the KeyLens vault."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,11 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest>=9.0.3"]
+
+# `keylens-env collections` 를 터미널에서 바로 쓸 수 있게 한다
+# (`python -m keylens_env collections` 와 동일).
+[project.scripts]
+keylens-env = "keylens_env.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

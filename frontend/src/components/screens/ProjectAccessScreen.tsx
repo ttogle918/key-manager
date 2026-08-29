@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useKeylens } from '@/store/keylensStore'
 
-/** RUNTIME-1 — 프로젝트별 SDK 허용 디렉토리를 미리 등록해 두는 설정 화면.
+/** RUNTIME-1 — 컬렉션별 SDK 허용 디렉토리를 미리 등록해 두는 설정 화면.
  * 여기서 등록해 두면 keylens-env가 최초 요청에도 승인 팝업 없이 바로 통과한다. */
 export function ProjectAccessScreen() {
   const sdkProjects = useKeylens((s) => s.sdkProjects)
@@ -23,15 +23,15 @@ export function ProjectAccessScreen() {
   return (
     <div className="mx-auto max-w-[720px] px-8 pb-[90px] pt-[44px] [animation:klFadeUp_.35s_ease]">
       <div className="mb-[18px]">
-        <h1 className="m-0 text-[20px] font-bold tracking-[-.015em]">프로젝트 접근</h1>
+        <h1 className="m-0 text-[20px] font-bold tracking-[-.015em]">컬렉션 접근</h1>
         <div className="mt-1 text-[12.5px] text-faint-2">
-          keylens-env SDK가 승인 팝업 없이 바로 통과할 디렉토리를 프로젝트별로 미리 등록해 두세요.
+          keylens-env SDK가 승인 팝업 없이 바로 통과할 디렉토리를 컬렉션별로 미리 등록해 두세요.
         </div>
       </div>
 
       {sdkProjects.length === 0 ? (
         <div className="rounded-xl border border-border bg-panel px-5 py-8 text-center text-[13px] text-muted">
-          프로젝트가 지정된 키가 아직 없어요 — 보관함에서 항목에 프로젝트를 먼저 지정하세요.
+          컬렉션이 지정된 키가 아직 없어요 — 보관함에서 항목에 컬렉션을 먼저 지정하세요.
         </div>
       ) : (
         <div className="flex gap-4">
@@ -57,7 +57,7 @@ export function ProjectAccessScreen() {
           <div className="min-w-0 flex-1">
             {!selectedSdkProject ? (
               <div className="rounded-xl border border-border bg-panel px-5 py-8 text-center text-[13px] text-muted">
-                왼쪽에서 프로젝트를 선택하세요.
+                왼쪽에서 컬렉션을 선택하세요.
               </div>
             ) : (
               <>

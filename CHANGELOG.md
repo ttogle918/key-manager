@@ -9,6 +9,66 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
+### Added (기능)
+- **컬렉션 목록 조회(`keylens-env`)**: `keylens_env.collections()` 와 CLI
+  `keylens-env collections`(= `python -m keylens_env collections`). 어떤 키 묶음을 쓸 수
+  있는지 이름·개수만 보여준다(**값은 출력하지 않는다**). 진단용 `keylens-env where` 도 추가.
+- **KeyLens 주소 자동 탐색(`keylens-env`)**: `KEYLENS_BASE_URL` 없이도 데스크톱 포트(8765)와
+  개발 포트(8003)를 `/health`로 확인해 **KeyLens가 응답하는 쪽**에 자동으로 붙는다.
+  환경변수를 지정하면 탐색 없이 그 주소를 그대로 쓴다.
+- **`load_env(override=False)`**: 이미 설정된 환경변수를 보존하는 선택지(python-dotenv와 동일한
+  동작). 기본값은 기존과 같은 `True`. `load_env()` 가 실제로 주입한 `{이름: 값}` 을 반환한다.
+- `.keylens.toml` 의 `collection` 키(기존 `project` 키도 계속 동작).
+
+### Fixed (버그)
+> 상세 재현·판단 근거는 [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](docs/memo/2026-08-29-runtime1-e2e-bug-audit.md).
+
+- **한글 Windows 콘솔에서 에러 메시지 출력 시 크래시**: 모든 SDK 에러 메시지에 들어 있던
+  em dash(U+2014)가 cp949로 인코딩되지 않아, README 예시대로 `print(e)` 하면
+  `UnicodeEncodeError` 로 죽었다. 하필 신규 사용자가 가장 먼저 만나는 승인 대기 에러였다.
+  메시지 문자열 전체를 검사하는 회귀 테스트(`test_messages.py`) 추가.
+- **빈 컬렉션을 조용히 성공 처리하던 문제**: 주입할 변수가 0개여도 성공한 척해서 한참 뒤
+  엉뚱한 자리에서 `KeyError` 로 터졌다. 이제 `KeylensEmptyCollectionError` 로 즉시 알린다
+  (프로젝트를 지정하지 않고 저장한 키가 등록일 이름으로 묶이는 것이 흔한 원인).
+- **`KeylensEnvError` 밖으로 새던 원시 예외**: 해당 포트에 KeyLens가 아닌 다른 프로그램이
+  떠 있으면 `JSONDecodeError`, 응답 형식이 다르면 `KeyError('values')` 가 그대로 노출됐다.
+  전부 `KeylensServerError` 로 정규화.
+- **`.keylens.toml` 인코딩**: Windows 메모장의 'UTF-8'(BOM) 저장분이 "TOML 형식이 아니에요"로
+  실패하고, '유니코드'(UTF-16) 저장분은 원시 `UnicodeDecodeError` 를 던졌다.
+- **동시 요청 시 500**: 같은 디렉토리에서 여러 프로세스가 동시에 `load_env()` 를 호출하면
+  `UNIQUE` 제약 위반(`IntegrityError`)으로 500이 났다. `ON CONFLICT DO NOTHING` 으로 수정.
+- **승인 대기 뱃지가 자동 갱신되지 않던 문제**: SDK 요청은 앱 밖에서 오는데 폴링이 없어
+  뱃지가 0으로 남았다(특히 dev 모드는 OS 알림도 없어 알 방법이 아예 없었다). 5초 폴링 추가.
+
+### Security (보안)
+- **SDK 승인 게이트 우회 차단**: 디렉토리 등록(`POST /sdk/projects/{p}/directories`)과 대기 요청
+  승인(`POST /sdk/pending/{id}/approve`)이 잠금 상태에서도 인증 없이 통과해, 임의의 로컬
+  프로세스가 자기 디렉토리를 스스로 허용 목록에 넣거나 자기 요청을 스스로 승인한 뒤 사용자가
+  다음번 잠금을 해제하는 순간 값을 받아갈 수 있었다. 이제 **권한을 넓히는 작업은 잠금 해제를
+  요구**한다(권한을 좁히는 등록 해제·거부와 단순 조회는 잠긴 상태에서도 가능).
+
+### Changed (변경)
+- **용어 통일 — 키 묶음은 "컬렉션"**: 앱 화면·문서·SDK에서 모두 **컬렉션(collection)**으로 부릅니다
+  (예: "프로젝트 접근" → **"컬렉션 접근"**). 이 시스템에는 *키 묶음*과 *그 묶음을 쓸 수 있는 허용
+  디렉토리 목록*이 1:N으로 따로 있는데, 사람들이 "프로젝트"라고 생각하는 건 후자(레포 디렉토리)라
+  앞의 것을 "프로젝트"라 부르면 헷갈렸습니다. 벡터스토어가 네임스페이스를 컬렉션으로 나누는 것과
+  같은 개념입니다. 판단 근거는
+  [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](docs/memo/2026-08-29-runtime1-e2e-bug-audit.md)의
+  "용어 결정" 절 참고.
+  - **호환성에 영향 없음**: HTTP 필드명·엔드포인트 경로(`/sdk/projects`, `{"project": ...}`)와 DB
+    컬럼은 `project` 그대로입니다. `keylens-env`가 다른 레포에 버전 고정으로 설치되므로 와이어
+    포맷을 바꾸면 버전 스큐가 나기 때문입니다. `.keylens.toml`의 `project` 키와
+    `load_env(project=...)`도 계속 동작합니다.
+  - 과거 기록(`CHANGELOG` 0.3.0 이전 항목, `docs/BACKLOG.md`)과 대회 제출 문서
+    (`docs/RESULT_REPORT*.md`)는 당시 표기를 유지합니다.
+- `README.md` 주요 기능에 런타임 키 주입 SDK(`keylens-env`) 항목 추가 — 구현이 끝난 기능인데
+  메인 README에서 빠져 있었습니다.
+- `keylens-env` 버전 0.1.0 → 0.2.0. 주소 결정 책임이 `load_env()` 에서 `client.resolve_base_url()`
+  로 이동했다(포트 자동 탐색 도입에 따른 정리).
+- `keylens-env` 문서에 **자동 잠금 주의** 절 추가: 금고는 무활동 5분이면 자동으로 잠기고,
+  SDK 조회는 이 타이머를 갱신하지 않는다(자리 비움 보호 — 의도된 설계). 길게 도는 작업은
+  `KEYLENS_AUTOLOCK_SECONDS` 로 조정. `KeylensLockedError` 메시지에도 같은 안내를 넣었다.
+
 ## [0.3.0] - 2026-08-27
 
 ### Added (기능)

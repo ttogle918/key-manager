@@ -95,7 +95,7 @@ export function ManualEntryTab() {
       <div className="flex gap-3 px-[14px] pb-[14px]">
         <div className="w-[200px] flex-none">
           <div className="mb-[6px] text-[11.5px] font-semibold text-muted-2">
-            프로젝트 <span className="font-medium text-dim-2">(선택)</span>
+            컬렉션 <span className="font-medium text-dim-2">(선택)</span>
           </div>
           <input
             value={projVal}

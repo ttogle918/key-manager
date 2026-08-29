@@ -85,7 +85,7 @@ def test_preflight_allows_methods_the_frontend_uses(live_server, method):
 
 
 def test_preflight_for_sdk_directory_removal(live_server):
-    """RUNTIME-1 '프로젝트 접근' 화면의 디렉토리 해제(DELETE) 경로."""
+    """RUNTIME-1 '컬렉션 접근' 화면의 디렉토리 해제(DELETE) 경로."""
     status, allowed = _preflight(live_server, "/sdk/projects/blog/directories/1", "DELETE")
     assert status == 200
     assert "DELETE" in allowed

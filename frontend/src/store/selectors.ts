@@ -3,7 +3,7 @@
 import { useKeylens } from '@/store/keylensStore'
 import { projectKey } from '@/lib/format'
 
-/** 보관함 + 현재 입력 중인 프로젝트명을 합쳐 정렬한 고유 목록. */
+/** 보관함 + 현재 입력 중인 컬렉션명을 합쳐 정렬한 고유 목록. */
 export function useProjectNames(): string[] {
   const vault = useKeylens((s) => s.vault)
   const projVal = useKeylens((s) => s.projVal)

@@ -24,7 +24,7 @@ SPDX-License-Identifier: MIT
 | 금고 번들 내보내기/가져오기 (SYNC-0) | ✅ 완료 | 서버 없는 멀티 기기 |
 | 발급 도움말 · 보안 등급 (GUIDE-1/2) | ✅ 완료 | 딥링크 화이트리스트 |
 | 데스크톱 앱 (PyWebView, exe 패키징) | ✅ 완료 | cx_Freeze |
-| **RUNTIME-1 — SDK 백엔드**(`/sdk/*`) | ✅ 완료 | 프로젝트별 허용 디렉토리·승인 대기열·env 값 병합 |
+| **RUNTIME-1 — SDK 백엔드**(`/sdk/*`) | ✅ 완료 | 컬렉션별 허용 디렉토리·승인 대기열·env 값 병합 |
 | **RUNTIME-1 — 승인 대기 화면**(`PendingScreen`) | ✅ 완료 | 사이드바 배지·목록·허용/거부 |
 | **RUNTIME-1 — 데스크톱 알림**(`notify.py`) | ✅ 완료 | 작업표시줄 깜빡임·OS 토스트·화면 자동 전환(Windows) |
 | RUNTIME-1 — `keylens-env` PyPI 패키지 | ⏳ 미착수 | SDK를 실제로 배포할 클라이언트 라이브러리 자체 |
@@ -343,7 +343,7 @@ erDiagram
 
 > `SDK_PROJECT_DIRS`/`SDK_PENDING_REQUESTS`는 `ENTRIES`와 외래키로 묶이지 않습니다 — `project` 문자열로만
 > 느슨하게 연결됩니다(`sdk_env()`가 조회 시점에 두 값을 나란히 읽어 병합). `UNIQUE(project, path_norm)`으로
-> 같은 (프로젝트, 경로) 조합의 중복 등록/중복 대기를 막습니다.
+> 같은 (컬렉션, 경로) 조합의 중복 등록/중복 대기를 막습니다.
 
 ---
 
@@ -428,7 +428,7 @@ sequenceDiagram
         FE->>BE: POST /sdk/pending/{id}/approve 또는 /deny
         BE-->>FE: 200 OK → 목록 재조회
     else 이미 승인된 경로
-        BE->>BE: entries_for_env() — 전역+프로젝트 키 복호화 병합(프로젝트가 override)
+        BE->>BE: entries_for_env() — 전역+컬렉션 키 복호화 병합(컬렉션이 override)
         BE->>BE: access_log에 'sdk_fetch' 기록
         BE-->>SDK: 200 {values: {...}}
     end

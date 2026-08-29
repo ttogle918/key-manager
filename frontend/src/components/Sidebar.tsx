@@ -78,7 +78,7 @@ export function Sidebar() {
         </button>
         <button type="button" onClick={goProjectAccess} className={navBtn(view === 'projectAccess')}>
           <span className="block size-[15px] flex-none rounded-[3px] border-[1.5px] border-current opacity-70" />
-          <span className="flex-1">프로젝트 접근</span>
+          <span className="flex-1">컬렉션 접근</span>
         </button>
       </nav>
 

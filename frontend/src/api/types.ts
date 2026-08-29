@@ -150,7 +150,7 @@ export interface VaultEntryMeta {
   expires_at?: string | null
 }
 
-/** 승인 대기 요청 한 건(RUNTIME-1) — 값 없이 프로젝트·경로 문자열만. */
+/** 승인 대기 요청 한 건(RUNTIME-1) — 값 없이 컬렉션·경로 문자열만. */
 export interface SdkPendingRequest {
   id: number
   project: string
@@ -158,7 +158,7 @@ export interface SdkPendingRequest {
   requested_at: string
 }
 
-/** SDK 프로젝트 요약(RUNTIME-1) — 금고에 프로젝트가 지정된 항목이 있으면 자동으로 잡힌다. */
+/** SDK 컬렉션 요약(RUNTIME-1) — 금고에 컬렉션이 지정된 항목이 있으면 자동으로 잡힌다. */
 export interface SdkProject {
   project: string
   key_count: number

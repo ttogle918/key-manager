@@ -20,7 +20,7 @@ export function PendingScreen() {
       <div className="mb-[18px]">
         <h1 className="m-0 text-[20px] font-bold tracking-[-.015em]">승인 대기</h1>
         <div className="mt-1 text-[12.5px] text-faint-2">
-          keylens-env SDK가 미등록 디렉토리에서 프로젝트 키를 요청했어요 — 허용해야 값을 내려줍니다.
+          keylens-env SDK가 미등록 디렉토리에서 컬렉션의 키를 요청했어요 — 허용해야 값을 내려줍니다.
         </div>
       </div>
 

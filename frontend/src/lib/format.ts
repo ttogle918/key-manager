@@ -4,7 +4,7 @@ import { SERVICE_ORDER } from '@/data/services'
 import type { VaultItem } from '@/types'
 
 /**
- * 보관함 그룹핑용 프로젝트 키. project 미지정 항목은 등록일로 묶는다 — 백엔드가 새 저장 시
+ * 보관함 그룹핑용 컬렉션 키. 컬렉션(project 필드) 미지정 항목은 등록일로 묶는다 — 백엔드가 새 저장 시
  * 실제 project 값을 등록일로 채워주지만(main.vault_add), 마이그레이션하지 않은 기존 항목은
  * 여전히 project가 빈 문자열일 수 있어 화면에서도 동일 규칙으로 방어한다.
  */
@@ -126,7 +126,7 @@ export function autoMemoFrom(meta: Record<string, unknown> | undefined): string 
   return parts.join(' · ')
 }
 
-/** 보관함 항목들을 .env 텍스트로 직렬화(서비스별 그룹, 주석에 프로젝트). */
+/** 보관함 항목들을 .env 텍스트로 직렬화(서비스별 그룹, 주석에 컬렉션). */
 export function envText(items: VaultItem[]): string {
   const out: string[] = []
   SERVICE_ORDER.forEach((name) => {
