@@ -23,12 +23,14 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
+import { parseEnv } from '@/lib/envParse'
 import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
   DeleteTarget,
   DupTarget,
+  EnvImportRow,
   InputMode,
   ManualRow,
   PendingRequest,
@@ -165,6 +167,15 @@ interface KeylensState {
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 컬렉션·경로 문자열만). */
   pendingRequests: PendingRequest[]
+  // .env 가져오기
+  /** 가져오기 모달 표시 여부. */
+  envImportOpen: boolean
+  /** 가져오기 표의 줄들(저장 전). */
+  envImportRows: EnvImportRow[]
+  /** 표 전체에 적용할 컬렉션 이름. 비어 있으면 저장 불가. */
+  envImportProject: string
+  /** 저장 진행 중(중복 클릭 방지). */
+  envImportBusy: boolean
   // RUNTIME-1 — 컬렉션 접근 설정 화면
   // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
   // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
@@ -200,6 +211,13 @@ interface KeylensState {
   /** 승인 대기 목록을 백엔드에서 다시 불러온다(값 없음 — 잠금 상태에서도 동작). */
   /** 승인 대기 목록 주기 조회 시작(중복 기동 안전). cleanup()에서 정지. */
   startPendingPoll: () => void
+  /** `.env` 텍스트를 파싱해 가져오기 모달을 연다. 분류는 /analyze 로 보강한다. */
+  openEnvImport: (text: string) => Promise<void>
+  closeEnvImport: () => void
+  patchEnvRow: (id: string, patch: Partial<EnvImportRow>) => void
+  setEnvImportProject: (v: string) => void
+  /** 체크된 줄을 금고에 일괄 저장한다. */
+  saveEnvImport: () => Promise<void>
   loadPending: () => Promise<void>
   /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
   approvePending: (id: number) => Promise<void>
@@ -406,6 +424,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
     resettingVault: false,
     knowledgeReady: false,
     pendingRequests: [],
+    envImportOpen: false,
+    envImportRows: [],
+    envImportProject: '',
+    envImportBusy: false,
     sdkProjects: [],
     selectedSdkProject: null,
     sdkDirs: [],
@@ -511,6 +533,114 @@ export const useKeylens = create<KeylensState>((set, get) => {
         void get().loadPending()
       }, PENDING_POLL_MS)
     },
+    openEnvImport: async (text) => {
+      const MAX_BYTES = 1024 * 1024
+      const MAX_LINES = 200
+      if (text.length > MAX_BYTES) {
+        get().showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+        return
+      }
+      if (text.split(/\r?\n/).length > MAX_LINES) {
+        get().showToast('줄이 너무 많아요 - 200줄 이하 .env 만 가져올 수 있어요')
+        return
+      }
+      const parsed = parseEnv(text)
+      if (!parsed.length) {
+        get().showToast('환경변수를 찾지 못했어요 - KEY=VALUE 형식인지 확인해 주세요')
+        return
+      }
+
+      // 분류는 보강일 뿐이다. 실패해도 목록은 그대로 보여준다.
+      const byValue = new Map<string, { service: string; typeLabel: string; official: string }>()
+      try {
+        const resp = await analyzeApi({ text })
+        for (const it of resp.items) {
+          if (!it.service) continue
+          byValue.set(it.value, {
+            service: it.service,
+            typeLabel: it.label ?? '',
+            official: it.official_env_name ?? '',
+          })
+        }
+      } catch {
+        get().showToast('분류 서버에 연결하지 못했어요 - 이름과 값만으로 진행합니다')
+      }
+
+      const rows: EnvImportRow[] = parsed.map((p) => {
+        const hit = byValue.get(p.value)
+        return {
+          id: crypto.randomUUID(),
+          name: p.name,
+          value: p.value,
+          checked: true, // 비시크릿 줄도 전부 가져온다
+          service: hit?.service ?? null,
+          typeLabel: hit?.typeLabel || null,
+          suggestedName: hit && hit.official && hit.official !== p.name ? hit.official : null,
+        }
+      })
+      set({ envImportOpen: true, envImportRows: rows, envImportProject: '' })
+    },
+
+    closeEnvImport: () => set({ envImportOpen: false, envImportRows: [], envImportProject: '' }),
+
+    patchEnvRow: (id, patch) =>
+      set((s) => ({
+        envImportRows: s.envImportRows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      })),
+
+    setEnvImportProject: (v) => set({ envImportProject: v }),
+
+    saveEnvImport: async () => {
+      const project = get().envImportProject.trim()
+      if (!project) {
+        get().showToast('컬렉션 이름을 먼저 입력해 주세요')
+        return
+      }
+      const rows = get().envImportRows.filter((r) => r.checked && r.name.trim())
+      if (!rows.length) {
+        get().showToast('저장할 항목을 선택해 주세요')
+        return
+      }
+      set({ envImportBusy: true })
+      let saved = 0
+      const savedIds: string[] = []
+      for (const r of rows) {
+        const name = r.name.trim()
+        // 이미 같은 컬렉션에 같은 변수명이 있으면 건너뛴다.
+        if (get().vault.some((v) => v.varName === name && (v.project || '') === project)) {
+          continue
+        }
+        const found = findServiceByVarName(name)
+        try {
+          await vaultApi.add({
+            service: found ? SERVICE_TO_ID[found.service] : null,
+            kind: found ? found.type.v : null,
+            official_name: name,
+            value: r.value,
+            label: found ? found.type.label : null,
+            project,
+            memo: null,
+            expires_at: jwtExp(r.value),
+          })
+          saved++
+          savedIds.push(r.id)
+        } catch (e) {
+          if (e instanceof VaultApiError && e.status === 401) {
+            get().showToast('금고가 잠겨 저장할 수 없어요 - 잠금을 해제하세요')
+            break
+          }
+          get().showToast(vaultErrorText(e, `${name} 저장 실패 - 잠시 후 다시 시도해 보세요`))
+        }
+      }
+      // 성공분만 목록에서 빼고, 실패분은 남겨 재시도할 수 있게 한다.
+      const remaining = get().envImportRows.filter((r) => !savedIds.includes(r.id))
+      set({ envImportRows: remaining, envImportBusy: false, envImportOpen: remaining.length > 0 })
+      if (saved) {
+        await get().loadVault()
+        get().showToast(`${saved}개 저장됨 - AES-256-GCM 암호화`)
+      }
+    },
+
     loadPending: async () => {
       try {
         const rows = await sdkApi.pending()
