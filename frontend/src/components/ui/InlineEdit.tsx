@@ -96,7 +96,9 @@ export function InlineEdit({
         !value && 'text-faint-2',
       )}
     >
-      {displayValue ?? value ?? ''}
+      {/* ?? 가 아니라 || - mask('') 처럼 빈 문자열이 오면 placeholder 로 넘겨야
+          칸이 아예 안 보여 누를 수 없게 되는 걸 막는다. */}
+      {displayValue || value || ''}
       {!value && !displayValue && (placeholder || '')}
     </button>
   )

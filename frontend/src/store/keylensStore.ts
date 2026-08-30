@@ -551,7 +551,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
           get().showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
           return
         }
-        if (text.split(/\r?\n/).length > MAX_LINES) {
+        // .env 는 보통 개행으로 끝난다 - 끝의 빈 줄까지 세면 딱 200줄짜리 파일이 거부된다.
+        if (text.trimEnd().split(/\r?\n/).length > MAX_LINES) {
           get().showToast('줄이 너무 많아요 - 200줄 이하 .env 만 가져올 수 있어요')
           return
         }

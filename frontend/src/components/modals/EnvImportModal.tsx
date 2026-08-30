@@ -48,61 +48,66 @@ export function EnvImportModal() {
         <table className="w-full border-collapse text-[12.5px]">
           <thead className="sticky top-0 bg-panel text-[11px] text-faint-2">
             <tr>
-              <th className="w-[34px] p-2" />
-              <th className="p-2 text-left font-semibold">변수명</th>
-              <th className="p-2 text-left font-semibold">값</th>
-              <th className="w-[150px] p-2 text-left font-semibold">종류</th>
+              <th scope="col" className="w-[34px] p-2" />
+              <th scope="col" className="p-2 text-left font-semibold">변수명</th>
+              <th scope="col" className="p-2 text-left font-semibold">값</th>
+              <th scope="col" className="w-[150px] p-2 text-left font-semibold">종류</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} className="border-t border-line align-top">
-                <td className="p-2">
-                  <input
-                    type="checkbox"
-                    checked={r.checked}
-                    aria-label={`${r.name} 선택`}
-                    onChange={(e) => patch(r.id, { checked: e.target.checked })}
-                  />
-                </td>
-                <td className="p-2">
-                  <InlineEdit
-                    value={r.name}
-                    ariaLabel={`${r.name} 변수명`}
-                    mono
-                    placeholder="변수명을 입력하세요"
-                    onCommit={(next) => patch(r.id, { name: next })}
-                  />
-                  {r.suggestedName && (
-                    <button
-                      type="button"
-                      onClick={() => patch(r.id, { name: r.suggestedName!, suggestedName: null })}
-                      className="mt-1 cursor-pointer rounded border border-border bg-none px-[6px] py-px text-[10.5px] text-faint-2 hover:text-fg-soft"
-                    >
-                      제안: {r.suggestedName} 적용
-                    </button>
-                  )}
-                  {!r.name.trim() && (
-                    <div className="mt-1 text-[10.5px] text-danger">이름이 없으면 저장할 수 없어요</div>
-                  )}
-                </td>
-                <td className="p-2">
-                  {/* 평문은 편집 중에만 보인다 - .env 는 한 파일에 시크릿이 여러 개다.
-                      서비스를 못 알아본 값은 앞 4글자만 남긴다 - 접두어가 공개 정보라는
-                      보장이 없어서다(백엔드 Stage1 의 keep_front=4 와 같은 기준). */}
-                  <InlineEdit
-                    value={r.value}
-                    displayValue={mask(r.value, r.service ? 8 : 4)}
-                    ariaLabel={`${r.name} 값`}
-                    mono
-                    onCommit={(next) => patch(r.id, { value: next })}
-                  />
-                </td>
-                <td className="p-2 text-[11.5px] text-muted">
-                  {r.typeLabel ? `${r.service} · ${r.typeLabel}` : '미상'}
-                </td>
-              </tr>
-            ))}
+            {rows.map((r, i) => {
+              // 이름이 비어 있으면 aria-label 이 " 선택" 처럼 뭉개져 빈 줄끼리 구분이 안 된다.
+              // 그럴 때만 줄 번호로 대신 부른다.
+              const rowLabel = r.name.trim() || `${i + 1}번째 줄`
+              return (
+                <tr key={r.id} className="border-t border-line align-top">
+                  <td className="p-2">
+                    <input
+                      type="checkbox"
+                      checked={r.checked}
+                      aria-label={`${rowLabel} 선택`}
+                      onChange={(e) => patch(r.id, { checked: e.target.checked })}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <InlineEdit
+                      value={r.name}
+                      ariaLabel={`${rowLabel} 변수명`}
+                      mono
+                      placeholder="변수명을 입력하세요"
+                      onCommit={(next) => patch(r.id, { name: next })}
+                    />
+                    {r.suggestedName && (
+                      <button
+                        type="button"
+                        onClick={() => patch(r.id, { name: r.suggestedName!, suggestedName: null })}
+                        className="mt-1 cursor-pointer rounded border border-border bg-none px-[6px] py-px text-[10.5px] text-faint-2 hover:text-fg-soft"
+                      >
+                        제안: {r.suggestedName} 적용
+                      </button>
+                    )}
+                    {!r.name.trim() && (
+                      <div className="mt-1 text-[10.5px] text-danger">이름이 없으면 저장할 수 없어요</div>
+                    )}
+                  </td>
+                  <td className="p-2">
+                    {/* 평문은 편집 중에만 보인다 - .env 는 한 파일에 시크릿이 여러 개다.
+                        서비스를 못 알아본 값은 앞 4글자만 남긴다 - 접두어가 공개 정보라는
+                        보장이 없어서다(백엔드 Stage1 의 keep_front=4 와 같은 기준). */}
+                    <InlineEdit
+                      value={r.value}
+                      displayValue={mask(r.value, r.service ? 8 : 4)}
+                      ariaLabel={`${rowLabel} 값`}
+                      mono
+                      onCommit={(next) => patch(r.id, { value: next })}
+                    />
+                  </td>
+                  <td className="p-2 text-[11.5px] text-muted">
+                    {r.typeLabel ? `${r.service} · ${r.typeLabel}` : '미상'}
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

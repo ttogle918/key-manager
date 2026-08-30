@@ -58,6 +58,12 @@ export function InputScreen() {
       rd.onerror = () => s.showToast('이미지를 읽지 못했어요 — 다른 파일로 시도해 주세요')
       rd.readAsDataURL(f)
     } else if (f) {
+      // 크기는 읽기 전에 본다. 통째로 문자열로 만든 뒤에 걸러내면 큰 바이너리를 떨어뜨렸을 때
+      // 그 문자열을 만드는 단계에서 이미 렌더러가 멎는다(openEnvImport 의 1MB 검사보다 앞).
+      if (f.size > 1024 * 1024) {
+        s.showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+        return
+      }
       // .env 처럼 확장자가 없거나 text/plain 인 파일은 텍스트로 읽어 가져오기 모달을 연다.
       const rd = new FileReader()
       rd.onload = () => {
