@@ -54,12 +54,14 @@ export function InlineEdit({
         ref={ref}
         value={draft}
         aria-label={ariaLabel}
+        // 편집 중임을 DOM 에 표시한다. Modal 이 이걸 보고 Escape 로 다이얼로그가 닫히는 걸
+        // 막는다 - Radix DismissableLayer 는 document 에 capture 로 붙어 있어서, 아래
+        // onKeyDown 의 stopPropagation 만으로는 이미 늦다(리액트 버블 핸들러가 나중에 돈다).
+        data-inline-editing="true"
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          // 여기서 막지 않으면 키가 document 까지 올라가고, Radix DismissableLayer 가
-          // 그걸 받아 감싸고 있는 다이얼로그(.env 가져오기 모달)를 통째로 닫아 버린다
-          // - 값 편집 중 Escape 한 번에 파싱한 줄이 전부 사라진다.
+          // capture 로 듣지 않는 바깥 핸들러(중첩 폼 등)까지는 여기서 막아 둔다.
           if (e.key === 'Enter') {
             e.stopPropagation()
             commit()
