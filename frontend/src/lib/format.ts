@@ -3,6 +3,8 @@
 import { SERVICE_ORDER } from '@/data/services'
 import type { VaultItem } from '@/types'
 
+const BULLET = '•'
+
 /**
  * 보관함 그룹핑용 컬렉션 키. 컬렉션(project 필드) 미지정 항목은 등록일로 묶는다 — 백엔드가 새 저장 시
  * 실제 project 값을 등록일로 채워주지만(main.vault_add), 마이그레이션하지 않은 기존 항목은
@@ -139,4 +141,20 @@ export function envText(items: VaultItem[]): string {
     out.push('')
   })
   return out.join('\n').trim()
+}
+
+/**
+ * 값 마스킹 - 앞부분(접두어 식별용)과 뒤 4자만 남기고 가린다.
+ * backend/app/masking.py 의 mask() 와 같은 규칙이다. .env 가져오기는 값이 프론트에만
+ * 존재해 백엔드 마스킹을 쓸 수 없어서 여기에 같은 로직을 둔다.
+ *
+ * keepFront 는 공개 정보인 접두어(sk- 등)를 식별용으로 남기기 위한 값이다.
+ * 12자 미만의 짧은 값은 부분 노출만으로도 복원 여지가 커 전체를 가린다.
+ */
+export function mask(value: string, keepFront = 8, keepBack = 4): string {
+  const n = value.length
+  if (n < 12) return BULLET.repeat(n)
+  const front = Math.min(keepFront, Math.max(1, n - keepBack - 4))
+  const hidden = Math.min(16, Math.max(4, n - front - keepBack))
+  return value.slice(0, front) + BULLET.repeat(hidden) + value.slice(-keepBack)
 }
