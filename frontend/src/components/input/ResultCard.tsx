@@ -246,7 +246,8 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
               color: cur ? '#A7E8C9' : '#8B7B4A',
             }}
           >
-            {cur ? cur.var : '종류 선택 대기'}
+            {/* 저장 때와 같은 규칙 - 사용자가 고친 이름이 있으면 그것이 이긴다. */}
+            {cur ? (r.varName || '').trim() || cur.var : '종류 선택 대기'}
           </span>
         </div>
         <select
