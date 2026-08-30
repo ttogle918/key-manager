@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 [Your Name]
+# SPDX-License-Identifier: MIT
+#
+# 패키징(빌드) 전용 의존성 - 런타임에는 필요 없다.
+# cx_Freeze 는 실행 파일을 만드는 도구일 뿐이라 배포물에 도구 코드가 실리지 않으므로
+# requirements.txt(런타임)와 분리한다. manager-relay/requirements-dev.txt 와 같은 관례.
+-r requirements.txt
+cx_Freeze==8.6.4      # PSF 계열 permissive; 빌드 도구(실행 파일에 도구 코드 미포함).
+                      # THIRD-PARTY-NOTICES.md 참고.

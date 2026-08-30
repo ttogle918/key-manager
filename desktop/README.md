@@ -35,18 +35,32 @@ python desktop/app.py
 `python desktop/app.py`로도 충분하지만, **비개발자에게 더블클릭 설치**를 주려면 단일 실행 파일로 묶습니다.
 패키저는 **cx_Freeze**(permissive 라이선스, 아래 참고)를 사용합니다.
 
+> ⚠️ **반드시 가상환경(venv) 안에서 빌드하세요.** 아래 2단계의 `activate` 를 빼먹고 전역 Python에
+> 설치하면 빌드가 이렇게 실패합니다:
+>
+> ```
+> RecursionError: maximum recursion depth exceeded
+> ```
+>
+> cx_Freeze 가 import 그래프를 **재귀로** 훑는데, 패키지가 많이 깔린 전역 Python에서는 파이썬 기본
+> 재귀 한도(1000)를 넘겨 버리기 때문입니다(실측: 전역 347개 패키지 → 실패 / venv 190개 → 성공).
+> cx_Freeze 버전 문제가 아니므로 버전을 올리거나 내려도 해결되지 않습니다.
+
 ```bash
 # 1) 프론트 빌드(실행 파일에 동봉될 SPA)
 cd frontend && npm ci && npm run build && cd ..
 
-# 2) 데스크톱 + 패키저 설치
+# 2) 데스크톱 + 패키저 설치 — venv 활성화 필수(위 경고 참고)
 cd backend && .venv\Scripts\activate && cd ..
-pip install -r desktop/requirements.txt cx_Freeze
+pip install -r desktop/requirements-build.txt
 
-# 3) 빌드
+# 3) 빌드 (2단계에서 활성화한 venv 그대로)
 cd desktop && python setup.py build
 #   → desktop/build/exe.<플랫폼>/KeyLens(.exe) + 옆에 frontend/dist·backend/knowledge 동봉
 ```
+
+`requirements-build.txt` 는 런타임 의존성(`requirements.txt`)에 패키저(`cx_Freeze==8.6.4`)만 얹은
+빌드 전용 목록입니다 — cx_Freeze 는 실행 파일에 실리지 않는 도구라 런타임 목록과 분리해 뒀습니다.
 
 `setup.py` 가 실행 파일 옆에 `frontend/dist`·`backend/knowledge` 를 동봉하고, `app.py` 는 **패키징 모드
 (`sys.frozen`)를 감지**해 그 경로에서 SPA·지식베이스를 읽습니다. 금고(`vault.db`)는 실행 파일 옆에 생성됩니다.
@@ -54,8 +68,12 @@ cd desktop && python setup.py build
 빌드 산출물(`build/`·`dist/`)은 용량이 커(수십 MB) 저장소에 커밋하지 않고
 [GitHub Releases](https://github.com/ttogle918/key-manager/releases) 아티팩트로만 배포합니다.
 
-> ✅ **빌드 실증**: cx_Freeze 8.6.4 로 `KeyLens.exe` 생성 확인. 실행 시 번들된 지식베이스(9종)·SPA를
-> 로드하고 백엔드가 정상 서빙됨(`/health`·`/knowledge`·`/analyze` 응답, 더미 GitHub 키 분류까지 확인).
+> ✅ **빌드 실증**: cx_Freeze 8.6.4 + `backend/.venv` 에서 `KeyLens.exe` 생성 확인. 실행 시 번들된
+> 지식베이스(9종)·SPA를 로드하고 백엔드가 정상 서빙됨(`/health`·`/knowledge`·`/analyze` 응답,
+> 더미 GitHub 키 분류까지 확인).
+>
+> 2026-08-30 재빌드 확인 — 동봉물: `frontend/dist`, `backend/knowledge` YAML 9종,
+> OCR 모델 `.onnx` 9개, 번들 총 392MB.
 
 ### 패키저 라이선스 (이 프로젝트는 permissive-only)
 
