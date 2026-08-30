@@ -176,6 +176,8 @@ interface KeylensState {
   envImportProject: string
   /** 저장 진행 중(중복 클릭 방지). */
   envImportBusy: boolean
+  /** 파싱·분류 진행 중(드롭 연타로 /analyze 가 겹쳐 도는 것 방지). */
+  envImportLoading: boolean
   // RUNTIME-1 — 컬렉션 접근 설정 화면
   // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
   // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
@@ -428,6 +430,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     envImportRows: [],
     envImportProject: '',
     envImportBusy: false,
+    envImportLoading: false,
     sdkProjects: [],
     selectedSdkProject: null,
     sdkDirs: [],
@@ -534,56 +537,72 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }, PENDING_POLL_MS)
     },
     openEnvImport: async (text) => {
-      const MAX_BYTES = 1024 * 1024
-      const MAX_LINES = 200
-      if (text.length > MAX_BYTES) {
-        get().showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+      // /analyze 는 최대 8초까지 걸린다. 그 사이 같은 파일을 또 떨어뜨리면 두 번째 호출이
+      // 먼저 끝난 결과와 사용자가 입력하던 컬렉션 이름을 덮어써 버린다 - 한 번에 하나만 돈다.
+      if (get().envImportLoading) {
+        get().showToast('.env 를 읽고 있어요 - 잠시만 기다려 주세요')
         return
       }
-      if (text.split(/\r?\n/).length > MAX_LINES) {
-        get().showToast('줄이 너무 많아요 - 200줄 이하 .env 만 가져올 수 있어요')
-        return
-      }
-      const parsed = parseEnv(text)
-      if (!parsed.length) {
-        get().showToast('환경변수를 찾지 못했어요 - KEY=VALUE 형식인지 확인해 주세요')
-        return
-      }
-
-      // 분류는 보강일 뿐이다. 실패해도 목록은 그대로 보여준다.
-      const byValue = new Map<
-        string,
-        { service: string; kind: string; typeLabel: string; official: string }
-      >()
+      set({ envImportLoading: true })
       try {
-        const resp = await analyzeApi({ text })
-        for (const it of resp.items) {
-          if (!it.service) continue
-          byValue.set(it.value, {
-            service: it.service,
-            kind: it.kind ?? '',
-            typeLabel: it.label ?? '',
-            official: it.official_env_name ?? '',
-          })
+        const MAX_BYTES = 1024 * 1024
+        const MAX_LINES = 200
+        if (text.length > MAX_BYTES) {
+          get().showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+          return
         }
-      } catch {
-        get().showToast('분류 서버에 연결하지 못했어요 - 이름과 값만으로 진행합니다')
-      }
+        if (text.split(/\r?\n/).length > MAX_LINES) {
+          get().showToast('줄이 너무 많아요 - 200줄 이하 .env 만 가져올 수 있어요')
+          return
+        }
+        const parsed = parseEnv(text)
+        if (!parsed.length) {
+          get().showToast('환경변수를 찾지 못했어요 - KEY=VALUE 형식인지 확인해 주세요')
+          return
+        }
 
-      const rows: EnvImportRow[] = parsed.map((p) => {
-        const hit = byValue.get(p.value)
-        return {
-          id: crypto.randomUUID(),
-          name: p.name,
-          value: p.value,
-          checked: true, // 비시크릿 줄도 전부 가져온다
-          service: hit?.service ?? null,
-          kind: hit?.kind || null,
-          typeLabel: hit?.typeLabel || null,
-          suggestedName: hit && hit.official && hit.official !== p.name ? hit.official : null,
+        // 분류를 기다리는 동안 화면이 조용하면 사용자는 드롭이 무시된 줄 안다.
+        get().showToast(`${parsed.length}개를 읽었어요 - 분류를 확인하는 중이에요`)
+
+        // 분류는 보강일 뿐이다. 실패해도 목록은 그대로 보여준다.
+        const byValue = new Map<
+          string,
+          { service: string; kind: string; typeLabel: string; official: string }
+        >()
+        try {
+          const resp = await analyzeApi({ text })
+          for (const it of resp.items) {
+            if (!it.service) continue
+            byValue.set(it.value, {
+              service: it.service,
+              kind: it.kind ?? '',
+              typeLabel: it.label ?? '',
+              official: it.official_env_name ?? '',
+            })
+          }
+        } catch {
+          get().showToast('분류 서버에 연결하지 못했어요 - 이름과 값만으로 진행합니다')
         }
-      })
-      set({ envImportOpen: true, envImportRows: rows, envImportProject: '' })
+
+        const rows: EnvImportRow[] = parsed.map((p) => {
+          const hit = byValue.get(p.value)
+          return {
+            id: crypto.randomUUID(),
+            name: p.name,
+            value: p.value,
+            checked: true, // 비시크릿 줄도 전부 가져온다
+            service: hit?.service ?? null,
+            kind: hit?.kind || null,
+            typeLabel: hit?.typeLabel || null,
+            suggestedName: hit && hit.official && hit.official !== p.name ? hit.official : null,
+          }
+        })
+        set({ envImportOpen: true, envImportRows: rows, envImportProject: '' })
+      } finally {
+        // 어느 경로로 빠져나가든(검증 실패·분류 실패·성공) 플래그는 반드시 내린다.
+        // 안 그러면 한 번 실패한 뒤로는 가져오기가 영영 막힌다.
+        set({ envImportLoading: false })
+      }
     },
 
     closeEnvImport: () => set({ envImportOpen: false, envImportRows: [], envImportProject: '' }),
@@ -1546,6 +1565,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         envImportRows: [],
         envImportProject: '',
         envImportBusy: false,
+        envImportLoading: false,
         pendingRequests: [],
         sdkProjects: [],
         selectedSdkProject: null,
