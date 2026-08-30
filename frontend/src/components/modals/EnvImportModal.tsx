@@ -99,7 +99,17 @@ export function EnvImportModal() {
                       displayValue={mask(r.value, r.service ? 8 : 4)}
                       ariaLabel={`${rowLabel} 값`}
                       mono
-                      onCommit={(next) => patch(r.id, { value: next })}
+                      // 값이 바뀌면 분류는 옛 값에 대한 것이라 더 이상 유효하지 않다.
+                      // 안 지우면 OpenAI 로 분류된 줄에 GitHub 토큰을 붙여넣었을 때
+                      // OpenAI 로 저장된다. 지우면 이름 기반 추론으로 떨어진다.
+                      onCommit={(next) =>
+                        patch(
+                          r.id,
+                          next === r.value
+                            ? { value: next }
+                            : { value: next, service: null, kind: null, typeLabel: null },
+                        )
+                      }
                     />
                   </td>
                   <td className="p-2 text-[11.5px] text-muted">

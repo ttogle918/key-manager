@@ -573,7 +573,12 @@ export const useKeylens = create<KeylensState>((set, get) => {
         try {
           const resp = await analyzeApi({ text })
           for (const it of resp.items) {
-            if (!it.service) continue
+            // 신호가 충돌한 항목(stage2)은 service 는 채워져 있어도 kind 가 "ambiguous",
+            // label 이 "종류 미확정" 이고 service 는 "첫 신호"의 것이라 변수명이 가리키는
+            // 서비스와 다를 수 있다. 그대로 받으면 KAKAO_REST_API_KEY 처럼 이름만 봐도
+            // 확실한 줄이 "종류 미확정"으로 저장되고 검증 버튼도 unsupported 가 된다.
+            // 이런 줄은 보강을 포기하고 이름 기반 추론에 맡기는 편이 정확하다.
+            if (!it.service || it.conflict) continue
             byValue.set(it.value, {
               service: it.service,
               kind: it.kind ?? '',
