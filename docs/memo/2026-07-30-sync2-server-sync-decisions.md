@@ -79,6 +79,29 @@ SPDX-License-Identifier: MIT
 
 ---
 
+## 폐기 근거 — Supabase 기본 메일러 발송 한도 (2026-08-26 확인)
+
+위 "대체됨" 배너가 말하는 **이메일 발송 한도**의 실제 수치를 남겨 둔다. 결론은 이미 났지만,
+근거 없이 "한도 때문에 접었다"만 남으면 나중에 같은 조사를 다시 하게 된다.
+
+**확인한 것**: Supabase 기본(커스텀 SMTP 미설정) 메일러는 가입 확인·비밀번호 재설정 메일을
+**시간당 2통**으로 제한한다. 공식 문서 문구는 "2 emails per hour, Limited By: Sum of combined
+requests project-wide" (https://supabase.com/docs/guides/auth/rate-limits) —
+**사용자 1명당이 아니라 프로젝트 전체 합산**이다.
+
+**그래서 왜 접었나**: 여러 사용자가 비슷한 시간대에 가입하면 3번째 요청부터
+`429 email rate limit exceeded` 로 막힌다. 솔로 테스트 단계에서는 드러나지 않지만, 실제로
+배포해서 여러 사람이 쓰게 하려면 **커스텀 SMTP 공급자(Resend·SendGrid 등) 연결이 옵션이 아니라
+사실상 필수**가 된다. 그럴 거면 계정·DB를 낀 Supabase 계층을 유지할 이유가 약해진다 —
+어차피 SMTP를 직접 붙일 거라면 SMTP만 쓰는 쪽이 단순하고, "로컬 우선·외부 서버 없음"
+원칙과도 맞는다. 그 판단이 계정·DB 없는 SMTP 릴레이(`manager-relay/`)로 이어졌다.
+
+> 이 절의 원본은 폐기된 `feature/sync2-supabase` 브랜치(`0ed628b`)에만 있었다. 브랜치를
+> 정리해도 근거가 남도록 여기로 옮겼다. 당시 함께 적었던 "커스텀 SMTP 연결" 후속 작업
+> 체크리스트는 Supabase 자체를 안 쓰기로 하면서 무효가 되어 옮기지 않았다.
+
+---
+
 ## 착수 시 다시 확인할 것
 
 - [ ] Supabase 테이블/Storage 중 최종 선택, RLS 정책 문구
