@@ -551,13 +551,17 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
 
       // 분류는 보강일 뿐이다. 실패해도 목록은 그대로 보여준다.
-      const byValue = new Map<string, { service: string; typeLabel: string; official: string }>()
+      const byValue = new Map<
+        string,
+        { service: string; kind: string; typeLabel: string; official: string }
+      >()
       try {
         const resp = await analyzeApi({ text })
         for (const it of resp.items) {
           if (!it.service) continue
           byValue.set(it.value, {
             service: it.service,
+            kind: it.kind ?? '',
             typeLabel: it.label ?? '',
             official: it.official_env_name ?? '',
           })
@@ -574,6 +578,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           value: p.value,
           checked: true, // 비시크릿 줄도 전부 가져온다
           service: hit?.service ?? null,
+          kind: hit?.kind || null,
           typeLabel: hit?.typeLabel || null,
           suggestedName: hit && hit.official && hit.official !== p.name ? hit.official : null,
         }
@@ -616,14 +621,18 @@ export const useKeylens = create<KeylensState>((set, get) => {
           dupCount++
           continue
         }
-        const found = findServiceByVarName(name)
+        // /analyze 가 값으로 알아본 분류가 있으면 그것이 우선이다. 변수명 기반 추론은
+        // 분류가 없는 줄에만 쓴다 - 사용자가 이름을 자기 것으로 바꾸는 게 이 기능의 약속인데,
+        // 이름으로만 다시 찾으면 MY_GITHUB 같은 이름에서 분류가 통째로 날아간다.
+        const classified = r.service !== null
+        const found = classified ? null : findServiceByVarName(name)
         try {
           await vaultApi.add({
-            service: found ? SERVICE_TO_ID[found.service] : null,
-            kind: found ? found.type.v : null,
-            official_name: name,
+            service: classified ? r.service : found ? SERVICE_TO_ID[found.service] : null,
+            kind: classified ? r.kind : found ? found.type.v : null,
+            official_name: name, // 사용자가 정한 이름이 이긴다
             value: r.value,
-            label: found ? found.type.label : null,
+            label: classified ? r.typeLabel : found ? found.type.label : null,
             project,
             memo: null,
             expires_at: jwtExp(r.value),

@@ -169,6 +169,8 @@ export interface EnvImportRow {
   checked: boolean
   /** /analyze 가 알아본 서비스 id. 못 알아봤으면 null. */
   service: string | null
+  /** /analyze 가 알아본 종류 키(예: "pat"). 못 알아봤으면 null. */
+  kind: string | null
   /** 종류 라벨(예: "Personal Access Token"). 못 알아봤으면 null. */
   typeLabel: string | null
   /** 지식베이스 공식 이름이 원본과 다를 때만 채워진다 - "제안"으로 보여준다. */
