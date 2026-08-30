@@ -87,10 +87,12 @@ export function EnvImportModal() {
                   )}
                 </td>
                 <td className="p-2">
-                  {/* 평문은 편집 중에만 보인다 - .env 는 한 파일에 시크릿이 여러 개다. */}
+                  {/* 평문은 편집 중에만 보인다 - .env 는 한 파일에 시크릿이 여러 개다.
+                      서비스를 못 알아본 값은 앞 4글자만 남긴다 - 접두어가 공개 정보라는
+                      보장이 없어서다(백엔드 Stage1 의 keep_front=4 와 같은 기준). */}
                   <InlineEdit
                     value={r.value}
-                    displayValue={mask(r.value)}
+                    displayValue={mask(r.value, r.service ? 8 : 4)}
                     ariaLabel={`${r.name} 값`}
                     mono
                     onCommit={(next) => patch(r.id, { value: next })}
