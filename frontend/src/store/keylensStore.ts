@@ -1027,7 +1027,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         set((s) => ({ results: s.results.filter((x) => x.id !== id), dupTarget: null }))
         await get().loadVault()
         get().showToast(
-          t.var +
+          varName +
             ' 저장됨 — AES-256-GCM 암호화' +
             (jwtExpiry ? ` · JWT 만료일 자동 감지(${jwtExpiry})` : ''),
         )
