@@ -3,7 +3,7 @@
 import { SERVICE_ORDER } from '@/data/services'
 import type { VaultItem } from '@/types'
 
-const BULLET = '•'
+const BULLET = '\u2022'
 
 /**
  * 보관함 그룹핑용 컬렉션 키. 컬렉션(project 필드) 미지정 항목은 등록일로 묶는다 — 백엔드가 새 저장 시

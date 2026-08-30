@@ -103,7 +103,7 @@ describe('projectKey', () => {
 })
 
 describe('mask', () => {
-  const BULLET = '•'
+  const BULLET = '\u2022'
 
   it('12자 미만은 전체를 가린다', () => {
     expect(mask('shortpin7')).toBe(BULLET.repeat(9))
