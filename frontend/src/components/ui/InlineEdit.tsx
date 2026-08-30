@@ -57,8 +57,15 @@ export function InlineEdit({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
+          // 여기서 막지 않으면 키가 document 까지 올라가고, Radix DismissableLayer 가
+          // 그걸 받아 감싸고 있는 다이얼로그(.env 가져오기 모달)를 통째로 닫아 버린다
+          // - 값 편집 중 Escape 한 번에 파싱한 줄이 전부 사라진다.
+          if (e.key === 'Enter') {
+            e.stopPropagation()
+            commit()
+          }
           if (e.key === 'Escape') {
+            e.stopPropagation()
             setDraft(value)
             setEditing(false)
           }
