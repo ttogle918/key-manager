@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 import { CONF_META, SVC_DISAMBIG, SVC_META, TYPE_MAP } from '@/data/services'
 import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
+import { InlineEdit } from '@/components/ui/InlineEdit'
 import { useKeylens } from '@/store/keylensStore'
 import type { AnalysisResult } from '@/types'
 
@@ -183,6 +184,27 @@ export function ResultCard({ r }: { r: AnalysisResult }) {
           })}
         </div>
       )}
+
+      {/* 변수명 편집 - 더블클릭으로 고치면 저장 시 이 이름이 이긴다 */}
+      <div className="mx-4 mt-3 mb-2">
+        <div className="mb-1 text-[11px] font-semibold text-faint-2">변수명</div>
+        <InlineEdit
+          value={r.varName || cur?.var || ''}
+          ariaLabel="변수명"
+          mono
+          placeholder="변수명을 입력하세요"
+          onCommit={(next) => patchResult(r.id, { varName: next })}
+        />
+        {cur?.var && (r.varName || '') && r.varName !== cur.var && (
+          <button
+            type="button"
+            onClick={() => patchResult(r.id, { varName: cur.var })}
+            className="mt-1 cursor-pointer rounded border border-border bg-none px-[6px] py-px text-[10.5px] text-faint-2 hover:text-fg-soft"
+          >
+            제안: {cur.var} 적용
+          </button>
+        )}
+      </div>
 
       {/* 컬렉션 · 메모 · 추출정보 토글 */}
       <div className="mx-4 mt-3 flex items-center gap-2">

@@ -1002,10 +1002,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
       if (!r) return
       const t = TYPE_MAP[r.service].find((t) => t.v === r.typeKey)
       if (!t) return
+      // 사용자가 변수명을 직접 정했으면 그것이 이긴다(.env 가져오기·인라인 편집).
+      // 안 건드렸으면 지금까지처럼 종류에서 공식 이름을 도출한다.
+      const varName = (r.varName || '').trim() || t.var
       if (!force) {
-        const dup = findDup(r, t.var)
+        const dup = findDup(r, varName)
         if (dup) {
-          set({ dupTarget: { resultId: id, existing: dup, varName: t.var } })
+          set({ dupTarget: { resultId: id, existing: dup, varName } })
           return
         }
       }
@@ -1014,7 +1017,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await vaultApi.add({
           service: SERVICE_TO_ID[r.service],
           kind: t.v,
-          official_name: t.var,
+          official_name: varName,
           value: r.full,
           label: t.label,
           project: (r.project || '').trim() || null,
@@ -1059,7 +1062,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const savedIds: string[] = []
       for (const r of savable) {
         const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)!
-        if (findDup(r, t.var)) {
+        // 사용자가 변수명을 직접 정했으면 그것이 이긴다(.env 가져오기·인라인 편집).
+        // 안 건드렸으면 지금까지처럼 종류에서 공식 이름을 도출한다.
+        const varName = (r.varName || '').trim() || t.var
+        if (findDup(r, varName)) {
           dupCount++
           continue
         }
@@ -1067,7 +1073,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           await vaultApi.add({
             service: SERVICE_TO_ID[r.service],
             kind: t.v,
-            official_name: t.var,
+            official_name: varName,
             value: r.full,
             label: t.label,
             project: (r.project || '').trim() || null,
@@ -1087,10 +1093,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const remaining = get().results.filter((r) => !savedIds.includes(r.id))
       const dupMarked = remaining.map((r) => {
         const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)
-        if (t && findDup(r, t.var)) {
-          return {
-            ...r,
-            dupNote: '이미 보관 중인 키예요 — [확정 후 저장]을 누르면 추가 여부를 물어봅니다.',
+        if (t) {
+          const varName = (r.varName || '').trim() || t.var
+          if (findDup(r, varName)) {
+            return {
+              ...r,
+              dupNote: '이미 보관 중인 키예요 — [확정 후 저장]을 누르면 추가 여부를 물어봅니다.',
+            }
           }
         }
         return r
