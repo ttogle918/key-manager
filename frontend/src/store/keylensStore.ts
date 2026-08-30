@@ -602,12 +602,18 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return
       }
       set({ envImportBusy: true })
+      // 결과는 루프 안에서 토스트하지 않고 모아 둔다 - showToast 는 앞의 토스트를 지우므로
+      // 루프 안에서 부르면 마지막 한 줄의 사연만 남고 나머지는 사용자에게 닿지 않는다.
       let saved = 0
+      let dupCount = 0
+      let failed = 0
+      let lockedOut = false
       const savedIds: string[] = []
       for (const r of rows) {
         const name = r.name.trim()
         // 이미 같은 컬렉션에 같은 변수명이 있으면 건너뛴다.
         if (get().vault.some((v) => v.varName === name && (v.project || '') === project)) {
+          dupCount++
           continue
         }
         const found = findServiceByVarName(name)
@@ -626,19 +632,27 @@ export const useKeylens = create<KeylensState>((set, get) => {
           savedIds.push(r.id)
         } catch (e) {
           if (e instanceof VaultApiError && e.status === 401) {
-            get().showToast('금고가 잠겨 저장할 수 없어요 - 잠금을 해제하세요')
+            // 자동 잠금 등으로 세션이 끊겼다 - reveal() 과 같이 UI 도 잠금으로 맞춘다.
+            set({ locked: true })
+            lockedOut = true
             break
           }
-          get().showToast(vaultErrorText(e, `${name} 저장 실패 - 잠시 후 다시 시도해 보세요`))
+          failed++
+          console.error(`[KeyLens] .env 가져오기 - ${name} 저장 실패:`, e)
         }
       }
-      // 성공분만 목록에서 빼고, 실패분은 남겨 재시도할 수 있게 한다.
+      // 성공분만 목록에서 빼고, 실패·중복분은 남겨 재시도할 수 있게 한다.
       const remaining = get().envImportRows.filter((r) => !savedIds.includes(r.id))
       set({ envImportRows: remaining, envImportBusy: false, envImportOpen: remaining.length > 0 })
-      if (saved) {
-        await get().loadVault()
-        get().showToast(`${saved}개 저장됨 - AES-256-GCM 암호화`)
-      }
+      if (saved) await get().loadVault()
+      // 토스트는 마지막에 딱 한 번 - 일어난 일을 전부 담는다(saveAll 과 같은 방식).
+      const parts: string[] = []
+      if (saved) parts.push(`${saved}개 저장됨 - AES-256-GCM 암호화`)
+      if (dupCount) parts.push(`${dupCount}개는 이 컬렉션에 이미 있어 건너뜀`)
+      if (failed) parts.push(`${failed}개 저장 실패 - 잠시 후 다시 시도해 보세요`)
+      if (lockedOut) parts.push('금고가 잠겨 나머지를 저장하지 못했어요 - 잠금을 해제하세요')
+      if (!parts.length) parts.push('저장된 항목이 없어요 - 표에서 항목을 다시 확인해 주세요')
+      get().showToast(parts.join(' · '))
     },
 
     loadPending: async () => {
