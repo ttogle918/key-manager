@@ -138,7 +138,7 @@ BAR=ghp_2222...      (같은 값, 다른 이름)   →  /analyze 는 1건만 반
 |---|---|
 | `frontend/src/lib/envParse.ts` | `.env` 텍스트 → `{name, value}[]`. 순수 함수, 부수효과 없음 |
 | `frontend/src/components/modals/EnvImportModal.tsx` | 체크박스 표, 컬렉션 입력 1개, 일괄 저장 |
-| `frontend/src/components/InlineEdit.tsx` | 더블클릭 편집 공용 컴포넌트 |
+| `frontend/src/components/ui/InlineEdit.tsx` | 더블클릭 편집 공용 컴포넌트(기존 `ui/Modal.tsx` 옆) |
 
 **고치는 것**
 
