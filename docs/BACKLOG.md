@@ -440,8 +440,8 @@ SPDX-License-Identifier: MIT
 - **용어 통일(2026-08-30)**: 키 묶음을 앱·문서·SDK에서 모두 **컬렉션**으로 부른다. HTTP 필드명·DB
   컬럼은 `project` 유지(버전 스큐 방지). 근거는 위 메모의 "용어 결정" 절.
 
-### RUNTIME-2 🟡 `.env` 가져오기 + 저장 전 인라인 편집 — 설계·계획 완료, 구현 대기
-- **중요도**: 🟡 Medium | **의존성**: RUNTIME-1 | **사이즈**: M | **상태**: 📋 계획 수립 완료(2026-08-30)
+### RUNTIME-2 🟡 `.env` 가져오기 + 저장 전 인라인 편집 — ✅ 완료(리뷰 대기)
+- **중요도**: 🟡 Medium | **의존성**: RUNTIME-1 | **사이즈**: M | **상태**: ✅ 구현 완료(2026-08-31) — PR [#7](https://github.com/ttogle918/key-manager/pull/7), 백엔드 변경 0 · 프론트 vitest 68 · tsc·build clean
 - **왜**: 지금은 `.env` **내보내기**만 있다. 이미 `.env`를 쓰던 레포를 KeyLens로 옮기려면 키를
   하나씩 손으로 다시 넣어야 한다 — 변수가 10개면 10번이다.
 - **설계**: [`docs/superpowers/specs/2026-08-30-env-import-design.md`](superpowers/specs/2026-08-30-env-import-design.md)
@@ -455,15 +455,33 @@ SPDX-License-Identifier: MIT
   - 비시크릿 줄(`DB_HOST` 등)도 전부 가져온다 — 목표가 `.env` 파일 자체를 없애는 것이라
   - 이름·값 더블클릭 인라인 편집. 보관함은 값만, 그것도 기존 회전 모달로 연결
 - **하위 할일**
-  - [ ] `envParse.ts` + 단위 테스트 14개
-  - [ ] `ui/InlineEdit.tsx` 더블클릭 편집 공용 컴포넌트
-  - [ ] 스토어 상태·액션(`openEnvImport`/`saveEnvImport` 등)
-  - [ ] `EnvImportModal.tsx` + `InputScreen` 드롭 분기
-  - [ ] 결과 카드 변수명 편집 + `saveAll` 이름 우선순위 변경
-  - [ ] 보관함 값 더블클릭 → 회전 모달 연결
-  - [ ] README·CHANGELOG 갱신
+  - [x] `envParse.ts` + 단위 테스트 14개
+  - [x] `ui/InlineEdit.tsx` 더블클릭 편집 공용 컴포넌트
+  - [x] 스토어 상태·액션(`openEnvImport`/`saveEnvImport` 등)
+  - [x] `EnvImportModal.tsx` + `InputScreen` 드롭 분기
+  - [x] 결과 카드 변수명 편집 + `saveAll` 이름 우선순위 변경
+  - [x] 보관함 값 더블클릭 → 회전 모달 연결
+  - [x] README·CHANGELOG 갱신
+- **계획서에 없었으나 구현 중 드러나 추가한 것**
+  - [x] 프론트 `mask()` 이식 — 계획서가 `@/lib/format`의 `mask`를 import 하는데 그 함수가 없었다.
+    `.env` 값은 프론트에만 있어 백엔드 마스킹을 쓸 수 없다(`backend/app/masking.py`와 동일 규칙)
+  - [x] `resetProto()`에 `envImport*` 추가 — `envImportRows`가 **암호화 전 평문**을 들고 있다
+  - [x] 이름 우선순위를 `saveAll` 2곳이 아니라 **6곳**에 적용 — 카드의 개별 저장 버튼은 별개 액션
+    `save(id)`를 부른다. 계획서대로면 카드에서 고친 이름이 조용히 무시됐다
+  - [x] 최종 리뷰 Important 8건 수정 — 특히 (a) 이름을 바꾸면 `/analyze` 분류가 통째로 날아가
+    **GitHub 토큰이 OpenAI 밑에** 저장되던 것, (b) 인라인 편집 중 Escape 가 모달을 닫아 파싱한
+    줄이 전부 사라지던 것(Radix `DismissableLayer`가 document 에 capture 로 걸려 있어
+    `stopPropagation`으로는 못 막는다 — `onEscapeKeyDown`으로 해결)
+  - [x] 보관함 값 더블클릭이 `reveal()`을 2번 호출해 **복호화 요청·접근 기록이 2건씩** 쌓이던 것
+    (`e.detail === 1` 가드)
 - **범위 밖(별도 스펙)**: 이미 저장된 항목의 **변수명 변경**. `official_name`이 암호문의 AAD라
   이름을 바꾸려면 값을 재암호화해야 한다 — 메타데이터 편집이 아니라 암호화 경로 수정이다.
+- **남은 후속(의도적으로 제외)**: `frontend/src/api/map.ts`의 `|| 'OpenAI'` 폴백. 분류된 줄은
+  이제 제 서비스로 들어가지만, **분류가 아예 안 되는 줄(`DB_HOST`·`PORT`)은 여전히 보관함에서
+  OpenAI로 묶여 보인다.** 이 폴백은 `saveManualRows` 등 기존 흐름도 함께 쓰므로 이 작업 범위에서
+  뺐다 — 고치려면 "서비스 미지정" 표시를 별도로 설계해야 한다.
+- **사람이 해야 할 확인**: 드롭 → 표 → 저장 전체 흐름의 수동 브라우저 확인. (Escape 동작과
+  더블클릭 복호화 횟수는 실제 브라우저에서 측정해 확인함)
 
 ---
 
