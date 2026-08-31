@@ -10,9 +10,10 @@ SPDX-License-Identifier: MIT
 <meta name="description" content="흩어진 API 키·토큰을 한곳에 암호화해 모아두고 코드에서 바로 불러쓰는 로컬 전용 자격증명 관리 도구. Windows 실행 파일 무료 다운로드." />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27><rect width=%2724%27 height=%2724%27 rx=%276%27 fill=%27%233ECF8E%27/><path d=%27M12 6a4.5 4.5 0 0 0-4.5 4.5V13H6v7h12v-7h-1.5v-2.5A4.5 4.5 0 0 0 12 6Zm0 2a2.5 2.5 0 0 1 2.5 2.5V13h-5v-2.5A2.5 2.5 0 0 1 12 8Z%27 fill=%27%2306130E%27/></svg>" />
 <title>KeyLens — 흩어진 키를 정리해서 코드에서 그대로 불러쓰는 로컬 자격증명 관리자</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- 웹폰트를 받지 않는다 - 이 페이지는 "키가 기기를 떠나지 않는다"고 말하면서
+     방문자 IP 를 폰트 CDN 에 넘기지 않아야 한다. 앱(frontend/index.html)도 같은
+     이유로 폰트를 로컬 벤더링해 쓴다. 여기서는 설치돼 있으면 Pretendard 를,
+     아니면 OS 기본 한글 폰트를 쓴다. 요청 0건, 저장소에 넣는 바이트 0. -->
 <style>
   /* ============ TOKENS ============ */
   :root {
@@ -34,9 +35,10 @@ SPDX-License-Identifier: MIT
     --crit-soft: #F7E4E1;
     --card-shadow: 0 1px 2px rgba(14, 29, 24, .04), 0 8px 24px -12px rgba(14, 29, 24, .10);
 
-    --f-display: 'Gowun Batang', ui-serif, Georgia, 'Apple SD Gothic Neo', serif;
-    --f-body: 'IBM Plex Sans KR', -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', sans-serif;
-    --f-mono: 'IBM Plex Mono', ui-monospace, 'JetBrains Mono', 'D2Coding', Consolas, monospace;
+    /* 설치돼 있으면 Pretendard, 없으면 OS 기본값으로 떨어진다. 웹폰트 요청 없음. */
+    --f-display: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', system-ui, sans-serif;
+    --f-body: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', system-ui, sans-serif;
+    --f-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'D2Coding', Consolas, 'Courier New', monospace;
     --w: 1080px;
   }
 
@@ -162,7 +164,8 @@ SPDX-License-Identifier: MIT
 
   .hero h1 {
     font-family: var(--f-display); font-weight: 700;
-    font-size: clamp(32px, 4.4vw, 50px); line-height: 1.28; letter-spacing: -.01em;
+    /* 시스템 산세리프는 큰 크기에서 자간이 벌어져 보인다 - 명조체가 주던 밀도를 자간으로 보완. */
+    font-size: clamp(32px, 4.4vw, 50px); line-height: 1.28; letter-spacing: -.022em;
     margin: 18px 0 22px; max-width: 15ch;
   }
   .hero h1 .hl { color: var(--accent); }
@@ -257,7 +260,7 @@ SPDX-License-Identifier: MIT
   /* ============ SECTIONS ============ */
   section { padding: 76px 0 0; }
   .sec-head { max-width: 62ch; margin-bottom: 34px; }
-  .sec-title { font-family: var(--f-display); font-size: 26px; font-weight: 700; letter-spacing: -.01em; margin: 10px 0 10px; }
+  .sec-title { font-family: var(--f-display); font-size: 26px; font-weight: 700; letter-spacing: -.018em; margin: 10px 0 10px; }
   .sec-sub { color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
 
   .reveal { opacity: 0; transform: translateY(14px); transition: opacity .55s ease, transform .55s ease; }
@@ -282,6 +285,16 @@ SPDX-License-Identifier: MIT
   }
   .feat h3 { font-size: 15.5px; font-weight: 600; letter-spacing: -.005em; margin-bottom: 7px; }
   .feat p { font-size: 13.5px; color: var(--ink-soft); line-height: 1.65; }
+  .feat p code, .feat h3 code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+
+  /* 핵심 5개 아래로 내린 나머지 기능 - 다 읽히기보다 훑고 지나가라고 둔 목록이다. */
+  .more { margin-top: 26px; }
+  .more-title {
+    font-family: var(--f-mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--faint); margin-bottom: 16px; font-weight: 500;
+  }
+  .more .sec-list dt { font-family: var(--f-body); font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .more .sec-list dd { font-size: 13px; }
 
   /* ---- security ---- */
   .sec-security { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 30px; }
@@ -372,7 +385,8 @@ SPDX-License-Identifier: MIT
         <p class="sub">
           메모장·스크린샷·머릿속에 흩어진 API 키·토큰을 한곳에 암호화해 모아두고,
           <code>keylens_env.load_env()</code> 한 줄로 실행 중인 금고에서 바로 꺼내 씁니다 — <code>.env</code> 파일 없이.
-          스크린샷을 던지면 어떤 키인지 맥락으로 알아내 라벨까지 붙여줍니다.
+          쓰던 <code>.env</code>를 끌어다 놓으면 변수 전체를 한 번에 옮겨오고, 스크린샷을 던지면
+          어떤 키인지 맥락으로 알아내 라벨까지 붙여줍니다.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="https://github.com/ttogle918/key-manager/releases/latest">Windows용 다운로드</a>
@@ -428,7 +442,8 @@ SPDX-License-Identifier: MIT
     <div class="stats-in">
       <div class="stat"><b class="tnum">9</b><span>지원 서비스</span></div>
       <div class="stat"><b class="tnum">22</b><span>자격증명 종류</span></div>
-      <div class="stat"><b class="tnum">305</b><span>테스트 통과</span></div>
+      <!-- 실측값: 백엔드 pytest 312 + 프론트 vitest 68 = 380. 기능을 추가하면 같이 갱신할 것. -->
+      <div class="stat"><b class="tnum">380</b><span>테스트 통과</span></div>
       <div class="stat"><b class="tnum">0</b><span>카피레프트 의존성</span></div>
     </div>
   </div>
@@ -453,14 +468,14 @@ SPDX-License-Identifier: MIT
 
     <div class="grid3 reveal">
       <div class="feat">
-        <span class="tag">분류</span>
-        <h3>스크린샷·URL·텍스트에서 인식</h3>
-        <p>콘솔 화면을 그대로 던지면 됩니다. OCR은 로컬 백엔드(127.0.0.1)에서 돌아가 이미지가 기기를 떠나지 않습니다.</p>
+        <span class="tag">가져오기</span>
+        <h3>쓰던 <code>.env</code>를 끌어다 놓기</h3>
+        <p>변수 전체를 표로 보여주고, 이름·값을 확인·수정한 뒤 한 번에 저장합니다. <strong>원본 변수명을 그대로 지킵니다</strong> — 코드가 이미 그 이름을 읽고 있으니까요.</p>
       </div>
       <div class="feat">
         <span class="tag">분류</span>
-        <h3>공식 환경변수명으로 정리</h3>
-        <p><code>NOTION_DATABASE_ID</code>처럼 각 서비스가 실제로 쓰는 이름에 맞춥니다. 매번 다르게 적어 생기는 혼선이 사라집니다.</p>
+        <h3>스크린샷·URL·텍스트에서 인식</h3>
+        <p>콘솔 화면을 그대로 던지면 됩니다. OCR은 로컬 백엔드(127.0.0.1)에서 돌아가 이미지가 기기를 떠나지 않습니다.</p>
       </div>
       <div class="feat">
         <span class="tag">보관</span>
@@ -478,35 +493,40 @@ SPDX-License-Identifier: MIT
         <p><code>keylens_env</code> SDK로 <code>.env</code> 파일 없이 실행 중인 금고에서 값을 받아옵니다. 프로젝트별 접근 승인이 있어 등록 안 된 디렉토리는 요청해도 안 내려갑니다.</p>
       </div>
       <div class="feat">
-        <span class="tag">관리</span>
-        <h3>살아있는 키인지 확인</h3>
-        <p>버튼을 누르면 읽기 전용 호출 한 번으로 키가 아직 유효한지 확인합니다. 자동으로 호출하지 않습니다.</p>
-      </div>
-      <div class="feat">
-        <span class="tag">관리</span>
-        <h3>노출 등급 표시</h3>
-        <p>공개해도 되는 키와 절대 노출하면 안 되는 키를 구분해 표시합니다. 유출 시 피해와 대응 링크도 함께.</p>
-      </div>
-      <div class="feat">
-        <span class="tag">관리</span>
-        <h3>만료 임박 알림</h3>
-        <p>만료일을 넣어두면 임박한 것부터 위로 올라옵니다. JWT는 만료 시각을 자동으로 읽습니다.</p>
-      </div>
-      <div class="feat">
-        <span class="tag">이동</span>
-        <h3>다른 기기로 옮기기</h3>
-        <p>금고 전체를 암호화된 파일 하나로 내보냅니다. 서버를 거치지 않고 USB나 개인 클라우드로 옮기면 됩니다.</p>
-      </div>
-      <div class="feat">
         <span class="tag">이해</span>
         <h3>이 화면 자체가 뭔지 설명</h3>
         <p>화면 전체를 박스+라벨로 짚어줍니다. 모르는 서비스는 로컬 Ollama가 추정하고, 원하면 웹 검색으로 다시 확인합니다 — 둘 다 옵트인, 안 켜면 전부 로컬에서 끝납니다.</p>
       </div>
-      <div class="feat">
-        <span class="tag">확장</span>
-        <h3>새 서비스는 파일 하나</h3>
-        <p>서비스 정의가 YAML이라 코드를 고치지 않고 추가할 수 있습니다. 현재 9종을 지원합니다.</p>
-      </div>
+    </div>
+
+    <div class="more reveal">
+      <h3 class="more-title">그 밖에</h3>
+      <dl class="sec-list">
+        <div>
+          <dt>공식 환경변수명으로 정리</dt>
+          <dd><code>NOTION_DATABASE_ID</code>처럼 각 서비스가 실제로 쓰는 이름을 제안합니다.</dd>
+        </div>
+        <div>
+          <dt>살아있는 키인지 확인</dt>
+          <dd>버튼을 누를 때만 읽기 전용 호출 한 번. 자동으로 부르지 않습니다.</dd>
+        </div>
+        <div>
+          <dt>노출 등급 표시</dt>
+          <dd>공개해도 되는 키와 절대 안 되는 키를 구분하고, 유출 시 대응 링크를 붙입니다.</dd>
+        </div>
+        <div>
+          <dt>만료 임박 알림</dt>
+          <dd>임박한 것부터 위로 올라옵니다. JWT는 만료 시각을 자동으로 읽습니다.</dd>
+        </div>
+        <div>
+          <dt>다른 기기로 옮기기</dt>
+          <dd>금고 전체를 암호화된 파일 하나로. 서버를 거치지 않습니다.</dd>
+        </div>
+        <div>
+          <dt>새 서비스는 파일 하나</dt>
+          <dd>서비스 정의가 YAML이라 코드를 고치지 않고 추가합니다. 현재 9종 지원.</dd>
+        </div>
+      </dl>
     </div>
   </section>
 
