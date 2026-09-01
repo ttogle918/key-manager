@@ -24,6 +24,14 @@ export function Modal({ open, onClose, title, className, children }: ModalProps)
         <Dialog.Overlay className="fixed inset-0 z-[80] bg-[rgba(4,6,8,.72)] [animation:klFade_.15s]" />
         <Dialog.Content
           aria-describedby={undefined}
+          // 인라인 편집 중의 Escape 는 "편집 취소"지 "모달 닫기"가 아니다. Radix 는 document 에
+          // capture 로 붙어 있어 자식에서 stopPropagation 해도 못 막으므로, 여기서 편집 중인
+          // 입력칸에서 온 Escape 를 걸러낸다. 안 걸러내면 값 하나 고치다 취소했을 뿐인데
+          // .env 가져오기 표가 통째로 사라진다.
+          onEscapeKeyDown={(e) => {
+            const target = e.target as HTMLElement | null
+            if (target?.closest?.('[data-inline-editing="true"]')) e.preventDefault()
+          }}
           className={cn(
             'fixed left-1/2 top-1/2 z-[90] -translate-x-1/2 -translate-y-1/2',
             'rounded-xl border border-border bg-elevated p-5 shadow-[0_20px_50px_rgba(0,0,0,.5)]',

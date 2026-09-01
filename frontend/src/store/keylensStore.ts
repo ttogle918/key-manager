@@ -23,12 +23,14 @@ import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
 import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
+import { parseEnv } from '@/lib/envParse'
 import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
   DeleteTarget,
   DupTarget,
+  EnvImportRow,
   InputMode,
   ManualRow,
   PendingRequest,
@@ -165,6 +167,17 @@ interface KeylensState {
   knowledgeReady: boolean
   /** RUNTIME-1 승인 대기 목록(값 없음 — 컬렉션·경로 문자열만). */
   pendingRequests: PendingRequest[]
+  // .env 가져오기
+  /** 가져오기 모달 표시 여부. */
+  envImportOpen: boolean
+  /** 가져오기 표의 줄들(저장 전). */
+  envImportRows: EnvImportRow[]
+  /** 표 전체에 적용할 컬렉션 이름. 비어 있으면 저장 불가. */
+  envImportProject: string
+  /** 저장 진행 중(중복 클릭 방지). */
+  envImportBusy: boolean
+  /** 파싱·분류 진행 중(드롭 연타로 /analyze 가 겹쳐 도는 것 방지). */
+  envImportLoading: boolean
   // RUNTIME-1 — 컬렉션 접근 설정 화면
   // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
   // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
@@ -200,6 +213,13 @@ interface KeylensState {
   /** 승인 대기 목록을 백엔드에서 다시 불러온다(값 없음 — 잠금 상태에서도 동작). */
   /** 승인 대기 목록 주기 조회 시작(중복 기동 안전). cleanup()에서 정지. */
   startPendingPoll: () => void
+  /** `.env` 텍스트를 파싱해 가져오기 모달을 연다. 분류는 /analyze 로 보강한다. */
+  openEnvImport: (text: string) => Promise<void>
+  closeEnvImport: () => void
+  patchEnvRow: (id: string, patch: Partial<EnvImportRow>) => void
+  setEnvImportProject: (v: string) => void
+  /** 체크된 줄을 금고에 일괄 저장한다. */
+  saveEnvImport: () => Promise<void>
   loadPending: () => Promise<void>
   /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
   approvePending: (id: number) => Promise<void>
@@ -406,6 +426,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
     resettingVault: false,
     knowledgeReady: false,
     pendingRequests: [],
+    envImportOpen: false,
+    envImportRows: [],
+    envImportProject: '',
+    envImportBusy: false,
+    envImportLoading: false,
     sdkProjects: [],
     selectedSdkProject: null,
     sdkDirs: [],
@@ -511,6 +536,159 @@ export const useKeylens = create<KeylensState>((set, get) => {
         void get().loadPending()
       }, PENDING_POLL_MS)
     },
+    openEnvImport: async (text) => {
+      // /analyze 는 최대 8초까지 걸린다. 그 사이 같은 파일을 또 떨어뜨리면 두 번째 호출이
+      // 먼저 끝난 결과와 사용자가 입력하던 컬렉션 이름을 덮어써 버린다 - 한 번에 하나만 돈다.
+      if (get().envImportLoading) {
+        get().showToast('.env 를 읽고 있어요 - 잠시만 기다려 주세요')
+        return
+      }
+      set({ envImportLoading: true })
+      try {
+        const MAX_BYTES = 1024 * 1024
+        const MAX_LINES = 200
+        if (text.length > MAX_BYTES) {
+          get().showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+          return
+        }
+        // .env 는 보통 개행으로 끝난다 - 끝의 빈 줄까지 세면 딱 200줄짜리 파일이 거부된다.
+        if (text.trimEnd().split(/\r?\n/).length > MAX_LINES) {
+          get().showToast('줄이 너무 많아요 - 200줄 이하 .env 만 가져올 수 있어요')
+          return
+        }
+        const parsed = parseEnv(text)
+        if (!parsed.length) {
+          get().showToast('환경변수를 찾지 못했어요 - KEY=VALUE 형식인지 확인해 주세요')
+          return
+        }
+
+        // 분류를 기다리는 동안 화면이 조용하면 사용자는 드롭이 무시된 줄 안다.
+        get().showToast(`${parsed.length}개를 읽었어요 - 분류를 확인하는 중이에요`)
+
+        // 분류는 보강일 뿐이다. 실패해도 목록은 그대로 보여준다.
+        const byValue = new Map<
+          string,
+          { service: string; kind: string; typeLabel: string; official: string }
+        >()
+        try {
+          const resp = await analyzeApi({ text })
+          for (const it of resp.items) {
+            // 신호가 충돌한 항목(stage2)은 service 는 채워져 있어도 kind 가 "ambiguous",
+            // label 이 "종류 미확정" 이고 service 는 "첫 신호"의 것이라 변수명이 가리키는
+            // 서비스와 다를 수 있다. 그대로 받으면 KAKAO_REST_API_KEY 처럼 이름만 봐도
+            // 확실한 줄이 "종류 미확정"으로 저장되고 검증 버튼도 unsupported 가 된다.
+            // 이런 줄은 보강을 포기하고 이름 기반 추론에 맡기는 편이 정확하다.
+            if (!it.service || it.conflict) continue
+            byValue.set(it.value, {
+              service: it.service,
+              kind: it.kind ?? '',
+              typeLabel: it.label ?? '',
+              official: it.official_env_name ?? '',
+            })
+          }
+        } catch {
+          get().showToast('분류 서버에 연결하지 못했어요 - 이름과 값만으로 진행합니다')
+        }
+
+        const rows: EnvImportRow[] = parsed.map((p) => {
+          const hit = byValue.get(p.value)
+          return {
+            id: crypto.randomUUID(),
+            name: p.name,
+            value: p.value,
+            checked: true, // 비시크릿 줄도 전부 가져온다
+            service: hit?.service ?? null,
+            kind: hit?.kind || null,
+            typeLabel: hit?.typeLabel || null,
+            suggestedName: hit && hit.official && hit.official !== p.name ? hit.official : null,
+          }
+        })
+        set({ envImportOpen: true, envImportRows: rows, envImportProject: '' })
+      } finally {
+        // 어느 경로로 빠져나가든(검증 실패·분류 실패·성공) 플래그는 반드시 내린다.
+        // 안 그러면 한 번 실패한 뒤로는 가져오기가 영영 막힌다.
+        set({ envImportLoading: false })
+      }
+    },
+
+    closeEnvImport: () => set({ envImportOpen: false, envImportRows: [], envImportProject: '' }),
+
+    patchEnvRow: (id, patch) =>
+      set((s) => ({
+        envImportRows: s.envImportRows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      })),
+
+    setEnvImportProject: (v) => set({ envImportProject: v }),
+
+    saveEnvImport: async () => {
+      const project = get().envImportProject.trim()
+      if (!project) {
+        get().showToast('컬렉션 이름을 먼저 입력해 주세요')
+        return
+      }
+      const rows = get().envImportRows.filter((r) => r.checked && r.name.trim())
+      if (!rows.length) {
+        get().showToast('저장할 항목을 선택해 주세요')
+        return
+      }
+      set({ envImportBusy: true })
+      // 결과는 루프 안에서 토스트하지 않고 모아 둔다 - showToast 는 앞의 토스트를 지우므로
+      // 루프 안에서 부르면 마지막 한 줄의 사연만 남고 나머지는 사용자에게 닿지 않는다.
+      let saved = 0
+      let dupCount = 0
+      let failed = 0
+      let lockedOut = false
+      const savedIds: string[] = []
+      for (const r of rows) {
+        const name = r.name.trim()
+        // 이미 같은 컬렉션에 같은 변수명이 있으면 건너뛴다.
+        if (get().vault.some((v) => v.varName === name && (v.project || '') === project)) {
+          dupCount++
+          continue
+        }
+        // /analyze 가 값으로 알아본 분류가 있으면 그것이 우선이다. 변수명 기반 추론은
+        // 분류가 없는 줄에만 쓴다 - 사용자가 이름을 자기 것으로 바꾸는 게 이 기능의 약속인데,
+        // 이름으로만 다시 찾으면 MY_GITHUB 같은 이름에서 분류가 통째로 날아간다.
+        const classified = r.service !== null
+        const found = classified ? null : findServiceByVarName(name)
+        try {
+          await vaultApi.add({
+            service: classified ? r.service : found ? SERVICE_TO_ID[found.service] : null,
+            kind: classified ? r.kind : found ? found.type.v : null,
+            official_name: name, // 사용자가 정한 이름이 이긴다
+            value: r.value,
+            label: classified ? r.typeLabel : found ? found.type.label : null,
+            project,
+            memo: null,
+            expires_at: jwtExp(r.value),
+          })
+          saved++
+          savedIds.push(r.id)
+        } catch (e) {
+          if (e instanceof VaultApiError && e.status === 401) {
+            // 자동 잠금 등으로 세션이 끊겼다 - reveal() 과 같이 UI 도 잠금으로 맞춘다.
+            set({ locked: true })
+            lockedOut = true
+            break
+          }
+          failed++
+          console.error(`[KeyLens] .env 가져오기 - ${name} 저장 실패:`, e)
+        }
+      }
+      // 성공분만 목록에서 빼고, 실패·중복분은 남겨 재시도할 수 있게 한다.
+      const remaining = get().envImportRows.filter((r) => !savedIds.includes(r.id))
+      set({ envImportRows: remaining, envImportBusy: false, envImportOpen: remaining.length > 0 })
+      if (saved) await get().loadVault()
+      // 토스트는 마지막에 딱 한 번 - 일어난 일을 전부 담는다(saveAll 과 같은 방식).
+      const parts: string[] = []
+      if (saved) parts.push(`${saved}개 저장됨 - AES-256-GCM 암호화`)
+      if (dupCount) parts.push(`${dupCount}개는 이 컬렉션에 이미 있어 건너뜀`)
+      if (failed) parts.push(`${failed}개 저장 실패 - 잠시 후 다시 시도해 보세요`)
+      if (lockedOut) parts.push('금고가 잠겨 나머지를 저장하지 못했어요 - 잠금을 해제하세요')
+      if (!parts.length) parts.push('저장된 항목이 없어요 - 표에서 항목을 다시 확인해 주세요')
+      get().showToast(parts.join(' · '))
+    },
+
     loadPending: async () => {
       try {
         const rows = await sdkApi.pending()
@@ -872,10 +1050,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
       if (!r) return
       const t = TYPE_MAP[r.service].find((t) => t.v === r.typeKey)
       if (!t) return
+      // 사용자가 변수명을 직접 정했으면 그것이 이긴다(.env 가져오기·인라인 편집).
+      // 안 건드렸으면 지금까지처럼 종류에서 공식 이름을 도출한다.
+      const varName = (r.varName || '').trim() || t.var
       if (!force) {
-        const dup = findDup(r, t.var)
+        const dup = findDup(r, varName)
         if (dup) {
-          set({ dupTarget: { resultId: id, existing: dup, varName: t.var } })
+          set({ dupTarget: { resultId: id, existing: dup, varName } })
           return
         }
       }
@@ -884,7 +1065,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await vaultApi.add({
           service: SERVICE_TO_ID[r.service],
           kind: t.v,
-          official_name: t.var,
+          official_name: varName,
           value: r.full,
           label: t.label,
           project: (r.project || '').trim() || null,
@@ -894,7 +1075,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         set((s) => ({ results: s.results.filter((x) => x.id !== id), dupTarget: null }))
         await get().loadVault()
         get().showToast(
-          t.var +
+          varName +
             ' 저장됨 — AES-256-GCM 암호화' +
             (jwtExpiry ? ` · JWT 만료일 자동 감지(${jwtExpiry})` : ''),
         )
@@ -929,7 +1110,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const savedIds: string[] = []
       for (const r of savable) {
         const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)!
-        if (findDup(r, t.var)) {
+        // 사용자가 변수명을 직접 정했으면 그것이 이긴다(.env 가져오기·인라인 편집).
+        // 안 건드렸으면 지금까지처럼 종류에서 공식 이름을 도출한다.
+        const varName = (r.varName || '').trim() || t.var
+        if (findDup(r, varName)) {
           dupCount++
           continue
         }
@@ -937,7 +1121,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
           await vaultApi.add({
             service: SERVICE_TO_ID[r.service],
             kind: t.v,
-            official_name: t.var,
+            official_name: varName,
             value: r.full,
             label: t.label,
             project: (r.project || '').trim() || null,
@@ -957,10 +1141,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
       const remaining = get().results.filter((r) => !savedIds.includes(r.id))
       const dupMarked = remaining.map((r) => {
         const t = TYPE_MAP[r.service].find((tt) => tt.v === r.typeKey)
-        if (t && findDup(r, t.var)) {
-          return {
-            ...r,
-            dupNote: '이미 보관 중인 키예요 — [확정 후 저장]을 누르면 추가 여부를 물어봅니다.',
+        if (t) {
+          const varName = (r.varName || '').trim() || t.var
+          if (findDup(r, varName)) {
+            return {
+              ...r,
+              dupNote: '이미 보관 중인 키예요 — [확정 후 저장]을 누르면 추가 여부를 물어봅니다.',
+            }
           }
         }
         return r
@@ -1380,6 +1567,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
         rotateTarget: null,
         envOpen: false,
         syncOpen: false,
+        envImportOpen: false,
+        envImportRows: [],
+        envImportProject: '',
+        envImportBusy: false,
+        envImportLoading: false,
         pendingRequests: [],
         sdkProjects: [],
         selectedSdkProject: null,

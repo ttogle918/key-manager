@@ -5,7 +5,7 @@
  * 모든 토큰은 더미이며 서명 검증은 하지 않는다(만료일 표기만 목적).
  */
 import { describe, expect, it } from 'vitest'
-import { jwtExp, passwordPolicyError, projectKey } from './format'
+import { jwtExp, mask, passwordPolicyError, projectKey } from './format'
 import type { VaultItem } from '@/types'
 
 /** base64url payload로 더미 JWT를 만든다(header/signature는 형식만 맞춘 더미). */
@@ -99,5 +99,32 @@ describe('projectKey', () => {
 
   it('project가 빈 문자열이면 등록일(addedAt)로 대체한다', () => {
     expect(projectKey(makeVaultItem({ project: '', addedAt: '2026-08-27' }))).toBe('2026-08-27')
+  })
+})
+
+describe('mask', () => {
+  const BULLET = '\u2022'
+
+  it('12자 미만은 전체를 가린다', () => {
+    expect(mask('shortpin7')).toBe(BULLET.repeat(9))
+  })
+
+  it('빈 문자열은 빈 문자열', () => {
+    expect(mask('')).toBe('')
+  })
+
+  it('접두어와 뒤 4자를 남긴다', () => {
+    expect(mask('sk-proj-aAbBcC1dDeE2fFgG3hIi4')).toBe('sk-proj-' + BULLET.repeat(16) + 'hIi4')
+  })
+
+  it('keepFront 를 줄이면 앞 노출이 줄어든다', () => {
+    expect(mask('3f9a1c2e7b4d4e8a9c1f2d5e8a7b4c3f', 4)).toBe('3f9a' + BULLET.repeat(16) + '4c3f')
+  })
+
+  it('가려지는 구간은 최소 4자다 (경계값)', () => {
+    // 12자 값: n=12, front=min(8,max(1,12-4-4))=4, hidden=min(16,max(4,12-4-4))=4
+    // 알고리즘: n - front - keepBack = 12 - 4 - 4 = 4
+    // max(4, 4) = 4이므로 정확히 4개 bullet
+    expect(mask('sk-proj-1234')).toBe('sk-p' + BULLET.repeat(4) + '1234')
   })
 })

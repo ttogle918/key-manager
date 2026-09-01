@@ -54,11 +54,21 @@ export function VaultRow({ it }: { it: VaultItem }) {
           </div>
         </div>
 
-        {/* 값(마스킹/공개 토글) */}
+        {/* 값(마스킹/공개 토글). 더블클릭은 회전 모달로 가는 지름길 - 값 교체는 재암호화와
+            이력 기록이 따라야 해서 표 안에서 직접 고치지 않는다.
+            onClick 의 detail===1 은 더블클릭의 두 번째 클릭을 막는다. reveal 은 백엔드 복호화
+            호출이라, 막지 않으면 회전하려고 더블클릭할 때마다 복호화·접근기록이 2건씩 쌓인다. */}
         <div
-          onClick={() => reveal(it.id)}
-          title={locked ? '잠금 해제 후 볼 수 있어요' : canSee ? '클릭하여 숨기기' : '클릭하여 4초간 표시'}
-          className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[12.5px]"
+          onClick={(e) => e.detail === 1 && reveal(it.id)}
+          onDoubleClick={() => !locked && openRotate(it)}
+          title={
+            locked
+              ? '잠금 해제 후 볼 수 있어요'
+              : canSee
+                ? '클릭하여 숨기기 · 더블클릭하면 값 교체'
+                : '클릭하여 4초간 표시 · 더블클릭하면 값 교체'
+          }
+          className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded font-mono text-[12.5px] hover:bg-surface"
           style={{ color: canSee ? '#A7E8C9' : '#727C89' }}
         >
           {canSee ? it.full : it.masked}

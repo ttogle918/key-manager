@@ -18,6 +18,7 @@ import { PendingScreen } from '@/components/screens/PendingScreen'
 import { ProjectAccessScreen } from '@/components/screens/ProjectAccessScreen'
 import { DeleteModal, DupModal, EmailSyncModal, EnvModal, ResetVaultModal, RotateModal, SyncModal } from '@/components/modals/Modals'
 import { ExplainModal } from '@/components/modals/ExplainModal'
+import { EnvImportModal } from '@/components/modals/EnvImportModal'
 import { Toast } from '@/components/ui/Toast'
 import { ProjectsDatalist } from '@/components/ProjectsDatalist'
 
@@ -92,6 +93,7 @@ export default function App() {
       <DupModal />
       <RotateModal />
       <EnvModal />
+      <EnvImportModal />
       <SyncModal />
       <EmailSyncModal />
       <ExplainModal />

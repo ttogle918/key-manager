@@ -428,6 +428,102 @@ SPDX-License-Identifier: MIT
   - [ ] 🧪 브라우저 개발 모드에서는 Web Notification 권한 거부 시에도 화면 안 배너로 요청이 보이는지(안전망 확인)
 - **범위 밖(이번 설계에 안 넣음)**: Node.js/npm 패키지(로드맵), 여러 KeyLens 인스턴스/기기 간 동기화(SYNC-2와 별개 문제), 자동 승인·자동 재발급.
 - **완료(2026-08-09)**: 데스크톱 채널 기준 RUNTIME-1 전체 완료. 남은 건 브라우저 탭 알림 채널뿐(스코프 밖). 배포는 git 설치 방식으로 확정(2026-08-10) — PyPI 미등록.
+- **엔드투엔드 감사(2026-08-29)**: 실제 레포에서 쓰기 전 전 구간을 돌려 점검 → **버그 9건 발견·수정**
+  (cp949 콘솔 크래시, 빈 컬렉션 조용한 성공, 원시 예외 누수, `.keylens.toml` 인코딩, 동시 요청 500,
+  승인 게이트 우회, 승인 뱃지 미갱신 등). 컬렉션 목록 조회(`keylens-env collections`)와 포트 자동
+  탐색도 함께 추가. `keylens-env` 0.1.0 → 0.2.0.
+  상세: [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](memo/2026-08-29-runtime1-e2e-bug-audit.md)
+  - [x] 🧪 구버전 `vault.db` 업그레이드 경로(마이그레이션 + `ON CONFLICT`) 실측 확인
+  - [x] 🧪 폴링이 자동잠금을 무력화하지 않는지 실측 확인
+  - [x] 🧪 데스크톱 앱(8765) 상대 자동 탐색·수신 확인
+  - [ ] 🧪 패키징된 exe 실행 확인(창 뜸 · "컬렉션 접근" 메뉴 · 승인 뱃지 자동 갱신) — 미검증
+- **용어 통일(2026-08-30)**: 키 묶음을 앱·문서·SDK에서 모두 **컬렉션**으로 부른다. HTTP 필드명·DB
+  컬럼은 `project` 유지(버전 스큐 방지). 근거는 위 메모의 "용어 결정" 절.
+
+### RUNTIME-2 🟡 `.env` 가져오기 + 저장 전 인라인 편집 — ✅ 완료(리뷰 대기)
+- **중요도**: 🟡 Medium | **의존성**: RUNTIME-1 | **사이즈**: M | **상태**: ✅ 구현 완료(2026-08-31) — PR [#7](https://github.com/ttogle918/key-manager/pull/7), 백엔드 변경 0 · 프론트 vitest 68 · tsc·build clean
+- **왜**: 지금은 `.env` **내보내기**만 있다. 이미 `.env`를 쓰던 레포를 KeyLens로 옮기려면 키를
+  하나씩 손으로 다시 넣어야 한다 — 변수가 10개면 10번이다.
+- **설계**: [`docs/superpowers/specs/2026-08-30-env-import-design.md`](superpowers/specs/2026-08-30-env-import-design.md)
+- **계획**: [`docs/superpowers/plans/2026-08-30-env-import.md`](superpowers/plans/2026-08-30-env-import.md) (7개 태스크)
+- **핵심 결정**
+  - 전용 가져오기 모달을 만들되 분류는 기존 `POST /analyze` 재사용 — **백엔드 변경 0**
+  - `.env`가 진실, `/analyze`는 보강. `stage1`이 값 기준으로 중복 제거해서 같은 값을 가진 두
+    변수 중 하나가 조용히 사라지는 걸 실측 확인 → 프론트가 권위 있는 목록을 만든다
+  - **원본 `.env` 변수명을 지킨다.** 지식베이스 공식 이름은 "제안"으로만 노출 — 소비 레포 코드가
+    이미 원본 이름을 읽고 있으므로 바꾸면 방향이 반대다
+  - 비시크릿 줄(`DB_HOST` 등)도 전부 가져온다 — 목표가 `.env` 파일 자체를 없애는 것이라
+  - 이름·값 더블클릭 인라인 편집. 보관함은 값만, 그것도 기존 회전 모달로 연결
+- **하위 할일**
+  - [x] `envParse.ts` + 단위 테스트 14개
+  - [x] `ui/InlineEdit.tsx` 더블클릭 편집 공용 컴포넌트
+  - [x] 스토어 상태·액션(`openEnvImport`/`saveEnvImport` 등)
+  - [x] `EnvImportModal.tsx` + `InputScreen` 드롭 분기
+  - [x] 결과 카드 변수명 편집 + `saveAll` 이름 우선순위 변경
+  - [x] 보관함 값 더블클릭 → 회전 모달 연결
+  - [x] README·CHANGELOG 갱신
+- **계획서에 없었으나 구현 중 드러나 추가한 것**
+  - [x] 프론트 `mask()` 이식 — 계획서가 `@/lib/format`의 `mask`를 import 하는데 그 함수가 없었다.
+    `.env` 값은 프론트에만 있어 백엔드 마스킹을 쓸 수 없다(`backend/app/masking.py`와 동일 규칙)
+  - [x] `resetProto()`에 `envImport*` 추가 — `envImportRows`가 **암호화 전 평문**을 들고 있다
+  - [x] 이름 우선순위를 `saveAll` 2곳이 아니라 **6곳**에 적용 — 카드의 개별 저장 버튼은 별개 액션
+    `save(id)`를 부른다. 계획서대로면 카드에서 고친 이름이 조용히 무시됐다
+  - [x] 최종 리뷰 Important 8건 수정 — 특히 (a) 이름을 바꾸면 `/analyze` 분류가 통째로 날아가
+    **GitHub 토큰이 OpenAI 밑에** 저장되던 것, (b) 인라인 편집 중 Escape 가 모달을 닫아 파싱한
+    줄이 전부 사라지던 것(Radix `DismissableLayer`가 document 에 capture 로 걸려 있어
+    `stopPropagation`으로는 못 막는다 — `onEscapeKeyDown`으로 해결)
+  - [x] 보관함 값 더블클릭이 `reveal()`을 2번 호출해 **복호화 요청·접근 기록이 2건씩** 쌓이던 것
+    (`e.detail === 1` 가드)
+- **범위 밖(별도 스펙)**: 이미 저장된 항목의 **변수명 변경**. `official_name`이 암호문의 AAD라
+  이름을 바꾸려면 값을 재암호화해야 한다 — 메타데이터 편집이 아니라 암호화 경로 수정이다.
+- ~~**남은 후속**: `map.ts`의 `|| 'OpenAI'` 폴백~~ → ✅ 해결(2026-09-01). 분류 안 된 항목을
+  `UNCLASSIFIED_SERVICE`(`'미지정'`)로 표시한다. 폴백 한 줄만 바꾸면 **더 나빠진다**는 점이 핵심:
+  `VaultScreen`이 `SERVICE_ORDER`로 그룹을 만들어서, 미지정을 거기 등록하지 않으면 그 항목들이
+  보관함에서 아예 사라진다. `SERVICE_ORDER` 맨 뒤 + 중립색 타일 + 테스트 7건으로 고정했다.
+- ~~**사람이 해야 할 확인**~~ → ✅ 완료(2026-09-01). 드롭 → 표 → 저장 전체 흐름 사람이 확인,
+  미지정 분류까지 확인함. (Escape 동작·더블클릭 복호화 횟수는 실제 브라우저에서 측정해 확인)
+
+---
+
+### RUNTIME-3 🟡 PostgreSQL 지식베이스 추가 — 📋 대기
+- **중요도**: 🟡 Medium | **의존성**: RUNTIME-2 | **사이즈**: S | **상태**: 📋 대기(2026-09-01 등재)
+- **왜**: `.env` 가져오기를 실제로 써보니 `DATABASE_URL`·`DB_URL`이 미지정으로 남는다. 연결 URL은
+  안에 `user:password`가 들어 있어 **진짜 자격증명**이고, `postgres://` 접두어라 값만으로 식별된다
+  — 즉 이 프로젝트의 값 기반 분류(Stage 1)에 정확히 맞는 사례다.
+- **핵심 결정**
+  - `^postgres(ql)?://`를 `value_regex`로. 이름 기반 추론("DB_*는 DB")은 하지 않는다 —
+    분류기가 값 기준인데 이름 휴리스틱을 섞으면 아키텍처가 갈라지고, `POSTGRES_URL`·`MYSQL_HOST`처럼
+    끝없이 늘어나 확장되지 않는다.
+  - `verify:` 블록은 없어도 된다(`ollama.yaml`이 이미 그런 선례).
+- **하위 할일**
+  - [ ] `backend/knowledge/postgresql.yaml` + 스키마 테스트(`/new-service` 스킬 사용)
+  - [ ] **"9종" 표기 10개 파일 갱신** — README·CHANGELOG·FEATURES·DIAGRAMS·BACKLOG·
+        `docs/index.html`(통계바 `9`·`22`)·feature-ledger·RESULT_REPORT·desktop/README 등
+  - [ ] 백엔드 pytest 재실행(현재 312건)
+- **주의**: 백엔드를 건드리므로 RUNTIME-2의 "백엔드 변경 0건" 성질과는 별개 작업이다.
+
+---
+
+### RUNTIME-4 🟡 보관함 항목의 서비스 바꾸기(+ 드래그 이동) — 📋 대기
+- **중요도**: 🟡 Medium | **의존성**: RUNTIME-2 | **사이즈**: M | **상태**: 📋 대기(2026-09-01 등재)
+- **왜**: 미지정으로 남은 항목을 사용자가 직접 올바른 서비스로 옮길 수 있어야 한다. 분류기가
+  모든 걸 맞힐 수는 없다.
+- **조사 결과(2026-09-01, 재확인 불필요)**
+  - **재암호화 불필요.** `vault_repo._aad(official_name)` — AAD는 **이름만** 묶는다.
+    `service`/`kind`/`label`은 평범한 평문 메타데이터다. (반면 **이름 변경은 재암호화 필요** —
+    위 "범위 밖" 항목 그대로)
+  - `PATCH /vault/entries/{id}`는 **이미 있다**(`main.py:304`). 다만 `update_meta`가 바꿀 수 있는
+    건 `project`·`memo`·`expires_at`뿐이라 **`service`를 추가해야 한다**.
+  - **컬렉션 간 이동은 백엔드 변경이 전혀 필요 없다** — `update_meta`가 이미 `project`를 지원하고,
+    상세보기에 컬렉션 입력칸도 이미 있다(`VaultRow.tsx:157`). 드래그는 그 지름길일 뿐이다.
+- **핵심 결정**
+  - **드롭다운 먼저, 드래그는 그 위에 얹는다.** 새 의존성이 금지라 네이티브 HTML5 드래그로
+    만들어야 하는데 그것만 두면 **키보드·터치에서 접근이 불가능**하다. 이 프로젝트가 여태
+    aria-label·키보드 진입을 챙겨온 것과 어긋난다. 컬렉션 편집이 이미 입력칸 방식인 것과도 일관.
+- **하위 할일**
+  - [ ] `update_meta`에 `service`/`kind`/`label` 추가 + Pydantic 모델 + 엔드포인트 + 테스트
+  - [ ] 상세보기에 "서비스 변경" 드롭다운(미지정 → 실제 서비스)
+  - [ ] 드래그 이동을 지름길로 추가(키보드 대체 경로 유지)
 
 ---
 

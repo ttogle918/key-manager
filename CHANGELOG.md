@@ -19,6 +19,10 @@ SPDX-License-Identifier: MIT
 - **`load_env(override=False)`**: 이미 설정된 환경변수를 보존하는 선택지(python-dotenv와 동일한
   동작). 기본값은 기존과 같은 `True`. `load_env()` 가 실제로 주입한 `{이름: 값}` 을 반환한다.
 - `.keylens.toml` 의 `collection` 키(기존 `project` 키도 계속 동작).
+- **`.env` 가져오기**: `.env` 파일을 드롭하면 변수 전체를 표로 보여주고 컬렉션 하나로 일괄 저장합니다.
+  원본 변수명을 그대로 유지하며(지식베이스 공식 이름은 "제안"으로만 노출), 분류가 안 되는 줄
+  (`DB_HOST` 등)도 함께 가져옵니다. 이름·값은 더블클릭으로 편집할 수 있고, 보관함에서 값을
+  더블클릭하면 기존 회전 모달이 열립니다. 설계: [`docs/superpowers/specs/2026-08-30-env-import-design.md`](docs/superpowers/specs/2026-08-30-env-import-design.md)
 
 ### Fixed (버그)
 > 상세 재현·판단 근거는 [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](docs/memo/2026-08-29-runtime1-e2e-bug-audit.md).

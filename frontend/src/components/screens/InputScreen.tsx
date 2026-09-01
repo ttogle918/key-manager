@@ -58,7 +58,20 @@ export function InputScreen() {
       rd.onerror = () => s.showToast('이미지를 읽지 못했어요 — 다른 파일로 시도해 주세요')
       rd.readAsDataURL(f)
     } else if (f) {
-      s.showToast('이미지 파일만 첨부할 수 있어요 (스크린샷 이미지)')
+      // 크기는 읽기 전에 본다. 통째로 문자열로 만든 뒤에 걸러내면 큰 바이너리를 떨어뜨렸을 때
+      // 그 문자열을 만드는 단계에서 이미 렌더러가 멎는다(openEnvImport 의 1MB 검사보다 앞).
+      if (f.size > 1024 * 1024) {
+        s.showToast('파일이 너무 커요 - 1MB 이하 .env 만 가져올 수 있어요')
+        return
+      }
+      // .env 처럼 확장자가 없거나 text/plain 인 파일은 텍스트로 읽어 가져오기 모달을 연다.
+      const rd = new FileReader()
+      rd.onload = () => {
+        if (typeof rd.result === 'string') s.openEnvImport(rd.result)
+        else s.showToast('파일을 읽지 못했어요 - 다른 파일로 시도해 주세요')
+      }
+      rd.onerror = () => s.showToast('파일을 읽지 못했어요 - 다른 파일로 시도해 주세요')
+      rd.readAsText(f)
     } else {
       s.attachSample()
     }
@@ -131,9 +144,11 @@ export function InputScreen() {
                     <div className="absolute left-1/2 top-[9px] h-[7px] w-[3px] -translate-x-1/2 rounded-[1px] bg-mint" />
                   </div>
                 </div>
-                <div className="mt-3 text-[14px] font-semibold">스크린샷을 여기로 던져보세요</div>
+                <div className="mt-3 text-[14px] font-semibold">
+                  스크린샷이나 .env 파일을 여기로 던져보세요
+                </div>
                 <div className="mt-[5px] text-[12px] text-faint-2">
-                  드래그 앤 드롭 · ⌘V 붙여넣기 · 클릭하면 샘플 첨부
+                  드래그 앤 드롭 · ⌘V 붙여넣기 · 클릭하면 샘플 첨부 · .env 는 변수 전체를 한 번에
                 </div>
               </div>
             ) : (

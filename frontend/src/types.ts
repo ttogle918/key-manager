@@ -69,6 +69,8 @@ export interface AnalysisResult {
   project: string
   metaOpen: boolean
   meta: Record<string, unknown>
+  /** 사용자가 정한 환경변수명. 비어 있으면 종류(typeKey)에서 도출한 공식 이름을 쓴다. */
+  varName?: string
   dupNote?: string | null
   /** OCR 이 이어붙인 값의 이음매 글자 인덱스(불확실 — 사용자 확인용). 없으면 undefined. */
   ocrUncertain?: number[]
@@ -156,4 +158,21 @@ export interface SdkDir {
   path: string
   source: 'manual' | 'approved'
   createdAt: string
+}
+
+/** `.env` 가져오기 표의 한 줄. 저장 전 상태라 값이 평문으로 들어 있다. */
+export interface EnvImportRow {
+  id: string
+  /** 환경변수명. `.env` 원본 이름이 기본값 - 사용자가 고칠 수 있다. */
+  name: string
+  value: string
+  checked: boolean
+  /** /analyze 가 알아본 서비스 id. 못 알아봤으면 null. */
+  service: string | null
+  /** /analyze 가 알아본 종류 키(예: "pat"). 못 알아봤으면 null. */
+  kind: string | null
+  /** 종류 라벨(예: "Personal Access Token"). 못 알아봤으면 null. */
+  typeLabel: string | null
+  /** 지식베이스 공식 이름이 원본과 다를 때만 채워진다 - "제안"으로 보여준다. */
+  suggestedName: string | null
 }

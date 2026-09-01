@@ -50,6 +50,24 @@ export function findServiceByVarName(name: string): { service: string; type: Typ
   return null
 }
 
+/**
+ * 어느 서비스로도 분류되지 않은 항목이 묶이는 자리.
+ *
+ * 예전에는 이런 항목을 'OpenAI'로 떨어뜨렸다 — 백엔드가 service=null 로 저장한 걸
+ * 프론트가 읽으면서 폴백이 걸렸다. `.env` 가져오기는 분류가 안 되는 줄(DB_HOST 등)도
+ * 일부러 전부 가져오므로 그런 항목이 대량으로 생기는데, 그걸 전부 특정 벤더 밑에
+ * 넣어버리면 사용자가 보기에 명백히 틀린 정보다. 모르면 모른다고 표시한다.
+ */
+export const UNCLASSIFIED_SERVICE = '미지정'
+
+/**
+ * 미지정 타일. 어떤 브랜드색도 쓰지 않는 중립색이다 - 벤더로 오해되면 안 된다.
+ * CURATED_META 는 백엔드 service id 로 키잉돼 있어서 미지정은 거기 들어갈 자리가 없다.
+ * 부트스트랩과 applyKnowledge 양쪽에서 이 상수를 쓴다(둘 중 하나만 채우면
+ * /knowledge 응답이 온 뒤 타일이 사라진다 - 실제로 그렇게 한 번 틀렸다).
+ */
+const UNCLASSIFIED_META: SvcMeta = { tile: '?', bg: '#232931', fg: '#8B95A3' }
+
 /** 서비스 타일(약자 + 색). 알려진 서비스는 큐레이션 값을, 새 서비스는 자동 생성한다. */
 export let SVC_META: Record<string, SvcMeta> = {
   Notion: { tile: 'N', bg: '#E7EAEE', fg: '#15181D' },
@@ -57,10 +75,11 @@ export let SVC_META: Record<string, SvcMeta> = {
   GCP: { tile: 'G', bg: '#4E8DF5', fg: '#FFFFFF' },
   OpenAI: { tile: 'O', bg: '#17B597', fg: '#03211B' },
   Ollama: { tile: 'Ol', bg: '#111418', fg: '#FFFFFF' },
+  [UNCLASSIFIED_SERVICE]: UNCLASSIFIED_META,
 }
 
-/** 보관함/내보내기에서 사용하는 서비스 표시 순서. */
-export let SERVICE_ORDER: string[] = ['Notion', 'Kakao', 'GCP', 'OpenAI', 'Ollama']
+/** 보관함/내보내기에서 사용하는 서비스 표시 순서. 미지정은 항상 맨 뒤. */
+export let SERVICE_ORDER: string[] = ['Notion', 'Kakao', 'GCP', 'OpenAI', 'Ollama', UNCLASSIFIED_SERVICE]
 
 /** 프론트 표시명 → 백엔드 service id (금고 저장 시). */
 export let SERVICE_TO_ID: Record<string, string> = {
@@ -192,13 +211,20 @@ export function applyKnowledge(payload: KnowledgeResponse): void {
     const i = CURATED_ORDER.indexOf(id)
     return i < 0 ? CURATED_ORDER.length : i
   }
-  SERVICE_ORDER = payload.services
-    .slice()
-    .sort(
-      (a, b) =>
-        rank(a.service) - rank(b.service) || a.display_name.localeCompare(b.display_name),
-    )
-    .map((s) => s.display_name)
+  // 미지정은 지식베이스에 없는 자리라 payload 로는 안 온다 - 항상 맨 뒤에 직접 붙인다.
+  // 여기서 빠뜨리면 VaultScreen 이 SERVICE_ORDER 로 그룹을 만들기 때문에 분류 안 된
+  // 항목이 보관함에서 아예 안 보이게 된다(틀리게 보이는 것보다 나쁘다).
+  svcMeta[UNCLASSIFIED_SERVICE] = UNCLASSIFIED_META
+  SERVICE_ORDER = [
+    ...payload.services
+      .slice()
+      .sort(
+        (a, b) =>
+          rank(a.service) - rank(b.service) || a.display_name.localeCompare(b.display_name),
+      )
+      .map((s) => s.display_name),
+    UNCLASSIFIED_SERVICE,
+  ]
   TYPE_MAP = typeMap
   SVC_META = svcMeta
   SVC_LOGO = svcLogo

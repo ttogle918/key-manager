@@ -27,7 +27,8 @@ function toRow(r: AnalysisResult): Row {
   return {
     id: r.id,
     service: r.service,
-    envName: cur ? cur.var : '(종류 미확정)',
+    // 저장 때와 같은 규칙 - 사용자가 고친 이름이 있으면 그것이 이긴다.
+    envName: cur ? (r.varName || '').trim() || cur.var : '(종류 미확정)',
     kindLabel: cur ? cur.label : '확인 필요',
     masked: r.masked,
     confLabel: CONF_META[confKey].label,
