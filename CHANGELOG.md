@@ -9,6 +9,8 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-01
+
 ### Added (기능)
 - **컬렉션 목록 조회(`keylens-env`)**: `keylens_env.collections()` 와 CLI
   `keylens-env collections`(= `python -m keylens_env collections`). 어떤 키 묶음을 쓸 수
@@ -26,6 +28,20 @@ SPDX-License-Identifier: MIT
 
 ### Fixed (버그)
 > 상세 재현·판단 근거는 [`docs/memo/2026-08-29-runtime1-e2e-bug-audit.md`](docs/memo/2026-08-29-runtime1-e2e-bug-audit.md).
+
+- **분류되지 않은 항목이 보관함에서 OpenAI로 묶여 보이던 문제**: 서비스를 특정하지 못한 항목
+  (`DB_HOST` 등)을 프론트가 'OpenAI'로 떨어뜨리고 있었다. `.env` 가져오기가 분류 불가한 줄까지
+  전부 가져오면서 그런 항목이 대량으로 생겨 눈에 띄게 됐다. 이제 **"미지정"** 으로 따로 묶고
+  중립색 타일을 준다.
+- **변수명을 직접 고치면 분류가 통째로 날아가던 문제**: 저장 시 서비스를 사용자가 정한 이름으로
+  다시 추론해서, `MY_GITHUB` 처럼 이름을 바꾸면 GitHub 토큰이 분류 없이(→ OpenAI로) 저장됐다.
+  이제 `/analyze` 가 **값으로** 알아낸 분류를 그대로 유지한다.
+- **인라인 편집 중 Escape 를 누르면 가져오기 표가 통째로 사라지던 문제**: 편집 취소 키가 감싸고
+  있는 다이얼로그까지 닫아버렸다. 이제 편집 중 Escape 는 그 편집만 취소한다.
+- **일괄 저장 결과가 제대로 보고되지 않던 문제**: 금고가 중간에 잠기거나 일부만 저장돼도
+  "N개 저장됨" 만 뜨고 실패·중복·잠금은 묻혔다. 이제 한 토스트에 모아 보고하고, 저장된 게
+  하나도 없을 때도 이유를 알려준다.
+- **보관함 값을 더블클릭하면 복호화가 2번 일어나던 문제**: 접근 기록도 2건씩 쌓였다.
 
 - **한글 Windows 콘솔에서 에러 메시지 출력 시 크래시**: 모든 SDK 에러 메시지에 들어 있던
   em dash(U+2014)가 cp949로 인코딩되지 않아, README 예시대로 `print(e)` 하면
@@ -163,7 +179,8 @@ SPDX-License-Identifier: MIT
 - 라이선스 카피레프트 0건(reuse lint 통과·SBOM), 의존성 취약점(SCA) 전 영역 0건(pip-audit·npm audit).
 - 마스킹 노출 축소·감사 이력·잠금 정책 등 [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) 항목 해소.
 
-[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.3.0...main
+[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.4.0...main
+[0.4.0]: https://github.com/ttogle918/key-manager/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ttogle918/key-manager/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ttogle918/key-manager/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/ttogle918/key-manager/compare/v0.1.0...v0.1.1
