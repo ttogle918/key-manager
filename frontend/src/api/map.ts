@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
 /** 백엔드 분류 결과(ClassifiedItem)를 프론트 도메인(AnalysisResult)으로 변환. */
-import { SERVICE_BY_ID, TYPE_MAP } from '@/data/services'
+import { SERVICE_BY_ID, TYPE_MAP, UNCLASSIFIED_SERVICE } from '@/data/services'
 import { autoMemoFrom } from '@/lib/format'
 import type { AnalysisResult, Confidence, UnknownItem, VaultItem } from '@/types'
 import type { ApiConfidence, ClassifiedItem, VaultEntryMeta } from './types'
@@ -17,7 +17,10 @@ const MASK_PLACEHOLDER = '••••••••••••'
  * 공개(reveal) 시 복호화 값을 채운다. context·history·sourceImage 는 백엔드 미저장 → 비움.
  */
 export function metaToVaultItem(m: VaultEntryMeta): VaultItem {
-  const svc = (m.service && SERVICE_BY_ID[m.service]) || 'OpenAI'
+  // 분류가 안 된 항목(service=null)은 '미지정'으로 둔다. 예전엔 여기서 'OpenAI'로
+  // 떨어졌는데, `.env` 가져오기가 분류 불가한 줄(DB_HOST 등)도 전부 가져오면서
+  // 그 항목들이 죄다 OpenAI 밑에 쌓였다 - 사용자가 보기에 명백히 틀린 정보다.
+  const svc = (m.service && SERVICE_BY_ID[m.service]) || UNCLASSIFIED_SERVICE
   const typeDef = m.official_name
     ? TYPE_MAP[svc]?.find((t) => t.var === m.official_name)
     : undefined

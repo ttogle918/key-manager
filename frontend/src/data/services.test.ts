@@ -43,8 +43,25 @@ describe('applyKnowledge', () => {
 
   it('큐레이션 서비스를 앞에(정해진 순서), 새 서비스는 뒤에 알파벳순으로 정렬한다', () => {
     reg.applyKnowledge(PAYLOAD)
-    // notion·openai(큐레이션 순서) 먼저, 그 뒤 GitHub·Stripe(알파벳)
-    expect(reg.SERVICE_ORDER).toEqual(['Notion', 'OpenAI', 'GitHub', 'Stripe'])
+    // notion·openai(큐레이션 순서) 먼저, 그 뒤 GitHub·Stripe(알파벳), 미지정은 항상 맨 끝
+    expect(reg.SERVICE_ORDER).toEqual([
+      'Notion',
+      'OpenAI',
+      'GitHub',
+      'Stripe',
+      reg.UNCLASSIFIED_SERVICE,
+    ])
+  })
+
+  it('미지정 자리를 항상 마지막에 유지한다(지식베이스에 없는 자리다)', () => {
+    reg.applyKnowledge(PAYLOAD)
+    // VaultScreen 이 SERVICE_ORDER 로 그룹을 만들기 때문에, 여기서 빠지면 분류 안 된
+    // 항목이 보관함에서 아예 사라진다. 타일도 있어야 필터 버튼이 빈 칸으로 안 뜬다.
+    expect(reg.SERVICE_ORDER.at(-1)).toBe(reg.UNCLASSIFIED_SERVICE)
+    expect(reg.SERVICE_ORDER.filter((s) => s === reg.UNCLASSIFIED_SERVICE)).toHaveLength(1)
+    expect(reg.SVC_META[reg.UNCLASSIFIED_SERVICE]).toBeDefined()
+    // 어떤 벤더로도 오해되면 안 되므로 지식베이스 id 매핑에는 들어가지 않는다.
+    expect(reg.SERVICE_TO_ID[reg.UNCLASSIFIED_SERVICE]).toBeUndefined()
   })
 
   it('알려진 서비스는 큐레이션 외양을 유지한다', () => {
