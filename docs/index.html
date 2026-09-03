@@ -297,6 +297,7 @@ SPDX-License-Identifier: MIT
   .more .sec-list dd { font-size: 13px; }
 
   /* ---- security ---- */
+  .trustline { width: 100%; height: auto; margin: 0 0 20px; }
   .sec-security { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 30px; }
   .sec-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 22px 24px; }
   .sec-list dt { font-family: var(--f-mono); font-size: 12px; color: var(--accent); margin-bottom: 5px; letter-spacing: .01em; }
@@ -536,6 +537,48 @@ SPDX-License-Identifier: MIT
       <h2 class="sec-title">키는 이 기기를 떠나지 않습니다</h2>
       <p class="sec-sub">계정도, 클라우드도, 우리가 운영하는 서버도 없습니다. 분석과 보관이 전부 사용자 컴퓨터 안에서 끝납니다.</p>
     </div>
+
+    <!-- 신뢰 경계 다이어그램. 외부 라이브러리 없이 인라인 SVG - 이 페이지는 요청 0건이다. -->
+    <svg class="trustline reveal" viewBox="0 0 760 220" role="img"
+         aria-label="기기 경계 안에 앱·로컬 백엔드·암호화된 SQLite 금고가 있고, 경계 밖으로 나가는 것은 사용자가 직접 켰을 때의 키 유효성 확인과 옵트인 기능뿐이며 값 자체는 나가지 않는다">
+      <g font-family="ui-monospace, monospace" font-size="11">
+        <rect x="8" y="8" width="470" height="204" rx="14" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="5 4" opacity=".95"/>
+        <text x="24" y="30" fill="var(--accent)" font-size="11.5" font-weight="700">이 기기 안 (127.0.0.1)</text>
+
+        <rect x="30" y="46" width="180" height="52" rx="9" fill="var(--panel)" stroke="var(--line-strong)"/>
+        <text x="120" y="68" fill="var(--ink)" text-anchor="middle">앱 화면</text>
+        <text x="120" y="84" fill="var(--faint)" text-anchor="middle" font-size="10">값은 앞뒤 4글자만 표시</text>
+
+        <rect x="30" y="122" width="180" height="52" rx="9" fill="var(--panel)" stroke="var(--line-strong)"/>
+        <text x="120" y="144" fill="var(--ink)" text-anchor="middle">로컬 백엔드</text>
+        <text x="120" y="160" fill="var(--faint)" text-anchor="middle" font-size="10">분류 · OCR</text>
+
+        <rect x="268" y="84" width="186" height="52" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+        <text x="361" y="106" fill="var(--ink)" text-anchor="middle">암호화 금고 (SQLite)</text>
+        <text x="361" y="122" fill="var(--faint)" text-anchor="middle" font-size="10">암호문·nonce만 · 평문 컬럼 없음</text>
+
+        <g stroke="var(--accent)" stroke-width="1.4" fill="none" opacity=".7">
+          <path d="M210 72 L 266 100"/>
+          <path d="M210 148 L 266 122"/>
+          <path d="M120 98 L 120 120"/>
+        </g>
+
+        <line x1="500" y1="16" x2="500" y2="204" stroke="var(--line-strong)" stroke-dasharray="3 5"/>
+        <text x="512" y="30" fill="var(--faint)" font-size="11">경계 밖 — 기본값은 아무것도 안 나감</text>
+
+        <rect x="512" y="46" width="236" height="46" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+        <text x="524" y="66" fill="var(--ink-soft)" font-size="10.5">키 유효성 확인 (버튼 누를 때만)</text>
+        <text x="524" y="81" fill="var(--faint)" font-size="9.5">read-only 1회 · 상태만 받아옴</text>
+
+        <rect x="512" y="102" width="236" height="46" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+        <text x="524" y="122" fill="var(--ink-soft)" font-size="10.5">옵트인 기능 (직접 켰을 때만)</text>
+        <text x="524" y="137" fill="var(--faint)" font-size="9.5">검색 확인 · 이메일 전달</text>
+
+        <rect x="512" y="158" width="236" height="46" rx="9" fill="none" stroke="var(--crit)" stroke-dasharray="4 3"/>
+        <text x="524" y="178" fill="var(--crit)" font-size="10.5">평문 키 값</text>
+        <text x="524" y="193" fill="var(--faint)" font-size="9.5">어떤 경우에도 경계를 넘지 않음</text>
+      </g>
+    </svg>
 
     <div class="sec-security reveal">
       <dl class="sec-list">

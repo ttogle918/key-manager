@@ -11,7 +11,8 @@ SPDX-License-Identifier: MIT
 </head>
 <body>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap');
+  /* 웹폰트를 받지 않는다 - local-first 를 내세우는 도구의 문서가 방문자 IP 를
+     폰트 CDN 에 넘기면 안 된다. 랜딩·시작 가이드도 같은 이유로 시스템 폰트만 쓴다. */
 
   :root {
     --bg: #eef0f3;
@@ -34,9 +35,11 @@ SPDX-License-Identifier: MIT
     --planned-soft: #e7e9ec;
     --shadow: 0 1px 2px rgba(23,27,34,0.04), 0 8px 24px -12px rgba(23,27,34,0.10);
     --radius: 10px;
-    --font-display: 'Fraunces', 'Noto Serif KR', Georgia, serif;
-    --font-body: 'Public Sans', 'Noto Sans KR', -apple-system, sans-serif;
-    --font-mono: 'IBM Plex Mono', 'D2Coding', ui-monospace, monospace;
+    /* CDN 을 끊었으므로 시스템에 있는 것만 나열한다. 없는 이름을 남겨두면
+       조용히 기본 폰트로 떨어져 의도한 위계가 사라진다. */
+    --font-display: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', system-ui, sans-serif;
+    --font-body: Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', 'D2Coding', Consolas, monospace;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -493,6 +496,30 @@ const DATA = [
           { name: '화면에서만 날짜를 보여주고 저장은 빈 값으로 유지', reason: 'keylens-env는 프로젝트 미지정 키를 "전역 키"로 취급하는 기존 규칙이 있다. 화면만 속이면 SDK 동작과 사용자 의도가 어긋난다 — 실제 필드에 써서 그 날짜 문자열을 keylens-env 프로젝트명으로도 바로 쓸 수 있게 했다.' }
         ],
         tradeoff: '이미 저장된 기존 빈-프로젝트 항목은 소급 수정하지 않는다 — 화면 그룹핑 계산 시에만 등록일로 유도한다.'
+      },
+      {
+        code: 'RUNTIME-2', name: '.env 가져오기 + 저장 전 인라인 편집', status: 'done',
+        desc: '.env 파일을 끌어다 놓으면 변수 전체를 표로 보여주고 컬렉션 하나로 일괄 저장한다.',
+        files: ['frontend/src/lib/envParse.ts', 'frontend/src/components/modals/EnvImportModal.tsx', 'frontend/src/components/ui/InlineEdit.tsx'],
+        why: '이미 .env 를 쓰던 레포를 KeyLens 로 옮기려면 키를 하나씩 손으로 다시 넣어야 했다 — 변수가 10개면 10번이다.',
+        decision: '.env 파싱을 프론트가 직접 한다. 백엔드 /analyze 는 <b>값 기준으로 중복을 제거</b>해서 DATABASE_URL 과 DB_URL 처럼 값이 같은 두 변수 중 하나가 조용히 사라진다 — 이름·값의 권위 있는 목록은 프론트가 만들고 /analyze 는 분류 보강용으로만 쓴다. <b>원본 변수명이 이긴다</b>: 지식베이스 공식 이름은 "제안" 버튼으로만 노출한다.',
+        alternatives: [
+          { name: '/analyze 응답을 그대로 표로 렌더', reason: '값 기준 중복 제거 때문에 사용자의 변수가 소리 없이 사라진다. 실측으로 확인하고 프론트 파서를 따로 뒀다.' },
+          { name: '공식 이름으로 자동 교체', reason: '소비 레포 코드가 이미 원본 이름을 읽고 있다. 바꾸면 방향이 반대다.' }
+        ],
+        tradeoff: '여러 줄 값은 지원하지 않는다(시크릿에는 사실상 안 쓰이고 파서가 훨씬 복잡해진다). 이미 저장된 항목의 변수명 변경은 official_name 이 암호문의 AAD 라 재암호화가 필요해 별도 스펙으로 남겼다.'
+      },
+      {
+        code: 'RUNTIME-4', name: '보관함 항목의 서비스 옮기기 (드롭다운 + 꾹 눌러 드래그)', status: 'done',
+        desc: '잘못 분류됐거나 미지정으로 남은 항목을 사용자가 직접 올바른 서비스로 옮긴다.',
+        files: ['frontend/src/components/vault/VaultDnd.tsx', 'frontend/src/components/screens/VaultScreen.tsx', 'backend/app/vault_repo.py'],
+        why: '분류기가 모든 걸 맞힐 수는 없다. 미지정으로 남은 항목을 고칠 방법이 없으면 그 항목은 영영 그 상태로 남는다.',
+        decision: '<b>재암호화가 필요 없다</b> — 암호문의 AAD 는 official_name 뿐이라 service/kind/label 은 평문 메타데이터다. 드롭다운을 먼저 만들고 드래그(0.6초 press-and-hold)는 그 위의 지름길로 얹었다.',
+        alternatives: [
+          { name: '드래그만 제공', reason: '새 의존성 금지 조건에서 네이티브 HTML5 드래그뿐인데, 그것만 두면 키보드·터치 사용자에게 기능이 통째로 막힌다. dnd-kit 은 KeyboardSensor 와 스크린리더 안내를 함께 준다.' },
+          { name: 'MUI DataGrid 행 재정렬', reason: 'Pro(상용) 기능인 데다 그리드 안 순서 바꾸기지 그룹 간 이동이 아니다. 보관함은 DataGrid 도 아니다.' }
+        ],
+        tradeoff: '종류가 여러 개인 서비스(OpenAI 등)로 드롭하면 첫 번째 종류가 기본값이 된다 — 정확한 지정은 드롭다운이 담당한다.'
       },
       {
         code: 'UI-3', name: 'MUI DataGrid 결과 요약', status: 'done',
