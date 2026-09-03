@@ -244,18 +244,27 @@ def list_entries(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def update_meta(
-    conn: sqlite3.Connection,
-    entry_id: int,
-    *,
-    project: str | None = None,
-    memo: str | None = None,
-    expires_at: str | None = None,
-) -> bool:
-    """평문 메타데이터(프로젝트·메모·만료일)만 수정. 값·암호문은 건드리지 않는다."""
+#: update_meta 가 수정할 수 있는 평문 컬럼. 값·암호문(nonce/ciphertext)과 official_name 은
+#: 여기 없다 — official_name 은 암호문의 AAD 라 바꾸려면 재암호화가 필요하다(별도 스펙).
+_UPDATABLE_COLUMNS = ("project", "memo", "expires_at", "service", "kind", "label")
+
+
+def update_meta(conn: sqlite3.Connection, entry_id: int, **fields: str | None) -> bool:
+    """평문 메타데이터만 수정. 값·암호문은 건드리지 않는다.
+
+    **넘긴 필드만** 수정한다. 호출부가 생략한 컬럼은 그대로 둔다 — 컬렉션만 고치려는
+    요청이 서비스 분류까지 지우면 안 되기 때문이다(RUNTIME-4).
+    """
+    unknown = set(fields) - set(_UPDATABLE_COLUMNS)
+    if unknown:
+        raise ValueError(f"수정할 수 없는 컬럼: {sorted(unknown)}")
+    if not fields:
+        return False
+    # 컬럼명은 위 화이트리스트를 통과한 것만 쓰고, 값은 전부 파라미터 바인딩한다.
+    assigns = ", ".join(f"{c} = ?" for c in fields)
     cur = conn.execute(
-        "UPDATE entries SET project = ?, memo = ?, expires_at = ? WHERE id = ?",
-        (project, memo, expires_at, entry_id),
+        f"UPDATE entries SET {assigns} WHERE id = ?",
+        (*fields.values(), entry_id),
     )
     conn.commit()
     return cur.rowcount > 0

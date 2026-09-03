@@ -20,7 +20,7 @@ import {
 } from '@/api/client'
 import type { ExplainBox } from '@/api/types'
 import { metaToVaultItem, SERVICE_TO_ID, toAnalysisResults } from '@/api/map'
-import { applyKnowledge, findServiceByVarName, TYPE_MAP } from '@/data/services'
+import { applyKnowledge, findServiceByVarName, SERVICE_BY_ID, TYPE_MAP } from '@/data/services'
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
 import { parseEnv } from '@/lib/envParse'
@@ -286,6 +286,12 @@ interface KeylensState {
   reveal: (id: string) => void
   copy: (text: string, label: string) => void
   setVaultField: (id: string, key: keyof VaultItem, v: unknown) => void
+  /**
+   * 보관함 항목의 서비스를 바꾼다(RUNTIME-4). `service`/`kind` 는 백엔드 id 이고,
+   * 둘 다 null 이면 "미지정"으로 되돌린다. 값은 재암호화 없이 그대로다
+   * (암호문의 AAD 는 official_name 뿐이라 서비스는 평문 메타데이터일 뿐이다).
+   */
+  changeVaultService: (id: string, service: string | null, kind: string | null) => Promise<void>
   /** 값 교체 모달 열기/닫기/확정(새 값으로 재암호화). */
   openRotate: (it: VaultItem) => void
   cancelRotate: () => void
@@ -1264,6 +1270,21 @@ export const useKeylens = create<KeylensState>((set, get) => {
           })
           .catch((e) => get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요')))
       }, 600)
+    },
+    changeVaultService: async (id, service, kind) => {
+      try {
+        // service·kind 만 보낸다 - 백엔드가 보낸 키만 수정하므로 컬렉션·메모는 그대로다.
+        await vaultApi.update(Number(id), { service, kind })
+        await get().loadVault() // 라벨은 백엔드(지식베이스)가 정하므로 다시 읽는다
+        get().showToast(
+          service
+            ? `${SERVICE_BY_ID[service] ?? service} 로 옮겼어요`
+            : '미지정으로 되돌렸어요',
+        )
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
+        get().showToast(vaultErrorText(e, '서비스 변경 실패 - 잠시 후 다시 시도해 보세요'))
+      }
     },
     openRotate: (it) => set({ rotateTarget: it }),
     cancelRotate: () => set({ rotateTarget: null }),
