@@ -24,7 +24,7 @@ import { applyKnowledge, findServiceByVarName, SERVICE_BY_ID, TYPE_MAP } from '@
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
 import { parseEnv } from '@/lib/envParse'
-import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
+import { envText, jwtExp, mask, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
@@ -1197,7 +1197,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         delete revealed[id]
         set((s) => ({
           revealed,
-          vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)),
+          vault: s.vault.map((it) => (it.id === id ? { ...it, preview: '' } : it)),
         }))
         if (revealTimers[id]) clearTimeout(revealTimers[id])
         return
@@ -1206,7 +1206,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
         const { value } = await vaultApi.value(Number(id))
         set((s) => ({
           revealed: { ...s.revealed, [id]: true },
-          vault: s.vault.map((it) => (it.id === id ? { ...it, full: value } : it)),
+          // 평문(value)은 스토어에 넣지 않는다 - 화면은 앞뒤 4글자만 쓰고,
+          // 전체 값이 필요한 복사·내보내기는 백엔드에서 그때그때 새로 받아온다.
+          vault: s.vault.map((it) => (it.id === id ? { ...it, preview: mask(value, 4, 4) } : it)),
         }))
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
@@ -1224,7 +1226,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
           if (!s.revealed[id]) return {}
           const r2 = { ...s.revealed }
           delete r2[id]
-          return { revealed: r2, vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)) }
+          return {
+            revealed: r2,
+            vault: s.vault.map((it) => (it.id === id ? { ...it, preview: '' } : it)),
+          }
         })
       }, 4000)
     },

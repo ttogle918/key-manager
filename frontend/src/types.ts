@@ -99,7 +99,20 @@ export interface VaultItem {
   type: string
   varName: string
   masked: string
+  /**
+   * 평문 값. **보관함 화면에서는 절대 채우지 않는다** - 내보내기(`withValues`)가
+   * 만드는 임시 복사본에서만 쓰인다. 화면 표시는 아래 `preview` 를 쓴다.
+   */
   full: string
+  /**
+   * 값 공개 시 보여줄 **앞뒤 4글자만 남긴 문자열**(`mask(v, 4, 4)`).
+   *
+   * 화면에서 확인해야 하는 건 "이게 그 키가 맞나"이지 값 전체가 아니다. 표시에 쓰지도
+   * 않는 평문을 스토어에 들고 있을 이유가 없어서, 복호화 결과를 여기로만 넣는다.
+   * (스토어를 암호화하는 건 의미가 없다 - 복호화 키도 같은 메모리에 있어야 하므로.
+   * 실효 있는 대책은 평문을 아예 두지 않는 것이다. 디스크 암호화는 백엔드가 담당한다.)
+   */
+  preview?: string
   addedAt: string
   project: string
   context: string

@@ -10,7 +10,7 @@ import {
   TYPE_MAP,
   UNCLASSIFIED_SERVICE,
 } from '@/data/services'
-import { expiryInfo, fmtDate, mask } from '@/lib/format'
+import { expiryInfo, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem, VerifyStatus } from '@/types'
 
@@ -104,8 +104,8 @@ export function VaultRow({ it }: { it: VaultItem }) {
           {/* 공개해도 앞뒤 4글자만 보여준다. 화면에서 확인해야 하는 건 "이게 그 키가 맞나"이지
               값 전체가 아니다. 전체가 필요한 경우(붙여넣기)는 복사 버튼이 담당하고, 그쪽은
               스토어를 거치지 않고 백엔드에서 바로 받아 클립보드로 간다.
-              12자 미만 값은 mask() 가 통째로 가린다 - 짧은 값은 앞뒤 4글자만으로도 거의 다 드러난다. */}
-          {canSee ? mask(it.full, 4, 4) : it.masked}
+              평문은 스토어에도 없다 - reveal 이 mask(v,4,4) 결과만 preview 에 넣는다. */}
+          {canSee ? it.preview : it.masked}
         </div>
 
         {/* 날짜 · 만료 · 복사 · 삭제 · 펼침 */}
