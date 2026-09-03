@@ -115,6 +115,20 @@ Shapely·antlr4-python3-runtime·omegaconf·protobuf (BSD-3-Clause) · numpy (BS
 | @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui — 분석 결과 요약 DataGrid |
 | @mui/x-data-grid | 9.12.0 | **MIT**(Community 등급) | https://github.com/mui/mui-x — ⚠️ Pro/Premium/Enterprise 등급은 유료 상용 라이선스라 미사용, Community(`@mui/x-data-grid`, 접미사 없음)만 사용 |
 | @emotion/react · @emotion/styled | 11.14.0 · 11.14.1 | MIT | https://github.com/emotion-js/emotion — MUI 기본 스타일링 엔진(전이 의존성) |
+| @dnd-kit/core | 6.3.1 | MIT | https://github.com/clauderic/dnd-kit — 보관함 항목 press-and-hold(2초) 그룹 이동 DnD |
+| @dnd-kit/accessibility · @dnd-kit/utilities | 3.1.1 · 3.2.2 | MIT | https://github.com/clauderic/dnd-kit — @dnd-kit/core 전이 의존성(스크린리더 announcement·좌표 유틸) |
+
+- **@dnd-kit 계열 라이선스 검증(2026-09-03)**: 배포 tarball에 동봉된 `LICENSE` 파일 원문을 직접 확인했다 —
+  3개 패키지 전부 "MIT License, Copyright (c) 2021, Claudéric Demers"로 동일하다(npm 메타데이터에만
+  의존하지 않음). 런타임 전이 의존성은 `@dnd-kit/accessibility`·`@dnd-kit/utilities`(MIT)와
+  `tslib`(0BSD, radix-ui 경유로 이미 트리에 존재해 dedupe됨)가 전부이며 **카피레프트 0건**이다.
+  React 19.2.7 환경에서 peer dependency 경고 없이 설치되고, React 19에서 제거된 API
+  (`findDOMNode`·`ReactDOM.render`·`defaultProps`)를 dist 번들에서 사용하지 않는다.
+  코드 복사 없이 공개 API(`DndContext`·`useDraggable`·`useDroppable`·`PointerSensor`)만 호출한다.
+- 검토했으나 채택하지 않은 대안: `react-beautiful-dnd`(Apache-2.0이나 저장소 **아카이브** + npm
+  **deprecated**, peerDeps가 React 18에서 끊김), `@hello-pangea/dnd`(Apache-2.0·카피레프트 0건이나
+  신규 런타임 패키지 8종 + 마우스 press-and-hold 지연 활성화 옵션 부재), `react-dnd`(MIT·카피레프트
+  0건이나 2022-06 이후 배포 정지 + HTML5 백엔드라 지연 활성화·터치 미지원).
 
 ## 웹폰트 (로컬 벤더링 — 배포 번들 포함, CDN 미사용)
 

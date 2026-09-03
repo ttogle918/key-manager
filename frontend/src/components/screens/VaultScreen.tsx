@@ -1,6 +1,28 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import { SERVICE_ORDER, SVC_LOGO, SVC_META } from '@/data/services'
+import { useState } from 'react'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import { DraggableItem, DropZone, EmptyDropZone } from '@/components/vault/VaultDnd'
+import {
+  DRAG_HOLD_MS,
+  DRAG_TOLERANCE_PX,
+  serviceFromDropZoneId,
+} from '@/components/vault/dndIds'
+import {
+  SERVICE_ORDER,
+  SERVICE_TO_ID,
+  SVC_LOGO,
+  SVC_META,
+  TYPE_MAP,
+  UNCLASSIFIED_SERVICE,
+} from '@/data/services'
 import { expiryInfo, projectKey } from '@/lib/format'
 import { syncRelayConfigured } from '@/lib/syncRelay'
 import { useKeylens } from '@/store/keylensStore'
@@ -13,6 +35,37 @@ export function VaultScreen() {
   const s = useKeylens()
   const projectNames = useProjectNames()
   const { vault, search, projFilter, locked, serviceTagFilter, projectOpenOverrides } = s
+
+  // 드래그 중인 항목 id. null 이면 드래그 안 하는 중(드롭 자리도 안 보인다).
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+
+  /**
+   * 2초간 누르고 있어야 드래그가 시작된다. 보관함 행에는 클릭(값 공개)·더블클릭(회전)이
+   * 이미 걸려 있어서, 지연이 없으면 값을 보려고 누른 것이 드래그로 오인된다.
+   */
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: DRAG_HOLD_MS, tolerance: DRAG_TOLERANCE_PX },
+    }),
+  )
+
+  const onDragEnd = (e: DragEndEvent) => {
+    setDraggingId(null)
+    const target = e.over ? serviceFromDropZoneId(String(e.over.id)) : null
+    if (!target) return
+    const item = s.vault.find((v) => v.id === String(e.active.id))
+    if (!item || item.service === target) return // 제자리 드롭은 무시
+
+    if (target === UNCLASSIFIED_SERVICE) {
+      void s.changeVaultService(item.id, null, null)
+      return
+    }
+    // 종류가 여러 개인 서비스(OpenAI 등)는 첫 번째를 기본값으로 둔다. 드래그는 지름길이고,
+    // 정확한 종류 지정은 상세보기 드롭다운이 담당한다.
+    const kind = TYPE_MAP[target]?.[0]?.v
+    if (!kind) return
+    void s.changeVaultService(item.id, SERVICE_TO_ID[target] ?? null, kind)
+  }
 
   const q = search.trim().toLowerCase()
   const matchSearch = (it: VaultItem) =>
@@ -238,7 +291,14 @@ export function VaultScreen() {
         <div className="py-12 text-center text-[13px] text-faint-2">조건에 맞는 항목이 없습니다.</div>
       )}
 
-      {/* 컬렉션별 그룹(아코디언) */}
+      {/* 컬렉션별 그룹(아코디언). 2초 누르면 항목을 다른 서비스 그룹으로 끌어 옮길 수 있다
+          - 정확한 이동은 상세보기의 "서비스" 드롭다운이 담당하고 이건 지름길이다. */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={(e: DragStartEvent) => setDraggingId(String(e.active.id))}
+        onDragCancel={() => setDraggingId(null)}
+        onDragEnd={onDragEnd}
+      >
       {projectGroups.map((pg, idx) => {
         const isOpen = (projectOpenOverrides[pg.name] ?? idx === 0) || filterActive
         const itemCount = pg.services.reduce((n, g) => n + g.items.length, 0)
@@ -276,7 +336,7 @@ export function VaultScreen() {
             </header>
             {isOpen &&
               pg.services.map((g) => (
-                <div key={g.name}>
+                <DropZone key={g.name} serviceName={g.name} active={draggingId !== null}>
                   <div className="flex items-center gap-[8px] border-t border-[#14181E] bg-[#0F1216] px-4 py-[7px]">
                     <div
                       className="flex size-[18px] flex-none items-center justify-center rounded-[5px] text-[10px] font-extrabold"
@@ -296,13 +356,24 @@ export function VaultScreen() {
                     </button>
                   </div>
                   {g.items.map((it) => (
-                    <VaultRow key={it.id} it={it} />
+                    <DraggableItem key={it.id} id={it.id}>
+                      <VaultRow it={it} />
+                    </DraggableItem>
                   ))}
-                </div>
+                </DropZone>
               ))}
+            {/* 드래그 중에만: 이 컬렉션에 아직 없는 서비스로도 옮길 수 있게 자리를 연다.
+                이게 없으면 항목이 있는 그룹으로만 옮길 수 있어서, 미지정 항목을
+                PostgreSQL 로 보내는 것 같은 흔한 이동이 불가능하다. */}
+            {isOpen &&
+              draggingId !== null &&
+              SERVICE_ORDER.filter((svc) => !pg.services.some((g) => g.name === svc)).map(
+                (svc) => <EmptyDropZone key={svc} serviceName={svc} tile={SVC_META[svc]?.tile} />,
+              )}
           </section>
         )
       })}
+      </DndContext>
     </div>
   )
 }

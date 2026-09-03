@@ -5,7 +5,9 @@ SPDX-License-Identifier: MIT
 # SBOM — KeyLens 소프트웨어 구성 명세 (붙임1)
 
 > 본 프로젝트(**MIT**)의 서드파티 구성요소 목록이다. 정책: **허용적(permissive) 라이선스만**
-> (MIT / Apache-2.0 / BSD-2/3-Clause / ISC / 0BSD / Python-2.0). **카피레프트(GPL/AGPL/LGPL/MPL) 금지.**
+> (MIT / Apache-2.0 / BSD-2/3-Clause / ISC / 0BSD / Python-2.0). **강한 카피레프트(GPL/AGPL) 금지,
+> 약한 카피레프트(LGPL/MPL)는 패키지를 수정 없이 그대로 의존할 때만 조건부 허용**(CLAUDE.md 규칙과 동일 —
+> 실제 조건부 허용 사례는 §1-1b의 MPL-2.0 2건).
 > 판정 기준: **배포물에 포함되는 런타임 의존성** 중심. 빌드·테스트 전용(devDependencies)은 산출물에
 > 실리지 않으므로 §4에 참고로 분리했다.
 >
@@ -22,7 +24,7 @@ SPDX-License-Identifier: MIT
 | 영역 | 패키지 수(직접) | 강한 카피레프트 | 약한 카피레프트(조건부 허용) | 판정 |
 |---|---|---|---|---|
 | 백엔드(Python, 런타임) | 9 (+ RapidOCR 전이 트리) | 0 | 2건(tqdm·certifi, MPL-2.0 — 미수정 사용) | ✅ |
-| 프론트(npm, production 트리) | 12 | 0 | 0 | ✅ |
+| 프론트(npm, production 트리) | 13 | 0 | 0 | ✅ |
 
 > 정확한 전체(전이 포함) 개수는 스택 변경이 잦아 고정 숫자 대신 "재생성 방법"(하단)으로 그때그때
 > 재산출한다. 위 표는 직접 의존성 기준.
@@ -106,6 +108,7 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 | 10 | @mui/x-data-grid | 9.12.0 | MIT(Community 등급) | https://github.com/mui/mui-x | 결과 목록 표(`ResultsGrid.tsx`) — ⚠️ Pro/Premium 유료 등급 미사용, Community만 사용 |
 | 11 | @emotion/react | 11.14.0 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
 | 12 | @emotion/styled | 11.14.1 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
+| 13 | @dnd-kit/core | 6.3.1 | MIT | https://github.com/clauderic/dnd-kit | 보관함 항목 press-and-hold(2초) 드래그로 서비스 그룹 이동 |
 
 ### 2-2. 주요 전이 의존성 (런타임)
 
@@ -119,9 +122,12 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 | 15 | is-url | 1.2.4 | MIT | https://github.com/segmentio/is-url | ← tesseract.js |
 | 16 | zlibjs | 0.3.1 | MIT | https://github.com/imaya/zlib.js | ← tesseract.js |
 | 17 | webidl-conversions | 3.0.1 | BSD-2-Clause | https://github.com/jsdom/webidl-conversions | ← tesseract.js |
-| 18 | tslib | 2.8.1 | 0BSD | https://github.com/microsoft/tslib | ← radix-ui |
+| 18 | tslib | 2.8.1 | 0BSD | https://github.com/microsoft/tslib | ← radix-ui, @dnd-kit |
+| 19 | @dnd-kit/accessibility | 3.1.1 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
+| 20 | @dnd-kit/utilities | 3.2.2 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
 
-> 프론트 production 트리 전체(~64종)는 MIT/Apache-2.0/ISC/0BSD/BSD-2로만 구성. 위 표는 대표 항목이며
+> 프론트 production 트리 전체(148종, 2026-09-03 `license-checker --production` 실측)는 MIT 137 ·
+> Apache-2.0 4 · BSD-3 3 · ISC 2 · 0BSD 1 · BSD-2 1 로만 구성(카피레프트 0). 위 표는 대표 항목이며
 > 전체 목록은 `frontend/`에서 `npx license-checker --production --json`으로 재생성한다.
 
 ---
