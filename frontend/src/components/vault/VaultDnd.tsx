@@ -84,7 +84,9 @@ export function EmptyDropZone({ serviceName, tile }: { serviceName: string; tile
       )}
     >
       <span className="font-mono text-[10px]">{tile ?? '?'}</span>
-      <span>{serviceName} 로 옮기기</span>
+      {/* "{이름} 로/으로" 는 받침에 따라 조사가 달라져 서비스명마다 틀린다("미지정 로" → "미지정으로").
+          이름 뒤에 "그룹"을 붙이면 조사가 항상 "으로"로 고정돼 어떤 서비스명에도 맞는다. */}
+      <span>{serviceName} 그룹으로 이동</span>
     </div>
   )
 }

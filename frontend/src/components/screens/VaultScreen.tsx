@@ -4,6 +4,7 @@ import { useState } from 'react'
 import {
   DndContext,
   PointerSensor,
+  pointerWithin,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -295,6 +296,11 @@ export function VaultScreen() {
           - 정확한 이동은 상세보기의 "서비스" 드롭다운이 담당하고 이건 지름길이다. */}
       <DndContext
         sensors={sensors}
+        // 기본 충돌 감지(rectIntersection)는 **끌리는 요소의 사각형 겹침**으로 대상을 고른다.
+        // 보관함 행은 그룹 폭 전체를 차지해서, 위로 끌어도 원래 그룹과의 겹침이 가장 커
+        // "제자리 드롭"으로 판정되고 아무 일도 일어나지 않았다. 커서가 어디 있는지로
+        // 판단해야 사용자가 보는 것과 일치한다.
+        collisionDetection={pointerWithin}
         onDragStart={(e: DragStartEvent) => setDraggingId(String(e.active.id))}
         onDragCancel={() => setDraggingId(null)}
         onDragEnd={onDragEnd}

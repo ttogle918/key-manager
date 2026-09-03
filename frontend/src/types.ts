@@ -7,8 +7,14 @@
  */
 export type Service = string
 
-/** 최상위 화면 상태. */
-export type Screen = 'setup' | 'lock' | 'app'
+/**
+ * 최상위 화면 상태.
+ *
+ * `offline`: 백엔드에 연결하지 못한 상태. **금고 유무를 모르는 상태에서 설정(생성) 화면을
+ * 띄우면 안 된다** - 멀쩡히 있는 금고를 잃은 줄 알고 새로 만들려 하게 된다(키 관리 도구에서
+ * 이건 꽤 위험한 오해다).
+ */
+export type Screen = 'setup' | 'lock' | 'app' | 'offline'
 
 /** 앱 셸 내부 뷰. */
 export type View = 'input' | 'vault' | 'pending' | 'projectAccess'

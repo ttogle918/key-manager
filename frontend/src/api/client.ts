@@ -26,9 +26,14 @@ import type {
  *   포트에 상관없이 same-origin 요청이 되어 CORS가 필요 없다.
  * - 언제든 `VITE_API_BASE` 로 명시 재정의 가능.
  */
+// dev 기본값은 반드시 `127.0.0.1` 이다. `localhost` 를 쓰면 안 된다 —
+// 백엔드는 `uvicorn --host 127.0.0.1`(IPv4 전용)로 뜨는데, Windows 에서 `localhost` 는
+// 흔히 `::1`(IPv6)로 먼저 해석되고 **브라우저 fetch 는 IPv4 로 폴백하지 않는다**
+// (curl 은 폴백해서 200 이 나오므로 터미널로 확인하면 멀쩡해 보인다 - 실측으로 확인함).
+// 그러면 앱만 조용히 연결에 실패한다. 문서·랜딩도 "백엔드는 127.0.0.1에서만"이라고 적혀 있다.
 const API_BASE = (
   (import.meta.env.VITE_API_BASE as string | undefined) ??
-  (import.meta.env.PROD ? '' : 'http://localhost:8003')
+  (import.meta.env.PROD ? '' : 'http://127.0.0.1:8003')
 ).replace(/\/$/, '')
 
 /** 백엔드가 응답하지 않거나 오류일 때 던지는 에러. */
