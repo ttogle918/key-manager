@@ -21,10 +21,15 @@ from ..models import ClassifiedItem
 # group1=이름, group2=여는 따옴표(없으면 ''), group3=값. 여는 따옴표를 잡아 값 절단 판정에 쓴다.
 _ASSIGN_RE = re.compile(
     r'^[ \t]*(?:export[ \t]+)?["\']?([A-Za-z_][\w.\-]*)["\']?[ \t]*[:=][ \t]*'
+    r'(?!//)'  # URI 스킴 제외 — 아래 _BARE_ASSIGN_RE 주석 참고
     r'(["\']?)([^"\'\s#]+)',
     re.MULTILINE,
 )
-_BARE_ASSIGN_RE = re.compile(r"^[A-Za-z_][\w.\-]*[:=](.+)$")
+# `name:value` / `name=value` 앞부분을 떼어낸다. 단 `(?!//)` 로 URI 스킴은 제외한다 —
+# `postgres://user:pw@host/db` 의 `postgres:` 를 변수명으로 오해하면 원본 토큰이 버려지고
+# `//user:pw@host/db` 만 남아, URL 형태 자격증명(postgres·mongodb·redis 등)은 값 기반
+# 분류가 아예 불가능해진다. 스킴 뒤에 `//` 가 오는 건 대입이 아니라 URI 다.
+_BARE_ASSIGN_RE = re.compile(r"^[A-Za-z_][\w.\-]*[:=](?!//)(.+)$")
 _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )

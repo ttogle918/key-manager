@@ -15,8 +15,9 @@ def test_loads_all_services():
 
 def test_credential_counts():
     kb = load_knowledge_base()
-    # notion 4 + kakao 4 + gcp 4 + openai 2 + ollama 1 + github 1 + aws 2 + slack 2 + stripe 2 = 22
-    assert kb.credential_count == 22
+    # notion 4 + kakao 4 + gcp 4 + openai 2 + ollama 1 + github 1 + aws 2 + slack 2 + stripe 2
+    # + postgresql 1 = 23
+    assert kb.credential_count == 23
 
 
 def test_official_env_names_unique():

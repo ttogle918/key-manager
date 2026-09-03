@@ -13,7 +13,7 @@ SPDX-License-Identifier: MIT
 
 | 영역 | 상태 | 비고 |
 |---|---|---|
-| 값 기반 분류 (Stage1) | ✅ 완료 | 9종 서비스, `value_regex` |
+| 값 기반 분류 (Stage1) | ✅ 완료 | 10종 서비스, `value_regex` |
 | 맥락 기반 분류 (Stage2, 차별점) | ✅ 완료 | 라벨·URL 신호, 충돌 시 사용자 선택 |
 | 브라우저 OCR (스크린샷 → 라벨-값) | ✅ 완료 | tesseract.js, 로컬 실행 |
 | 암호화 금고 (Argon2id + AES-256-GCM) | ✅ 완료 | SQLite, 평문 컬럼 없음 |
@@ -51,7 +51,7 @@ flowchart LR
   subgraph Backend["FastAPI 로컬 백엔드 (127.0.0.1:8003 / :8765)"]
     AN["POST /analyze"] --> S1["Stage1 값 기반"]
     S1 --> S2["Stage2 맥락 기반"]
-    KB[("knowledge/*.yaml\n9종 · 22종류")] --> S1 & S2
+    KB[("knowledge/*.yaml\n10종 · 23종류")] --> S1 & S2
     VAPI["/vault/* (15개)"] --> VS["VaultService"]
     VS --> CR["Argon2id + AES-256-GCM"]
     CR --> DB[("SQLite\n암호문만")]

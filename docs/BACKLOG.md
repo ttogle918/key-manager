@@ -491,8 +491,13 @@ SPDX-License-Identifier: MIT
 
 ---
 
-### RUNTIME-3 🟡 PostgreSQL 지식베이스 추가 — 📋 대기
-- **중요도**: 🟡 Medium | **의존성**: RUNTIME-2 | **사이즈**: S | **상태**: 📋 대기(2026-09-01 등재)
+### RUNTIME-3 🟡 DB 연결 문자열(`postgres://`)을 자격증명으로 인식 — ✅ 완료
+
+> ⚠️ 이름 주의: **KeyLens 자체 저장소는 SQLite(`backend/vault.db`) 그대로다.** 이 항목은
+> *사용자의* `.env` 에 있는 `postgres://user:pw@host/db` 를 알아보게 만드는 것이다
+> (`github.yaml` 이 `ghp_...` 를 알아보는 것과 같은 층). 우리가 PostgreSQL 을 쓰는 게 아니다.
+> 처음 등재할 때 "PostgreSQL 지식베이스 추가"라고 적어 저장소 교체로 오해를 샀다.
+- **중요도**: 🟡 Medium | **의존성**: RUNTIME-2 | **사이즈**: S | **상태**: ✅ 완료(2026-09-03)
 - **왜**: `.env` 가져오기를 실제로 써보니 `DATABASE_URL`·`DB_URL`이 미지정으로 남는다. 연결 URL은
   안에 `user:password`가 들어 있어 **진짜 자격증명**이고, `postgres://` 접두어라 값만으로 식별된다
   — 즉 이 프로젝트의 값 기반 분류(Stage 1)에 정확히 맞는 사례다.
@@ -502,10 +507,13 @@ SPDX-License-Identifier: MIT
     끝없이 늘어나 확장되지 않는다.
   - `verify:` 블록은 없어도 된다(`ollama.yaml`이 이미 그런 선례).
 - **하위 할일**
-  - [ ] `backend/knowledge/postgresql.yaml` + 스키마 테스트(`/new-service` 스킬 사용)
-  - [ ] **"9종" 표기 10개 파일 갱신** — README·CHANGELOG·FEATURES·DIAGRAMS·BACKLOG·
+  - [x] `backend/knowledge/postgresql.yaml` + 테스트 13건(`tests/test_postgresql.py`)
+  - [x] **토크나이저 버그 발견·수정**: `_ASSIGN_RE`·`_BARE_ASSIGN_RE` 가 `postgres:` 를
+        `이름:값` 대입으로 오해해 스킴을 떼고 원본 토큰을 버렸다 → URL 형태 자격증명은
+        값 기반 분류가 **구조적으로 불가능**했다. `(?!//)` 로 URI 스킴 제외.
+  - [x] **"9종" 표기 갱신** — README·CHANGELOG·FEATURES·DIAGRAMS·BACKLOG·
         `docs/index.html`(통계바 `9`·`22`)·feature-ledger·RESULT_REPORT·desktop/README 등
-  - [ ] 백엔드 pytest 재실행(현재 312건)
+  - [x] 백엔드 pytest 325건 통과(312 + postgresql 13)
 - **주의**: 백엔드를 건드리므로 RUNTIME-2의 "백엔드 변경 0건" 성질과는 별개 작업이다.
 
 ---
