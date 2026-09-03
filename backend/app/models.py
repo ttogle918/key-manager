@@ -158,11 +158,23 @@ class VaultEntryCreate(BaseModel):
 
 
 class VaultEntryUpdate(BaseModel):
-    """평문 메타데이터만 수정(값·암호문은 불변)."""
+    """평문 메타데이터만 수정(값·암호문은 불변).
+
+    **보낸 필드만 수정한다.** 생략한 필드는 건드리지 않는다(`model_fields_set` 기준).
+    명시적으로 `null` 을 보내면 비우는 것으로 본다 — "생략"과 "비우기"는 다르다.
+    이 구분이 없으면 컬렉션만 고치려는 요청이 서비스 분류까지 지워버린다.
+
+    service/kind 는 항상 함께 온다(둘 다 있거나 둘 다 없거나). 한쪽만 바꾸면
+    지식베이스에 없는 조합이 되어 유효성 검증 버튼이 unsupported 가 되기 때문이다.
+    """
 
     project: Optional[str] = None
     memo: Optional[str] = None
     expires_at: Optional[str] = None
+    # 서비스 재지정(RUNTIME-4) — 값의 AAD 는 official_name 뿐이라 재암호화가 필요 없다.
+    service: Optional[str] = None
+    kind: Optional[str] = None
+    label: Optional[str] = None
 
 
 class VaultEntryMeta(BaseModel):

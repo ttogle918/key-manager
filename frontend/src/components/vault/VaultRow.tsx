@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: MIT
 import type { ReactNode } from 'react'
 import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
-import { CONSOLE_URL, resolveIssueUrl, TYPE_MAP } from '@/data/services'
+import {
+  CONSOLE_URL,
+  resolveIssueUrl,
+  SERVICE_ORDER,
+  SERVICE_TO_ID,
+  TYPE_MAP,
+  UNCLASSIFIED_SERVICE,
+} from '@/data/services'
 import { expiryInfo, fmtDate } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem, VerifyStatus } from '@/types'
@@ -28,9 +35,13 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const verifyEntry = useKeylens((s) => s.verifyEntry)
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
+  const changeVaultService = useKeylens((s) => s.changeVaultService)
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
 
   const cur = TYPE_MAP[it.service]?.find((t) => t.var === it.varName)
+  // 서비스 드롭다운의 현재 선택값. `cur` 는 변수명으로 찾기 때문에 사용자가 이름을 자기
+  // 것으로 바꾼 항목(MY_GITHUB 등)에서는 못 맞힌다 - 여기서는 백엔드가 저장한 라벨로 찾는다.
+  const typeKey = TYPE_MAP[it.service]?.find((t) => t.label === it.type)?.v ?? ''
   const canSee = !locked && !!revealed
   const hasRealImg = !!(it.sourceImage && it.sourceImage !== 'sample')
   const exp = expiryInfo(it.expiresAt)
@@ -159,6 +170,34 @@ export function VaultRow({ it }: { it: VaultItem }) {
                 placeholder="컬렉션 없음"
                 className="w-[180px] rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[6px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
               />
+            </Row>
+            {/* 서비스 재지정 - 분류기가 다 맞힐 수는 없으니 사용자가 고칠 수 있어야 한다.
+                값은 재암호화 없이 그대로다(암호문의 AAD 는 official_name 뿐). 변수명은
+                여기서 못 바꾼다 - 그건 재암호화가 필요해 별도 스펙이다. */}
+            <Row label="서비스">
+              <select
+                aria-label={`${it.varName || '이 항목'} 의 서비스`}
+                value={
+                  it.service === UNCLASSIFIED_SERVICE || !typeKey
+                    ? ''
+                    : `${it.service}|${typeKey}`
+                }
+                onChange={(e) => {
+                  const [svc, kind] = e.target.value.split('|')
+                  const id = svc ? SERVICE_TO_ID[svc] : null
+                  void changeVaultService(it.id, id ?? null, svc ? kind : null)
+                }}
+                className="w-[180px] cursor-pointer rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[6px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
+              >
+                <option value="">미지정</option>
+                {SERVICE_ORDER.filter((s) => s !== UNCLASSIFIED_SERVICE).map((svc) =>
+                  (TYPE_MAP[svc] ?? []).map((t) => (
+                    <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
+                      {svc} · {t.label}
+                    </option>
+                  )),
+                )}
+              </select>
             </Row>
             {it.context && (
               <Row label="컨텍스트">

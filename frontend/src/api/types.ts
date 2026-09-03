@@ -90,10 +90,17 @@ export interface VaultEntryCreate {
   expires_at?: string | null
 }
 
+/**
+ * 평문 메타데이터 수정. **보낸 키만 수정된다** - 생략한 키는 백엔드가 건드리지 않는다.
+ * 그래서 컬렉션만 고칠 때 service 를 같이 보내지 않아도 분류가 유지된다.
+ * service·kind 는 항상 함께 보내야 한다(둘 다 null 이면 "미지정"으로 되돌림).
+ */
 export interface VaultEntryUpdate {
   project?: string | null
   memo?: string | null
   expires_at?: string | null
+  service?: string | null
+  kind?: string | null
 }
 
 /** 감사 이력 한 줄(값 없음) — 등록·열람·복사·내보내기. */

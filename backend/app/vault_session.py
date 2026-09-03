@@ -166,20 +166,15 @@ class VaultService:
         finally:
             conn.close()
 
-    def update_meta(
-        self,
-        entry_id: int,
-        *,
-        project: str | None = None,
-        memo: str | None = None,
-        expires_at: str | None = None,
-    ) -> bool:
+    def update_meta(self, entry_id: int, **fields: str | None) -> bool:
+        """평문 메타데이터 수정. **넘긴 필드만** 바꾼다(생략한 컬럼은 그대로).
+
+        허용 컬럼은 vault_repo._UPDATABLE_COLUMNS 가 강제한다.
+        """
         self._require_key()
         conn = self._conn()
         try:
-            return vault_repo.update_meta(
-                conn, entry_id, project=project, memo=memo, expires_at=expires_at
-            )
+            return vault_repo.update_meta(conn, entry_id, **fields)
         finally:
             conn.close()
 

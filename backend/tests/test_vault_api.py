@@ -420,3 +420,120 @@ def test_verify_missing_404(vault):
     with pytest.raises(HTTPException) as e:
         main.vault_verify(999)
     assert e.value.status_code == 404
+
+
+# ── RUNTIME-4: 보관함 항목의 서비스 재지정 ──────────────────────────────────────
+#
+# 분류기가 모든 걸 맞힐 수는 없어서 "미지정"으로 남는 항목이 생긴다. 사용자가 직접
+# 올바른 서비스로 옮길 수 있어야 한다. 값의 AAD 는 official_name 뿐이라 서비스 변경에는
+# 재암호화가 필요 없다 — 그래서 평문 메타데이터 수정으로 끝난다.
+
+
+def _unclassified(vault_svc):
+    """서비스 미지정 상태의 항목 하나를 만든다(.env 가져오기의 DB_HOST 같은 줄)."""
+    main.vault_init(VaultInit(password=MASTER))
+    return main.vault_add(
+        VaultEntryCreate(official_name="DB_HOST", value="localhost-dummy-value")
+    )
+
+
+def test_assign_service_to_unclassified_entry(vault):
+    meta = _unclassified(vault)
+    assert meta.service is None
+
+    updated = main.vault_update(
+        meta.id, VaultEntryUpdate(service="github", kind="personal_access_token")
+    )
+    assert updated.service == "github"
+    assert updated.kind == "personal_access_token"
+    # 라벨은 지식베이스가 정한다(클라이언트가 보낸 값을 그대로 믿지 않는다)
+    assert updated.label == "Personal Access Token"
+
+
+def test_service_change_does_not_touch_the_value(vault):
+    """재암호화 없이 메타만 바뀐다 — 값은 그대로 복호화된다."""
+    meta = _unclassified(vault)
+    main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+    assert main.vault_get_value(meta.id).value == "localhost-dummy-value"
+
+
+def test_service_change_keeps_the_user_chosen_name(vault):
+    """official_name 은 그대로 — 그게 이 기능의 약속이고, 바꾸려면 재암호화가 필요하다."""
+    meta = _unclassified(vault)
+    updated = main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+    assert updated.official_name == "DB_HOST"
+
+
+def test_can_clear_service_back_to_unclassified(vault):
+    meta = _unclassified(vault)
+    main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+    cleared = main.vault_update(meta.id, VaultEntryUpdate(service=None, kind=None))
+    assert cleared.service is None and cleared.kind is None and cleared.label is None
+
+
+def test_unknown_service_kind_pair_rejected(vault):
+    """지식베이스에 없는 조합은 422 — 저장되면 유효성 검증이 영영 unsupported 가 된다."""
+    meta = _unclassified(vault)
+    for service, kind in [("github", "no_such_kind"), ("no_such_service", "personal_access_token")]:
+        with pytest.raises(HTTPException) as e:
+            main.vault_update(meta.id, VaultEntryUpdate(service=service, kind=kind))
+        assert e.value.status_code == 422
+    assert main.vault_list()[0].service is None  # 아무것도 안 바뀌었다
+
+
+def test_service_without_kind_rejected(vault):
+    """한쪽만 바꾸면 지식베이스에 없는 조합이 된다."""
+    meta = _unclassified(vault)
+    with pytest.raises(HTTPException) as e:
+        main.vault_update(meta.id, VaultEntryUpdate(service="github"))
+    assert e.value.status_code == 422
+
+
+def test_editing_project_alone_preserves_service(vault):
+    """**회귀 방지**: 컬렉션만 고치는 요청이 서비스 분류를 지우면 안 된다.
+
+    PATCH 는 '보낸 필드만' 수정한다. 이게 깨지면 사용자가 컬렉션 이름을 고치는 순간
+    애써 지정한 서비스가 조용히 날아간다.
+    """
+    meta = _unclassified(vault)
+    main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+    updated = main.vault_update(meta.id, VaultEntryUpdate(project="새컬렉션"))
+    assert updated.project == "새컬렉션"
+    assert updated.service == "github" and updated.kind == "personal_access_token"
+
+
+def test_editing_service_alone_preserves_memo_and_project(vault):
+    """반대 방향도 마찬가지 — 서비스만 바꿔도 메모·컬렉션이 남는다."""
+    meta = _unclassified(vault)
+    main.vault_update(meta.id, VaultEntryUpdate(project="블로그", memo="메모다"))
+    updated = main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+    assert updated.project == "블로그" and updated.memo == "메모다"
+
+
+def test_empty_patch_rejected(vault):
+    meta = _unclassified(vault)
+    with pytest.raises(HTTPException) as e:
+        main.vault_update(meta.id, VaultEntryUpdate())
+    assert e.value.status_code == 422
+
+
+def test_partial_update_semantics_over_json(vault):
+    """**와이어 계약**: 실제 요청은 JSON 으로 오므로 그 경로에서 '생략'과 '명시적 null' 이
+    구분되는지 확인한다. 파이썬에서 VaultEntryUpdate(...) 로 만드는 것만 검증하면
+    FastAPI 가 dict 로 만드는 실제 경로를 놓친다.
+    """
+    meta = _unclassified(vault)
+    main.vault_update(meta.id, VaultEntryUpdate(service="github", kind="personal_access_token"))
+
+    # 생략 → 건드리지 않음
+    only_project = VaultEntryUpdate.model_validate({"project": "블로그"})
+    assert only_project.model_fields_set == {"project"}
+    updated = main.vault_update(meta.id, only_project)
+    assert updated.service == "github"  # 살아남았다
+
+    # 명시적 null → 비우기
+    clear = VaultEntryUpdate.model_validate({"service": None, "kind": None})
+    assert clear.model_fields_set == {"service", "kind"}
+    updated = main.vault_update(meta.id, clear)
+    assert updated.service is None
+    assert updated.project == "블로그"  # 컬렉션은 그대로

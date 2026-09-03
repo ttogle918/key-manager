@@ -303,16 +303,55 @@ def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
 
 @app.patch("/vault/entries/{entry_id}", response_model=VaultEntryMeta)
 def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
-    project = (body.project or "").strip()
-    if not project:
-        # project를 비우면 "오늘"이 아니라 그 항목의 등록일로 되돌린다 — 수정 행위 자체가
-        # 그룹핑 날짜를 오늘로 밀어버리면 안 되므로.
-        current = next((m for m in VAULT.list_entries() if m["id"] == entry_id), None)
-        project = current["created_at"][:10] if current else _today()
+    sent = body.model_fields_set  # 생략한 필드는 건드리지 않는다
+    fields: dict[str, str | None] = {}
+
+    if "project" in sent:
+        project = (body.project or "").strip()
+        if not project:
+            # project를 비우면 "오늘"이 아니라 그 항목의 등록일로 되돌린다 — 수정 행위 자체가
+            # 그룹핑 날짜를 오늘로 밀어버리면 안 되므로.
+            current = next((m for m in VAULT.list_entries() if m["id"] == entry_id), None)
+            project = current["created_at"][:10] if current else _today()
+        fields["project"] = project
+    if "memo" in sent:
+        fields["memo"] = body.memo
+    if "expires_at" in sent:
+        fields["expires_at"] = body.expires_at
+
+    # 서비스 재지정(RUNTIME-4). service·kind 는 한 묶음으로만 바뀐다 — 한쪽만 바꾸면
+    # 지식베이스에 없는 조합이 되어 유효성 검증이 unsupported 로 죽는다.
+    if "service" in sent or "kind" in sent:
+        if ("service" in sent) != ("kind" in sent):
+            raise HTTPException(
+                status_code=422, detail="service 와 kind 는 함께 보내야 합니다"
+            )
+        if bool(body.service) != bool(body.kind):
+            raise HTTPException(
+                status_code=422, detail="service 와 kind 는 함께 지정하거나 함께 비워야 합니다"
+            )
+        if body.service:
+            cred = KB.find(body.service, body.kind or "")
+            if cred is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"지식베이스에 없는 조합입니다: {body.service}/{body.kind}",
+                )
+            # 라벨은 지식베이스가 정한다 — 클라이언트가 보낸 값을 그대로 믿지 않는다.
+            fields["service"], fields["kind"], fields["label"] = (
+                body.service,
+                body.kind,
+                cred.label,
+            )
+        else:
+            # 미지정으로 되돌리기
+            fields["service"] = fields["kind"] = fields["label"] = None
+
+    if not fields:
+        raise HTTPException(status_code=422, detail="수정할 필드가 없습니다")
+
     try:
-        ok = VAULT.update_meta(
-            entry_id, project=project, memo=body.memo, expires_at=body.expires_at
-        )
+        ok = VAULT.update_meta(entry_id, **fields)
     except VaultLocked:
         raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
     if not ok:
