@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 | 한눈에 | |
 |---|---|
-| 지원 서비스 / 자격증명 종류 | **9종 / 22종류** (Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe) |
+| 지원 서비스 / 자격증명 종류 | **10종 / 23종류** (Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe·PostgreSQL) |
 | 백엔드 API 엔드포인트 | **31개** (헬스체크 1 · 분석 2 · 화면설명 3 · 지식베이스 1 · 금고 16 · SDK 8) + 매니저 릴레이(별도 배포) 2개 |
 | 테스트 | 백엔드 pytest **303** · 프론트 vitest **49** + 브라우저 E2E |
 | 라이선스 / 보안 | 강한 카피레프트 **0** · 약한 카피레프트 2건(조건부 허용, 근거 THIRD-PARTY-NOTICES.md) · 알려진 CVE **0** · 런타임 외부 요청 **0**(옵트인 기능 제외) |
@@ -34,7 +34,7 @@ flowchart LR
     OCR["RapidOCR — 백엔드 OCR"]
     AN[/analyze/] --> S1[Stage1 값 기반]
     S1 --> S2[Stage2 맥락 기반]
-    KB[("knowledge/*.yaml — 9종 22종류")] --> S1 & S2
+    KB[("knowledge/*.yaml — 10종 23종류")] --> S1 & S2
     EXP[/explain/image/] --> OLLAMA["로컬 Ollama (옵트인)"]
     OLLAMA -.미확인 추측만.-> TAVILY["Tavily 검색 (옵트인, 도메인 제한 없음)"]
     V[/vault API 16종/] --> CR[Argon2id + AES-256-GCM]
@@ -229,7 +229,7 @@ KeyLens 앱 자체가 서버를 운영하지 않고, 이 기능을 쓰고 싶은
 
 지식베이스에 종류별 역할·발급 콘솔·공식 문서, 서비스별 발급 단계·사전조건을 선언합니다.
 콘솔 URL의 `{project}` 플레이스홀더를 항목 값으로 치환해 딥링크하고(ID 형태일 때만, 도메인
-화이트리스트 통과), 22종 전부에 노출 등급(🔒 노출 금지 / 공개 가능)을 지정해 검증 실패·만료
+화이트리스트 통과), 23종 전부에 노출 등급(🔒 노출 금지 / 공개 가능)을 지정해 검증 실패·만료
 임박·회전 시점에 재발급 링크로 연결합니다.
 
 관련: `frontend/src/components/KeyHelp.tsx` · `knowledge/*.yaml`

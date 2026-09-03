@@ -340,7 +340,7 @@ const DATA = [
       },
       {
         code: 'CORE-4', name: '서비스 지식베이스', status: 'done',
-        desc: '서비스별 키 종류·라벨·URL 패턴·공식 변수명·검증 엔드포인트를 YAML로 선언. 9종 22종류.',
+        desc: '서비스별 키 종류·라벨·URL 패턴·공식 변수명·검증 엔드포인트를 YAML로 선언. 10종 23종류.',
         files: ['backend/knowledge/*.yaml', 'backend/app/knowledge.py'],
         why: '서비스 정의를 코드로 두면 새 서비스 추가마다 코드 리뷰·배포가 필요해 오픈소스 기여 문턱이 올라간다.',
         decision: '서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트·발급 도움말·보안 등급을 전부 YAML 데이터로 선언하고, 프론트는 부팅 시 /knowledge를 읽어 동적으로 구성한다 — 새 서비스는 프론트 코드 0줄로 반영된다.',
@@ -672,10 +672,10 @@ const DATA = [
       },
       {
         code: 'GUIDE-2', name: '노출 등급 뱃지', status: 'done',
-        desc: '22종 전부 public/secret 지정 → 🔒 노출 금지 / 공개 가능 뱃지.',
+        desc: '23종 전부 public/secret 지정 → 🔒 노출 금지 / 공개 가능 뱃지.',
         files: ['frontend/src/components/KeyHelp.tsx'],
         why: '같은 서비스라도 공개 가능 키와 노출 금지 키가 갈린다(Kakao JS=공개 vs Admin=금지, Stripe pk vs sk, Slack bot vs user).',
-        decision: '22종 credential 전부에 exposure(public/secret)를 지정하고, secret 종류엔 유출 시 피해와 하드닝 팁을 붙였다. 검증 실패·만료 임박·회전 시점에 재발급 링크로 자동 연결한다.',
+        decision: '23종 credential 전부에 exposure(public/secret)를 지정하고, secret 종류엔 유출 시 피해와 하드닝 팁을 붙였다. 검증 실패·만료 임박·회전 시점에 재발급 링크로 자동 연결한다.',
         alternatives: [],
         tradeoff: '노출 등급은 보조 신호일 뿐 최종 판단은 사용자 몫이다 — 자동 폐기·자동 재발급은 하지 않는다.'
       }

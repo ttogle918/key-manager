@@ -9,7 +9,17 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-09-01
+### Added (기능)
+- **DB 연결 문자열 인식(지식베이스 10종째)**: `.env` 의 `postgres://user:pw@host/db` 를
+  PostgreSQL 자격증명(`DATABASE_URL`)으로 알아봅니다. URL 안에 비밀번호가 평문으로 들어 있어
+  API 키와 같은 급으로 다뤄야 하기 때문입니다. **비밀번호가 없는 `postgres://localhost/db` 는
+  일부러 잡지 않습니다** - 그건 시크릿이 아니라 설정이라 "미지정"으로 남습니다.
+
+### Fixed (버그)
+- **URI 스킴을 변수명으로 오해해 URL 형태 자격증명을 분류하지 못하던 문제**: 토크나이저가
+  `postgres://...` 의 `postgres:` 를 `이름:값` 대입으로 보고 스킴을 떼어낸 뒤 원본을 버려서,
+  URL 형태(postgres·mongodb·redis·amqp 등) 자격증명은 값 기반 분류가 **구조적으로 불가능**했다.
+  스킴 뒤에 `//` 가 오면 대입이 아닌 URI 로 본다.
 
 ### Added (기능)
 - **컬렉션 목록 조회(`keylens-env`)**: `keylens_env.collections()` 와 CLI

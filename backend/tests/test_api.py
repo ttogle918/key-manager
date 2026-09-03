@@ -29,13 +29,13 @@ def _upload(data: bytes, content_type: str = "image/png", filename: str = "x.png
 def test_health():
     r = health()
     assert r.status == "ok"
-    assert r.services == 9
-    assert r.credentials == 22
+    assert r.services == 10
+    assert r.credentials == 23
 
 
 def test_knowledge_endpoint():
     services = knowledge()["services"]
-    assert len(services) == 9
+    assert len(services) == 10
     notion = next(s for s in services if s["service"] == "notion")
     api = next(c for c in notion["credentials"] if c["kind"] == "api_key")
     assert api["value_based"] is True

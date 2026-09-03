@@ -45,7 +45,7 @@ KeyLens는 값 자체가 아니라 **출처의 맥락**(스크린샷 속 라벨,
 - **이메일 릴레이 동기화 (SYNC-2, 옵트인)**: 계정·DB 없이 SMTP로만 암호화 번들을 목적지 이메일로 전달(`manager-relay/`, 독립 배포). KeyLens 앱 자체는 서버를 운영하지 않고, 쓰고 싶은 사람이 자기 SMTP 자격증명으로 직접 배포합니다. 비밀 값은 암호문으로만 전달됩니다
 - **`.env` 가져오기**: 이미 쓰던 `.env` 파일을 앱에 끌어다 놓으면 변수 전체를 한 화면에서 확인·편집하고 컬렉션 하나로 일괄 저장합니다. **원본 변수명을 그대로 지킵니다** - 소비 레포 코드가 이미 그 이름을 읽고 있으니까요. 이름·값은 더블클릭으로 그 자리에서 고칠 수 있습니다
 - **런타임 키 주입 SDK (RUNTIME-1, `keylens-env`)**: 다른 레포에서 `.env` 평문 파일 없이 실행 중에 값을 받아 씁니다 — `keylens_env.load_env()` 한 줄이면 `os.environ`에 주입됩니다. 키는 **컬렉션**(키 묶음) 단위로 나뉘고, **승인된 디렉토리에서만** 그 컬렉션의 값을 받아갈 수 있습니다(최초 요청 시 앱에 승인 대기 알림). 금고가 잠겨 있으면 값이 나가지 않습니다. 설치·사용법은 [`keylens-env/README.md`](keylens-env/README.md)
-- **확장 가능한 지식베이스 (현재 9종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe)**: 서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트가 YAML로 선언되어 있어, **YAML 파일 하나 추가로 백엔드·프론트 양쪽에 자동 반영** (프론트는 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 동적 구성 - 코드 수정 불필요)
+- **확장 가능한 지식베이스 (현재 10종: Notion·Kakao·GCP·OpenAI·Ollama·GitHub·AWS·Slack·Stripe·PostgreSQL)**: 서비스별 키 종류·라벨·URL 패턴·변수명·검증 엔드포인트가 YAML로 선언되어 있어, **YAML 파일 하나 추가로 백엔드·프론트 양쪽에 자동 반영** (프론트는 부팅 시 `/knowledge`를 읽어 종류맵·서비스 목록을 동적 구성 - 코드 수정 불필요)
 
 ## 아키텍처
 
@@ -58,7 +58,7 @@ flowchart LR
   subgraph Backend["FastAPI 로컬 백엔드 (127.0.0.1 전용)"]
     OCR["RapidOCR<br/>(스크린샷 → 텍스트+좌표)"]
     CLS["분류 엔진<br/>Stage1 값 기반 / Stage2 맥락 기반"]
-    KB[("지식베이스<br/>knowledge/*.yaml, 9종")]
+    KB[("지식베이스<br/>knowledge/*.yaml, 10종")]
     VAULT["암호화 저장소<br/>Argon2id + AES-256-GCM"]
     DB[("SQLite<br/>암호문만 저장")]
     OLLAMA["로컬 Ollama<br/>(옵트인, 화면 설명)"]
