@@ -10,7 +10,7 @@ import {
   TYPE_MAP,
   UNCLASSIFIED_SERVICE,
 } from '@/data/services'
-import { expiryInfo, fmtDate } from '@/lib/format'
+import { expiryInfo, fmtDate, mask } from '@/lib/format'
 import { useKeylens } from '@/store/keylensStore'
 import type { VaultItem, VerifyStatus } from '@/types'
 
@@ -68,8 +68,13 @@ export function VaultRow({ it }: { it: VaultItem }) {
   return (
     <div className="border-t border-[#14181E]">
       <div className="grid grid-cols-[220px_1fr_auto] items-center gap-[14px] px-4 py-[11px] hover:bg-[#13171D]">
-        {/* 종류 + 변수명 */}
-        <div className="min-w-0">
+        {/* 종류 + 변수명. 이 칸을 눌러도 상세가 열린다 - 오른쪽 ▾ 버튼까지 가는 수고를 줄이는
+            지름길이고, 버튼 자체는 그대로 남아 키보드 경로가 된다. */}
+        <div
+          onClick={() => toggleExpanded(it.id)}
+          title={expanded ? '접기' : '상세 보기'}
+          className="min-w-0 cursor-pointer"
+        >
           <div className="flex items-center gap-[6px] text-[11.5px] text-muted-2">
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.type}</span>
             {cur?.exposure === 'secret' && <ExposureBadge exposure="secret" />}
@@ -90,13 +95,17 @@ export function VaultRow({ it }: { it: VaultItem }) {
             locked
               ? '잠금 해제 후 볼 수 있어요'
               : canSee
-                ? '클릭하여 숨기기 · 더블클릭하면 값 교체'
-                : '클릭하여 4초간 표시 · 더블클릭하면 값 교체'
+                ? '클릭하여 숨기기 · 전체 값이 필요하면 복사 버튼을 쓰세요'
+                : '클릭하면 앞뒤 4글자만 4초간 표시 · 더블클릭하면 값 교체'
           }
           className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded font-mono text-[12.5px] hover:bg-surface"
           style={{ color: canSee ? '#A7E8C9' : '#727C89' }}
         >
-          {canSee ? it.full : it.masked}
+          {/* 공개해도 앞뒤 4글자만 보여준다. 화면에서 확인해야 하는 건 "이게 그 키가 맞나"이지
+              값 전체가 아니다. 전체가 필요한 경우(붙여넣기)는 복사 버튼이 담당하고, 그쪽은
+              스토어를 거치지 않고 백엔드에서 바로 받아 클립보드로 간다.
+              12자 미만 값은 mask() 가 통째로 가린다 - 짧은 값은 앞뒤 4글자만으로도 거의 다 드러난다. */}
+          {canSee ? mask(it.full, 4, 4) : it.masked}
         </div>
 
         {/* 날짜 · 만료 · 복사 · 삭제 · 펼침 */}
