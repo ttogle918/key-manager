@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
 import {
   CONSOLE_URL,
@@ -36,6 +36,20 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
   const changeVaultService = useKeylens((s) => s.changeVaultService)
+  const vault = useKeylens((s) => s.vault)
+
+  /**
+   * 드롭다운을 "이미 금고에 있는 서비스"와 "새로 지정" 둘로 나눈다.
+   * 목록에 이미 보이는 서비스로 옮기는 게 압도적으로 흔한 동작인데, 지식베이스 전체가
+   * 한 줄로 나열되면 그게 묻힌다. 표시는 <optgroup> 으로 한다 - 브라우저가 그룹 라벨을
+   * 굵게 렌더하고 스크린리더도 그룹명을 읽어준다. "<" 같은 기호를 붙이면 스크린리더가
+   * "작다"로 읽어 오히려 나빠진다.
+   */
+  const [usedServices, freshServices] = useMemo(() => {
+    const inVault = new Set(vault.map((v) => v.service))
+    const pickable = SERVICE_ORDER.filter((s) => s !== UNCLASSIFIED_SERVICE)
+    return [pickable.filter((s) => inVault.has(s)), pickable.filter((s) => !inVault.has(s))]
+  }, [vault])
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
 
   const cur = TYPE_MAP[it.service]?.find((t) => t.var === it.varName)
@@ -190,12 +204,27 @@ export function VaultRow({ it }: { it: VaultItem }) {
                 className="w-[180px] cursor-pointer rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[6px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
               >
                 <option value="">미지정</option>
-                {SERVICE_ORDER.filter((s) => s !== UNCLASSIFIED_SERVICE).map((svc) =>
-                  (TYPE_MAP[svc] ?? []).map((t) => (
-                    <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
-                      {svc} · {t.label}
-                    </option>
-                  )),
+                {usedServices.length > 0 && (
+                  <optgroup label={`이미 있는 서비스 (${usedServices.length})`}>
+                    {usedServices.map((svc) =>
+                      (TYPE_MAP[svc] ?? []).map((t) => (
+                        <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
+                          {svc} · {t.label}
+                        </option>
+                      )),
+                    )}
+                  </optgroup>
+                )}
+                {freshServices.length > 0 && (
+                  <optgroup label="새로 지정">
+                    {freshServices.map((svc) =>
+                      (TYPE_MAP[svc] ?? []).map((t) => (
+                        <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
+                          {svc} · {t.label}
+                        </option>
+                      )),
+                    )}
+                  </optgroup>
                 )}
               </select>
             </Row>
