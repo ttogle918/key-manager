@@ -126,7 +126,9 @@ SPDX-License-Identifier: MIT
   - [x] Notion 통합 설정 / Kakao 콘솔(4종 키) / GCP API 키 / OpenAI 키 화면을 **더미 값으로** 재현 — `docs/demo/*.png` + 재현 스크립트 `generate.py`(Pillow, 개발전용)
   - [x] ⚠️ 전부 가짜 값(placeholder) — `generate.py`가 지식베이스 정규식에 맞춰 생성하며 실제 키 아님
   - [x] OCR 회귀 픽스처로 연결: 골든 재구성 `backend/tests/fixtures/demo/*.recon.txt` + `test_demo_fixtures.py`(분류 계약, `⊆`), 재생성 `npm run fixtures:ocr`
-  - [ ] ⏸ 한계: `kakao.png` JS/Native 키는 한글 단일 글자("키"/"앱") OCR 오독으로 미검출(7/9) — CORE-3 전처리 후속에서 개선
+  - [x] ~~한계: `kakao.png` JS/Native 키 미검출(7/9)~~ → **해소**(2026-09-03 재확인). 0.3.0의
+        RapidOCR 전환으로 한글 단일 글자 라벨 오독이 사라졌다. `test_ocr_demo_screenshots.py`가
+        `KAKAO_JS_KEY`·`KAKAO_NATIVE_APP_KEY` 포함 4종 전부를 기대하며 통과한다.
 
 ### CORE-4 🟠 서비스 지식베이스 (선언적 정의) — ✅ 완료(GCP 일부)
 - **중요도**: 🟠 High | **스프린트**: S1(앞당김) | **의존성**: 없음 | **사이즈**: M | **상태**: ✅ 커밋 `413f816`
@@ -144,7 +146,8 @@ SPDX-License-Identifier: MIT
 - **테스트 체크리스트**
   - [x] 🧪 지식베이스 로드·검증 통과, 중복 official_env_name 차단
   - [x] ✅ `value_matchers`가 접두어 명확 종류만 포함(UUID/hex 종류 제외) 검증
-  - [ ] 🧪 잘못된 스키마 YAML → 명확한 에러로 기동 실패 (엣지 테스트 보강)
+  - [x] 🧪 잘못된 스키마 YAML → 명확한 에러로 기동 실패 — `test_knowledge.py:65-102`에 4건
+        (broken.yaml·noservice.yaml·badre.yaml·중복 official_env_name)
 
 ### CORE-5 🟡 `.env` 내보내기 / 변수명 매핑 확정 — ✅ 완료(VAULT-2에서 실연결)
 - **중요도**: 🟡 Medium | **스프린트**: S4 | **의존성**: CORE-2, VAULT-1 | **사이즈**: S | **상태**: ✅ EnvModal + 값 복호화 fetch 연결
@@ -161,7 +164,8 @@ SPDX-License-Identifier: MIT
 - **배경**: GCP·AWS·Kakao 등은 **키 발급 경로가 헷갈리고**("이 키가 무슨 역할인지", "어디서 발급받는지" 모름), 콘솔 UI가 서비스마다 제각각이다. KeyLens는 이미 서비스별 지식베이스가 있으므로, **"이 키의 역할 + 발급 바로가기 + 공식 문서"를 KB에 선언**하면 분류·보관을 넘어 **발급까지 안내**하는 도구가 된다. 확장성(YAML 하나로 서비스 추가)·대회 "생활 편의" 각도와 정합. 프론트는 `/knowledge` 동적 소비라 **코드 0줄**로 반영된다.
 - **관찰(설계 근거)**: 여러 콘솔 URL은 **가운데 ID만 바뀐다**(예: `developers.kakao.com/console/app/{app_id}/...`, `console.cloud.google.com/apis/credentials?project={project_id}`). → `issue_url`에 **플레이스홀더**를 두고, 항목의 저장된 `project`/감지된 ID를 알면 채워서 **바로 그 페이지로 딥링크**, 모르면 서비스 일반 콘솔로 폴백.
 - **하위 할일 (A: 기본)**
-  - [ ] **[Data] KB 스키마 확장** (`Credential`/`Service`, 전부 선택 필드 — 하위호환)
+  - [x] **[Data] KB 스키마 확장** (`Credential`/`Service`, 전부 선택 필드 — 하위호환) — `models.py`에
+        role·issue_url·docs_url·exposure·impact·security_tip / console_url·steps·prereq·disambiguation 존재
     - [x] `role`: 종류별 역할 한 줄(노출 가능/서버 전용 명시) — `Credential.role`
     - [x] `issue_url`: 발급 콘솔 바로가기 — `Credential.issue_url`(GCP 서비스계정 등 종류별, 없으면 `console_url` 폴백)
     - [x] `docs_url`: 공식 문서 링크 — `Credential.docs_url`
@@ -221,7 +225,8 @@ SPDX-License-Identifier: MIT
   - **[FE] API 클라이언트 (`src/api/`)**
     - [x] `POST :8003/analyze` 호출 + 응답→`AnalysisResult` 매핑, 타임아웃(AbortController)·에러 처리 (`client.ts`/`map.ts`)
     - [x] `startAnalyze` 목업→실제 호출 교체. 이미지 단독(텍스트/URL 없음)은 OCR 미구현이라 샘플 목업 유지, 백엔드 미연결 시 목업 폴백 + 안내
-    - [ ] `GET :8003/knowledge`로 종류맵 단일화(하드코딩 `TYPE_MAP` 제거 방향) — 후속
+    - [x] `GET /knowledge`로 종류맵 단일화 — `applyKnowledge()`가 부팅 시 `TYPE_MAP`·`SERVICE_ORDER`·
+          `SVC_META`를 통째로 교체한다(`services.ts`). 하드코딩은 응답 전 부트스트랩 폴백으로만 남는다(의도)
   - **[계약] 응답 스키마 정합**
     - [x] 백엔드 `ClassifiedItem` ↔ 프론트 `AnalysisResult` 매핑 확정. 조인 키 = `official_env_name`. conf(high/medium/unknown→high/mid/low), service id→enum, unknown(service=null) 분리 렌더
     - [x] 개발용 실행: 백/프론트 동시 기동 스크립트 `scripts/dev.mjs`(OSS-3에서 완료)
@@ -243,7 +248,7 @@ SPDX-License-Identifier: MIT
   - [x] 모든 새 파일에 SPDX 헤더 (수동 삽입 확인)
 - **테스트 체크리스트**
   - [x] ✅ `git status`에 `.env`·`*.sqlite`·`.venv`·`node_modules`가 안 잡힘
-  - [ ] ✅ `reuse lint` 통과(헤더 누락 0) — 제출 전 자동 검증으로 확정(OSS-2)
+  - [x] `reuse lint` 통과(헤더 누락 0) — CI `라이선스 (reuse + 카피레프트 0)` 잡이 매 PR에서 검증
 
 ### VAULT-1 🔴 암호화 저장소 — ✅ 코어 완료(엔진+저장소, API/프론트 연결은 VAULT-2)
 - **중요도**: 🔴 Critical | **스프린트**: S3 | **의존성**: VAULT-0 | **사이즈**: L | **상태**: ✅ `crypto.py`·`vault_repo.py`, pytest 10개, `cryptography==49.0.0`(감사 통과)
@@ -261,7 +266,7 @@ SPDX-License-Identifier: MIT
   - [x] 🧪 틀린 마스터 비밀번호 → 복호화 실패(태그 불일치)로 안전하게 거부
   - [x] 🧪 SQLite 파일을 직접 열어도 평문 키가 안 보임(컬럼·바이트 스캔)
   - [x] ✅ 마스터 비밀번호 변경 후에도 기존 항목 정상 복호화, 옛 비밀번호 거부
-  - [ ] ⏸ API 엔드포인트(/vault …) + 프론트 목업 → 실제 금고 연결 — VAULT-2(인증 게이트)에서
+  - [x] ~~API 엔드포인트(/vault …) + 프론트 목업 → 실제 금고 연결~~ → **VAULT-2에서 완료**(위 항목 ✅)
 
 ### VAULT-2 🟠 인증 게이트 — ✅ 완료
 - **중요도**: 🟠 High | **스프린트**: S3 | **의존성**: VAULT-1 | **사이즈**: M | **상태**: ✅ 완료 — 백엔드(pytest 16)+프론트 연결+**브라우저 E2E 실검증 통과**
@@ -425,7 +430,8 @@ SPDX-License-Identifier: MIT
   - [x] 🧪 등록 안 된 다른 프로젝트 디렉토리에서는 해당 프로젝트 전용 키에 접근 불가 — `backend/tests/test_sdk_repo.py::test_entries_for_env_other_project_not_included`
   - [x] 🧪 SDK 경유 조회가 감사 이력에 기록됨 — `backend/tests/test_sdk_session.py::test_sdk_env_logs_audit_history`
   - [ ] 🧪 데스크톱 앱에서 미등록 요청 발생 시 OS 토스트 + 작업표시줄 깜빡임 확인(Windows)
-  - [ ] 🧪 브라우저 개발 모드에서는 Web Notification 권한 거부 시에도 화면 안 배너로 요청이 보이는지(안전망 확인)
+  - [x] 브라우저 개발 모드 안전망 — 사이드바 승인 대기 뱃지 + 5초 폴링으로 요청이 보인다
+        (0.4.0). **Web Notification API 자체는 미구현** — 안전망이 이미 동작하므로 우선순위 낮음
 - **범위 밖(이번 설계에 안 넣음)**: Node.js/npm 패키지(로드맵), 여러 KeyLens 인스턴스/기기 간 동기화(SYNC-2와 별개 문제), 자동 승인·자동 재발급.
 - **완료(2026-08-09)**: 데스크톱 채널 기준 RUNTIME-1 전체 완료. 남은 건 브라우저 탭 알림 채널뿐(스코프 밖). 배포는 git 설치 방식으로 확정(2026-08-10) — PyPI 미등록.
 - **엔드투엔드 감사(2026-08-29)**: 실제 레포에서 쓰기 전 전 구간을 돌려 점검 → **버그 9건 발견·수정**
