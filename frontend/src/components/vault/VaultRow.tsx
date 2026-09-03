@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 [Your Name]
 // SPDX-License-Identifier: MIT
-import type { ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ExposureBadge, KeyHelp } from '@/components/KeyHelp'
 import {
   CONSOLE_URL,
@@ -36,6 +36,20 @@ export function VaultRow({ it }: { it: VaultItem }) {
   const toggleExpanded = useKeylens((s) => s.toggleExpanded)
   const setVaultField = useKeylens((s) => s.setVaultField)
   const changeVaultService = useKeylens((s) => s.changeVaultService)
+  const vault = useKeylens((s) => s.vault)
+
+  /**
+   * 드롭다운을 "이미 금고에 있는 서비스"와 "새로 지정" 둘로 나눈다.
+   * 목록에 이미 보이는 서비스로 옮기는 게 압도적으로 흔한 동작인데, 지식베이스 전체가
+   * 한 줄로 나열되면 그게 묻힌다. 표시는 <optgroup> 으로 한다 - 브라우저가 그룹 라벨을
+   * 굵게 렌더하고 스크린리더도 그룹명을 읽어준다. "<" 같은 기호를 붙이면 스크린리더가
+   * "작다"로 읽어 오히려 나빠진다.
+   */
+  const [usedServices, freshServices] = useMemo(() => {
+    const inVault = new Set(vault.map((v) => v.service))
+    const pickable = SERVICE_ORDER.filter((s) => s !== UNCLASSIFIED_SERVICE)
+    return [pickable.filter((s) => inVault.has(s)), pickable.filter((s) => !inVault.has(s))]
+  }, [vault])
   const setDeleteTarget = useKeylens((s) => s.setDeleteTarget)
 
   const cur = TYPE_MAP[it.service]?.find((t) => t.var === it.varName)
@@ -54,8 +68,13 @@ export function VaultRow({ it }: { it: VaultItem }) {
   return (
     <div className="border-t border-[#14181E]">
       <div className="grid grid-cols-[220px_1fr_auto] items-center gap-[14px] px-4 py-[11px] hover:bg-[#13171D]">
-        {/* 종류 + 변수명 */}
-        <div className="min-w-0">
+        {/* 종류 + 변수명. 이 칸을 눌러도 상세가 열린다 - 오른쪽 ▾ 버튼까지 가는 수고를 줄이는
+            지름길이고, 버튼 자체는 그대로 남아 키보드 경로가 된다. */}
+        <div
+          onClick={() => toggleExpanded(it.id)}
+          title={expanded ? '접기' : '상세 보기'}
+          className="min-w-0 cursor-pointer"
+        >
           <div className="flex items-center gap-[6px] text-[11.5px] text-muted-2">
             <span className="overflow-hidden text-ellipsis whitespace-nowrap">{it.type}</span>
             {cur?.exposure === 'secret' && <ExposureBadge exposure="secret" />}
@@ -76,13 +95,17 @@ export function VaultRow({ it }: { it: VaultItem }) {
             locked
               ? '잠금 해제 후 볼 수 있어요'
               : canSee
-                ? '클릭하여 숨기기 · 더블클릭하면 값 교체'
-                : '클릭하여 4초간 표시 · 더블클릭하면 값 교체'
+                ? '클릭하여 숨기기 · 전체 값이 필요하면 복사 버튼을 쓰세요'
+                : '클릭하면 앞뒤 4글자만 4초간 표시 · 더블클릭하면 값 교체'
           }
           className="cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap rounded font-mono text-[12.5px] hover:bg-surface"
           style={{ color: canSee ? '#A7E8C9' : '#727C89' }}
         >
-          {canSee ? it.full : it.masked}
+          {/* 공개해도 앞뒤 4글자만 보여준다. 화면에서 확인해야 하는 건 "이게 그 키가 맞나"이지
+              값 전체가 아니다. 전체가 필요한 경우(붙여넣기)는 복사 버튼이 담당하고, 그쪽은
+              스토어를 거치지 않고 백엔드에서 바로 받아 클립보드로 간다.
+              평문은 스토어에도 없다 - reveal 이 mask(v,4,4) 결과만 preview 에 넣는다. */}
+          {canSee ? it.preview : it.masked}
         </div>
 
         {/* 날짜 · 만료 · 복사 · 삭제 · 펼침 */}
@@ -190,12 +213,27 @@ export function VaultRow({ it }: { it: VaultItem }) {
                 className="w-[180px] cursor-pointer rounded-[7px] border border-line-2 bg-surface-3 px-[10px] py-[6px] text-[12px] text-fg-soft outline-none focus:border-[rgba(62,207,142,.5)]"
               >
                 <option value="">미지정</option>
-                {SERVICE_ORDER.filter((s) => s !== UNCLASSIFIED_SERVICE).map((svc) =>
-                  (TYPE_MAP[svc] ?? []).map((t) => (
-                    <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
-                      {svc} · {t.label}
-                    </option>
-                  )),
+                {usedServices.length > 0 && (
+                  <optgroup label={`이미 있는 서비스 (${usedServices.length})`}>
+                    {usedServices.map((svc) =>
+                      (TYPE_MAP[svc] ?? []).map((t) => (
+                        <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
+                          {svc} · {t.label}
+                        </option>
+                      )),
+                    )}
+                  </optgroup>
+                )}
+                {freshServices.length > 0 && (
+                  <optgroup label="새로 지정">
+                    {freshServices.map((svc) =>
+                      (TYPE_MAP[svc] ?? []).map((t) => (
+                        <option key={`${svc}|${t.v}`} value={`${svc}|${t.v}`}>
+                          {svc} · {t.label}
+                        </option>
+                      )),
+                    )}
+                  </optgroup>
                 )}
               </select>
             </Row>

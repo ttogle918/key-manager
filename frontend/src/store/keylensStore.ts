@@ -24,7 +24,7 @@ import { applyKnowledge, findServiceByVarName, SERVICE_BY_ID, TYPE_MAP } from '@
 import { freshResults } from '@/data/seed'
 import { splitKeyValue } from '@/lib/autocomplete'
 import { parseEnv } from '@/lib/envParse'
-import { envText, jwtExp, passwordPolicyError, projectKey, today } from '@/lib/format'
+import { envText, jwtExp, mask, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
 import type {
   AnalysisResult,
@@ -500,10 +500,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
         get().startPendingPoll()
         get().checkExplainAvailable()
       } catch (e) {
-        // 백엔드 미연결 — 금고 기능은 백엔드가 필요하다. 설정 화면 + 안내.
+        // 백엔드 미연결. **설정(금고 만들기) 화면을 띄우면 안 된다** - 금고가 있는지조차
+        // 모르는 상태인데 "만들기"를 권하면, 멀쩡히 있는 금고를 잃은 줄 알고 새로 만들려
+        // 하게 된다(브라우저 자동완성이 비밀번호까지 채워두면 버튼만 누르면 되는 것처럼 보인다).
         console.error('[KeyLens] 부팅 시 금고 상태 조회 실패:', e)
-        set({ screen: 'setup' })
-        get().showToast('금고 기능을 쓰려면 KeyLens 서버가 켜져 있어야 해요 — 잠시 후 다시 시도해 보세요')
+        set({ screen: 'offline' })
       }
     },
     loadVault: async () => {
@@ -1197,7 +1198,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
         delete revealed[id]
         set((s) => ({
           revealed,
-          vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)),
+          vault: s.vault.map((it) => (it.id === id ? { ...it, preview: '' } : it)),
         }))
         if (revealTimers[id]) clearTimeout(revealTimers[id])
         return
@@ -1206,7 +1207,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
         const { value } = await vaultApi.value(Number(id))
         set((s) => ({
           revealed: { ...s.revealed, [id]: true },
-          vault: s.vault.map((it) => (it.id === id ? { ...it, full: value } : it)),
+          // 평문(value)은 스토어에 넣지 않는다 - 화면은 앞뒤 4글자만 쓰고,
+          // 전체 값이 필요한 복사·내보내기는 백엔드에서 그때그때 새로 받아온다.
+          vault: s.vault.map((it) => (it.id === id ? { ...it, preview: mask(value, 4, 4) } : it)),
         }))
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
@@ -1224,7 +1227,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
           if (!s.revealed[id]) return {}
           const r2 = { ...s.revealed }
           delete r2[id]
-          return { revealed: r2, vault: s.vault.map((it) => (it.id === id ? { ...it, full: '' } : it)) }
+          return {
+            revealed: r2,
+            vault: s.vault.map((it) => (it.id === id ? { ...it, preview: '' } : it)),
+          }
         })
       }, 4000)
     },
@@ -1278,7 +1284,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await get().loadVault() // 라벨은 백엔드(지식베이스)가 정하므로 다시 읽는다
         get().showToast(
           service
-            ? `${SERVICE_BY_ID[service] ?? service} 로 옮겼어요`
+            ? // "{이름} 로/으로" 는 받침에 따라 조사가 갈려 서비스명마다 틀린다.
+              // "그룹"을 끼우면 조사가 항상 "으로"라 어떤 이름에도 맞는다.
+              `${SERVICE_BY_ID[service] ?? service} 그룹으로 옮겼어요`
             : '미지정으로 되돌렸어요',
         )
       } catch (e) {

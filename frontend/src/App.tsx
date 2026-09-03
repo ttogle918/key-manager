@@ -10,6 +10,7 @@ declare global {
 }
 import { useKeylens } from '@/store/keylensStore'
 import { Sidebar } from '@/components/Sidebar'
+import { OfflineScreen } from '@/components/screens/OfflineScreen'
 import { SetupScreen } from '@/components/screens/SetupScreen'
 import { LockScreen } from '@/components/screens/LockScreen'
 import { InputScreen } from '@/components/screens/InputScreen'
@@ -73,6 +74,7 @@ export default function App() {
 
   return (
     <>
+      {screen === 'offline' && <OfflineScreen />}
       {screen === 'setup' && <SetupScreen />}
       {screen === 'lock' && <LockScreen />}
       {screen === 'app' && (
