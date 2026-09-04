@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import time
+from contextlib import contextmanager
 from typing import Callable
 
 from . import crypto, sdk_repo, vault_repo
@@ -83,11 +84,8 @@ class VaultService:
         return vault_repo.connect(self.db_path)
 
     def is_initialized(self) -> bool:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.is_initialized(conn)
-        finally:
-            conn.close()
 
     def _is_unlocked(self) -> bool:
         if self._key is None:
@@ -102,11 +100,8 @@ class VaultService:
 
     # ── 세션 ──
     def init(self, password: str) -> None:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             key = vault_repo.init_vault(conn, password)
-        finally:
-            conn.close()
         # 새 금고는 이전 금고의 실패 이력을 물려받지 않는다.
         self._clear_auth_throttle()
         self._set_unlocked(key)
@@ -115,20 +110,32 @@ class VaultService:
         now = self._clock()
         if now < self._locked_until:
             raise VaultRateLimited(round(self._locked_until - now, 1))
-        conn = self._conn()
-        try:
-            key = vault_repo.unlock(conn, password)  # 오답이면 crypto.DecryptError
-        except crypto.DecryptError:
-            self._fail_count += 1
-            over = self._fail_count - self.fail_free
-            if over > 0:
-                self._locked_until = now + min(2 ** (over - 1), self.max_delay)
-            raise
-        finally:
-            conn.close()
+        with self._open() as conn:
+            try:
+                key = vault_repo.unlock(conn, password)  # 오답이면 crypto.DecryptError
+            except crypto.DecryptError:
+                self._fail_count += 1
+                over = self._fail_count - self.fail_free
+                if over > 0:
+                    self._locked_until = now + min(2 ** (over - 1), self.max_delay)
+                raise
         self._fail_count = 0
         self._locked_until = 0.0
         self._set_unlocked(key)
+
+    @contextmanager
+    def _open(self):
+        """연결을 열고 반드시 닫는다.
+
+        25곳에서 반복되던 conn = self._conn() / try / finally: conn.close() 를 한 곳으로
+        모은다. 닫기를 빠뜨리면 SQLite 파일 핸들이 남아 Windows 에서 파일 잠금 문제로
+        이어지므로, 매번 손으로 적는 것보다 형태로 강제되는 편이 낫다.
+        """
+        conn = self._conn()
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     def lock(self) -> None:
         self._key = None
@@ -170,14 +177,11 @@ class VaultService:
         expires_at: str | None = None,
     ) -> int:
         key = self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.add_entry(
                 conn, key, service=service, kind=kind, official_name=official_name,
                 value=value, label=label, project=project, memo=memo, expires_at=expires_at,
             )
-        finally:
-            conn.close()
 
     def update_meta(self, entry_id: int, **fields: str | None) -> bool:
         """평문 메타데이터 수정. **넘긴 필드만** 바꾼다(생략한 컬럼은 그대로).
@@ -185,49 +189,34 @@ class VaultService:
         허용 컬럼은 vault_repo._UPDATABLE_COLUMNS 가 강제한다.
         """
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.update_meta(conn, entry_id, **fields)
-        finally:
-            conn.close()
 
     def delete_entry(self, entry_id: int) -> bool:
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.delete_entry(conn, entry_id)
-        finally:
-            conn.close()
 
     def rotate(self, entry_id: int, new_value: str) -> bool:
         """값 교체(재암호화) — 서비스에서 키를 재발급했을 때 최신값 유지. 잠금 시 VaultLocked."""
         key = self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.rotate_value(conn, key, entry_id, new_value)
-        finally:
-            conn.close()
 
     def list_entries(self) -> list[dict]:
         """메타데이터만 반환 — 잠금 상태에서도 안전(값 복호화 없음)."""
         if not self.is_initialized():
             return []
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.list_entries(conn)
-        finally:
-            conn.close()
 
     def get_value(self, entry_id: int, event: str = "reveal") -> str:
         """평문 값 복호화 — 잠금 상태면 VaultLocked. 접근을 감사 이력에 기록(event: reveal/copy/export)."""
         key = self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             value = vault_repo.get_value(conn, key, entry_id)
             vault_repo.log_access(conn, entry_id, event)  # 복호화 성공 시에만 기록
             return value
-        finally:
-            conn.close()
 
     def verify_entry(self, entry_id: int, spec, fetch=None) -> tuple[str, str]:
         """키를 복호화해 서비스로 1회 검증 호출하고 상태만 반환(TRUST-1).
@@ -238,32 +227,23 @@ class VaultService:
         from .verify import check_key  # 지연 임포트(검증 로직 격리)
 
         key = self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             value = vault_repo.get_value(conn, key, entry_id)
             vault_repo.log_access(conn, entry_id, "verify")
-        finally:
-            conn.close()
         return check_key(spec, value, fetch)
 
     def history(self, entry_id: int) -> list[dict]:
         """항목의 감사 이력(등록·열람·복사·내보내기). 인증 상태에서만 조회 가능."""
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.access_history(conn, entry_id)
-        finally:
-            conn.close()
 
     # ── SYNC-0: 암호화 금고 내보내기/가져오기 ──
     def export_bundle(self) -> dict:
         """인증 상태에서만 암호문 번들을 반환(평문·키 없음)."""
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return vault_repo.export_bundle(conn)
-        finally:
-            conn.close()
 
     def import_bundle(self, bundle: dict, password: str, mode: str = "merge") -> dict:
         """번들을 마스터 비밀번호로 열어 교체(replace) 또는 병합(merge)한다.
@@ -276,8 +256,7 @@ class VaultService:
         bundle_key = crypto.derive_key(password, params)
         crypto.decrypt(bundle_key, v_nonce, v_ct)  # 오답 비밀번호면 DecryptError → 이후 미실행
 
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             if mode == "replace":
                 n = vault_repo.replace_with_bundle(conn, params, v_nonce, v_ct, entries)
                 self._set_unlocked(bundle_key)  # 교체된 금고로 인증 유지
@@ -288,15 +267,10 @@ class VaultService:
                 conn, existing_key, bundle_key, entries
             )
             return {"imported": imported, "skipped": skipped, "mode": "merge"}
-        finally:
-            conn.close()
 
     def change_password(self, old_password: str, new_password: str) -> None:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             vault_repo.change_password(conn, old_password, new_password)
-        finally:
-            conn.close()
         self.lock()  # 변경 후 재인증 요구
 
     def reset(self, password: str) -> None:
@@ -307,12 +281,9 @@ class VaultService:
         - 비밀번호 불일치: crypto.DecryptError
         - 애초에 미초기화 금고: ValueError
         """
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             vault_repo.unlock(conn, password)  # 검증 전용 — 반환된 키는 쓰지 않고 버림
             vault_repo.reset_vault(conn)
-        finally:
-            conn.close()
         # 금고가 사라졌으므로 그 금고에 대한 실패 이력도 의미가 없다. 이걸 남기면
         # 비밀번호를 잊어 여러 번 틀린 사용자가(= 이 기능을 쓰는 바로 그 사람이)
         # 새 비밀번호를 정한 직후 올바른 값으로도 거부당한다.
@@ -332,13 +303,10 @@ class VaultService:
 
         애초에 미초기화 금고면 ValueError.
         """
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             if not vault_repo.is_initialized(conn):
                 raise ValueError("초기화되지 않은 금고입니다")
             vault_repo.reset_vault(conn)
-        finally:
-            conn.close()
         # 금고가 사라졌으므로 그 금고에 대한 실패 이력도 의미가 없다. 이걸 남기면
         # 비밀번호를 잊어 여러 번 틀린 사용자가(= 이 기능을 쓰는 바로 그 사람이)
         # 새 비밀번호를 정한 직후 올바른 값으로도 거부당한다.
@@ -356,8 +324,7 @@ class VaultService:
         경로의 재요청은 다시 호출하지 않는다 — idempotent).
         """
         key = self._require_key(refresh=False)
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             if not sdk_repo.is_path_approved(conn, project, path):
                 already_pending = sdk_repo.is_pending(conn, project, path)
                 sdk_repo.add_pending_request(conn, project, path)
@@ -371,8 +338,6 @@ class VaultService:
             for entry_id in ids.values():
                 vault_repo.log_access(conn, entry_id, "sdk_fetch")
             return env
-        finally:
-            conn.close()
 
     def set_pending_hook(self, fn: Callable[[str, str], None] | None) -> None:
         """승인 대기 발생 시 호출할 콜백을 등록(데스크톱 알림용, RUNTIME-1). None이면 해제(no-op)."""
@@ -385,60 +350,36 @@ class VaultService:
         호출자가 넘긴 인자를 그대로 되돌려주지 않는다(멱등 재등록 시 잘못된 값을 보고하지 않기 위함).
         """
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             dir_id = sdk_repo.add_project_dir(conn, project, path, source="manual")
             return next(d for d in sdk_repo.list_project_dirs(conn, project) if d["id"] == dir_id)
-        finally:
-            conn.close()
 
     def remove_project_dir(self, project: str, dir_id: int) -> bool:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.remove_project_dir(conn, project, dir_id)
-        finally:
-            conn.close()
 
     def list_projects(self) -> list[dict]:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.list_sdk_projects(conn)
-        finally:
-            conn.close()
 
     def list_project_dirs(self, project: str) -> list[dict]:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.list_project_dirs(conn, project)
-        finally:
-            conn.close()
 
     def list_all_project_dirs(self) -> list[dict]:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.list_all_dirs(conn)
-        finally:
-            conn.close()
 
     def list_pending(self) -> list[dict]:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.list_pending_requests(conn)
-        finally:
-            conn.close()
 
     def approve_pending(self, pending_id: int) -> bool:
         """대기 요청 승인 - **잠금 해제 필요**(add_project_dir와 같은 이유: 권한 부여다)."""
         self._require_key()
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.approve_pending(conn, pending_id)
-        finally:
-            conn.close()
 
     def deny_pending(self, pending_id: int) -> bool:
-        conn = self._conn()
-        try:
+        with self._open() as conn:
             return sdk_repo.deny_pending(conn, pending_id)
-        finally:
-            conn.close()
