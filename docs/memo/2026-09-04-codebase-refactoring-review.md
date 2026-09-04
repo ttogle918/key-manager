@@ -91,8 +91,17 @@ SPDX-License-Identifier: MIT
 ### 2.2 죽은 코드가 테스트를 갖고 있다
 
 `src/ocr/ocr.ts`(tesseract.js 브라우저 OCR)와 `src/ocr/reconstruct.ts` 는 **어느 파일도
-import 하지 않는다.** CORE-3 에서 백엔드 RapidOCR 로 옮긴 뒤 남은 잔재다. 번들에서는 트리셰이킹
-되지만(`dist` 에 `tesseract` 문자열 없음), 다음이 남는다.
+import 하지 않는다.** CORE-3 에서 백엔드 RapidOCR 로 옮긴 뒤 남은 잔재다.
+
+> **정정(2026-09-04, 실제 제거 작업 중)**: 처음 이 절을 쓸 때 "JS 번들에서는 트리셰이킹되므로
+> 영향이 작다"고 판단했는데 **틀렸다.** JS 는 트리셰이킹되지만 `package.json` 의
+> `prebuild` 가 매 빌드마다 `vendor-tesseract.mjs` 를 돌려 WASM·언어데이터를
+> `public/tesseract`(44MB)·`public/tessdata`(3MB)에 벤더링하고, `public/` 은 통째로 `dist/`
+> 로 복사된다. 그리고 `desktop/setup.py` 가 `frontend/dist` 를 exe 에 동봉한다.
+> 즉 **175MB 릴리스의 약 4분의 1이 아무도 호출하지 않는 OCR 자산**이었다.
+> 번들 분석은 JS 뿐 아니라 정적 자산까지 봐야 한다 - 내가 그 절반만 보고 결론을 냈다.
+
+다음이 남는다.
 
 - `tesseract.js` 가 **런타임 의존성**으로 선언돼 있어 `npm ci --omit=dev` 설치·SBOM·공급망
   점검 대상에 계속 잡힌다. `docs/SBOM.md` 는 이미 "레거시"로 표시해 뒀다 - 알면서 남긴 상태다.
@@ -316,8 +325,18 @@ npm uninstall tesseract.js @radix-ui/react-select
 
 그리고 `docs/SBOM.md` 의 tesseract.js 4줄(본체 + 전이 의존성 3개)을 제거한다.
 
-**효과**: 프론트 테스트가 75 → 60 으로 줄지만, 그 60개는 살아 있는 코드만 지킨다.
-공급망 점검 대상과 라이선스 표면도 함께 줄어든다.
+**실제 효과(2026-09-04 적용 후 측정)**:
+
+| | 이전 | 이후 |
+|---|---|---|
+| `frontend/dist` | 50 MB | **3.5 MB** |
+| 프론트 테스트 | 75개 | 60개 (죽은 코드를 지키던 15개 제거) |
+| SBOM 항목 | - | **12건 제거**(tesseract.js + 전이 8건, radix-select, 자산 2건) |
+| 프론트 런타임 라이선스 | Apache-2.0 포함 | MIT 115 · BSD-3 3 · ISC 2 · 0BSD 1 (Apache 0) |
+| 빌드 단계 | `prebuild` 에서 WASM 벤더링 | 폰트 벤더링만 |
+
+`dist` 는 `desktop/setup.py` 를 통해 exe 에 그대로 들어가므로, 이 감축은 릴리스 zip 크기로
+직접 이어진다.
 
 > `src/ocr/reconstruct.ts` 의 OCR 재구성 로직은 백엔드로 옮겨진 개념이다. 지우기 전에
 > `backend/app/ocr.py` 에 대응 로직이 있는지 확인하고, 없다면 지우지 말고 **왜 남기는지**를
