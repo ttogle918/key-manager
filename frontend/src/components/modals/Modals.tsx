@@ -41,6 +41,80 @@ export function DeleteModal() {
   )
 }
 
+/**
+ * 사용자가 그대로 입력해야 하는 확인 문구.
+ * 백엔드 `backend/app/models.py` 의 `FORGOTTEN_RESET_PHRASE` 와 같아야 한다.
+ */
+const FORGOT_RESET_PHRASE = '모두 삭제'
+
+/**
+ * 비밀번호를 잊었을 때의 초기화 — 잠금 화면에서만 진입한다.
+ *
+ * 비밀번호를 묻지 않는다. 금고 파일은 디스크에 그대로 있어서 기기에 접근할 수 있으면 어차피
+ * 지울 수 있으므로, 여기서 인증을 요구해도 막아지는 공격이 없다. 막아야 하는 건 실수뿐이라
+ * 확인 문구를 그대로 타이핑하게 한다.
+ */
+export function ForgotResetModal() {
+  const open = useKeylens((s) => s.forgotResetOpen)
+  const text = useKeylens((s) => s.forgotResetText)
+  const err = useKeylens((s) => s.forgotResetErr)
+  const resetting = useKeylens((s) => s.resettingVault)
+  const setText = useKeylens((s) => s.setForgotResetText)
+  const cancel = useKeylens((s) => s.closeForgotReset)
+  const confirm = useKeylens((s) => s.confirmForgotReset)
+
+  const matches = text.trim() === FORGOT_RESET_PHRASE
+
+  return (
+    <Modal open={open} onClose={cancel} title="비밀번호를 잊으셨나요?" className="w-[400px]">
+      <div className="text-[15px] font-bold">비밀번호를 잊으셨나요?</div>
+      <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
+        마스터 비밀번호는 어디에도 저장되지 않아서 <strong className="text-fg-soft">되찾을 방법이 없습니다</strong>.
+        금고를 비우고 처음부터 시작하는 것만 가능해요.
+        <br />
+        <br />
+        저장된 모든 자격증명·감사 이력·컬렉션 접근 승인 기록이 삭제됩니다.{' '}
+        <span className="font-semibold text-danger">되돌릴 수 없습니다.</span>
+      </p>
+      <p className="mt-[14px] text-[12px] text-muted">
+        계속하려면 <code className="rounded border border-border bg-chip px-1 font-mono text-fg-soft">{FORGOT_RESET_PHRASE}</code> 를 그대로 입력하세요.
+      </p>
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && matches && confirm()}
+        placeholder={FORGOT_RESET_PHRASE}
+        autoFocus
+        className="mt-[8px] w-full rounded-lg border bg-surface-3 px-[11px] py-[9px] text-[13px] text-fg outline-none"
+        style={{ borderColor: err ? 'rgba(229,103,92,.55)' : '#232931' }}
+      />
+      {err && <div className="mt-[8px] text-[12px] text-danger">{err}</div>}
+      <div className="mt-[18px] flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={cancel}
+          className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          onClick={() => void confirm()}
+          disabled={!matches || resetting}
+          className="rounded-lg border-none px-[14px] py-2 text-[12.5px] font-bold"
+          style={{
+            background: matches && !resetting ? '#E5675C' : '#1B2128',
+            color: matches && !resetting ? '#fff' : '#525B67',
+            cursor: matches && !resetting ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {resetting ? '초기화 중…' : '금고 비우고 새로 시작'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 /** 금고 완전 초기화 확인(VAULT-RESET) — 교육·공용 PC용. 비밀번호 재확인 필수. */
 export function ResetVaultModal() {
   const open = useKeylens((s) => s.resetVaultOpen)

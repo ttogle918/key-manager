@@ -302,6 +302,28 @@ class VaultService:
             conn.close()
         self.lock()
 
+    def reset_forgotten(self) -> None:
+        """비밀번호를 잊었을 때의 초기화 — **비밀번호를 묻지 않는다.**
+
+        reset() 과 달리 인증이 없다. 그래도 보안이 나빠지지 않는 이유: 금고 파일은 디스크에
+        그대로 있어서, 이 기기에 접근할 수 있는 사람은 어차피 파일을 지울 수 있다. 위협 모델이
+        이미 "기기 접근 가능"이므로 여기서 비밀번호를 요구해도 막아지는 공격이 없다.
+
+        반면 요구했을 때의 대가는 크다 - 비밀번호를 잊으면 앱 안에 복구 경로가 아예 없어져,
+        사용자가 vault.db 를 직접 찾아 지워야 한다는 걸 알아내야만 한다. 실수로 누르는 것은
+        호출자(엔드포인트)의 확인 문구로 막는다.
+
+        애초에 미초기화 금고면 ValueError.
+        """
+        conn = self._conn()
+        try:
+            if not vault_repo.is_initialized(conn):
+                raise ValueError("초기화되지 않은 금고입니다")
+            vault_repo.reset_vault(conn)
+        finally:
+            conn.close()
+        self.lock()
+
     # ── RUNTIME-1: SDK 접근 관리 ──
     def sdk_env(self, project: str, path: str) -> dict[str, str]:
         """keylens-env SDK 진입점. path가 project에 대해 승인되지 않았으면 대기열에 등록하고

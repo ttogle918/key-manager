@@ -163,6 +163,11 @@ interface KeylensState {
   /** 금고 완전 초기화 확인 모달 상태(VAULT-RESET) — 교육·공용 PC용, 비밀번호 재확인 필수. */
   resetVaultOpen: boolean
   resetVaultPw: string
+  /** 비밀번호를 잊었을 때의 초기화 모달(잠금 화면에서 진입). */
+  forgotResetOpen: boolean
+  /** 사용자가 타이핑한 확인 문구. 실수로 지우는 걸 막는 유일한 장치다. */
+  forgotResetText: string
+  forgotResetErr: string
   resetVaultErr: string
   resettingVault: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
@@ -361,6 +366,10 @@ interface KeylensState {
   closeResetVault: () => void
   setResetVaultPw: (v: string) => void
   confirmResetVault: () => Promise<void>
+  openForgotReset: () => void
+  closeForgotReset: () => void
+  setForgotResetText: (v: string) => void
+  confirmForgotReset: () => Promise<void>
 
   resetProto: () => void
 }
@@ -453,6 +462,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
     emailSyncOpen: false,
     resetVaultOpen: false,
     resetVaultPw: '',
+    forgotResetOpen: false,
+    forgotResetText: '',
+    forgotResetErr: '',
     resetVaultErr: '',
     resettingVault: false,
     knowledgeReady: false,
@@ -1626,6 +1638,25 @@ export const useKeylens = create<KeylensState>((set, get) => {
           msg = '마스터 비밀번호가 올바르지 않아요.'
         }
         set({ resettingVault: false, resetVaultErr: msg })
+      }
+    },
+
+    openForgotReset: () => set({ forgotResetOpen: true, forgotResetText: '', forgotResetErr: '' }),
+    closeForgotReset: () => set({ forgotResetOpen: false, forgotResetText: '', forgotResetErr: '' }),
+    setForgotResetText: (v) => set({ forgotResetText: v, forgotResetErr: '' }),
+    confirmForgotReset: async () => {
+      if (get().resettingVault) return
+      set({ resettingVault: true, forgotResetErr: '' })
+      try {
+        await vaultApi.resetForgotten(get().forgotResetText)
+        // resetProto 가 화면을 setup 으로 돌려놓는다 - 초기화 직후 바로 새로 만들 수 있어야 한다.
+        set({ forgotResetOpen: false, forgotResetText: '' })
+        get().resetProto()
+      } catch (e) {
+        set({
+          resettingVault: false,
+          forgotResetErr: vaultErrorText(e, '초기화 실패 - 잠시 후 다시 시도해 보세요.'),
+        })
       }
     },
 

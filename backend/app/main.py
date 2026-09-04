@@ -19,6 +19,8 @@ from . import crypto, desktop, discoveries_repo, explain, ollama_client
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
 from .models import (
+    FORGOTTEN_RESET_PHRASE,
+    VaultForgottenReset,
     SdkDirEntry,
     DesktopCapabilities,
     PickedDirectory,
@@ -493,6 +495,27 @@ def vault_reset(body: VaultPassword) -> VaultStatus:
         VAULT.reset(body.password)
     except crypto.DecryptError:
         raise HTTPException(status_code=401, detail="마스터 비밀번호가 올바르지 않습니다") from None
+    except ValueError as e:  # 초기화되지 않은 금고
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return VaultStatus(**VAULT.status())
+
+
+@app.post("/vault/reset/forgotten", response_model=VaultStatus)
+def vault_reset_forgotten(body: VaultForgottenReset) -> VaultStatus:
+    """비밀번호를 잊었을 때의 초기화 - **비밀번호를 묻지 않는다.**
+
+    비밀번호를 요구하는 /vault/reset 은 "비밀번호는 아는데 흔적을 지우고 싶다"를 위한 것이라,
+    정작 잊은 사람에게는 쓸 수 없었다(잠금 화면에는 버튼조차 없었다). 그렇다고 인증을 붙여봐야
+    막아지는 공격이 없다 - 금고 파일은 디스크에 있고, 기기에 접근할 수 있으면 그냥 지우면 된다.
+
+    그래서 인증 대신 **확인 문구**를 요구한다. 막아야 하는 건 공격자가 아니라 오작동·실수다.
+    """
+    if body.confirmation.strip() != FORGOTTEN_RESET_PHRASE:
+        raise HTTPException(
+            status_code=422, detail=f"'{FORGOTTEN_RESET_PHRASE}' 를 그대로 입력해야 합니다"
+        )
+    try:
+        VAULT.reset_forgotten()
     except ValueError as e:  # 초기화되지 않은 금고
         raise HTTPException(status_code=409, detail=str(e)) from e
     return VaultStatus(**VAULT.status())

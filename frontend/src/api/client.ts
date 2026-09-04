@@ -214,6 +214,15 @@ export const vaultApi = {
     }),
   reset: (password: string) =>
     vreq<VaultStatus>('/vault/reset', { method: 'POST', body: JSON.stringify({ password }) }),
+  /**
+   * 비밀번호를 잊었을 때의 초기화 - 비밀번호 대신 확인 문구를 보낸다.
+   * 문구는 백엔드 models.py 의 FORGOTTEN_RESET_PHRASE 와 같아야 한다.
+   */
+  resetForgotten: (confirmation: string) =>
+    vreq<VaultStatus>('/vault/reset/forgotten', {
+      method: 'POST',
+      body: JSON.stringify({ confirmation }),
+    }),
 }
 
 // ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 컬렉션별 디렉토리 사전등록 ──

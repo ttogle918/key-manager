@@ -292,6 +292,17 @@ class SdkPendingRequest(BaseModel):
     requested_at: str
 
 
+# 비밀번호를 잊었을 때의 초기화에서 사용자가 그대로 입력해야 하는 문구.
+# 프론트(LockScreen)도 같은 문자열을 보여준다 - 바꾸면 양쪽을 함께 고쳐야 한다.
+FORGOTTEN_RESET_PHRASE = "모두 삭제"
+
+
+class VaultForgottenReset(BaseModel):
+    """비밀번호 없이 금고를 비운다. 실수 방지는 확인 문구가 맡는다."""
+
+    confirmation: str
+
+
 # ── 데스크톱 셸 전용 기능 ──
 
 
