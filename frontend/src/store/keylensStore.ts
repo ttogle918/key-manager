@@ -10,12 +10,10 @@ import {
   analyzeApi,
   analyzeImageApi,
   ApiError,
-  desktopApi,
   explainDiscoveryApi,
   explainImageApi,
   explainStatusApi,
   fetchKnowledge,
-  sdkApi,
   vaultApi,
   VaultApiError,
 } from '@/api/client'
@@ -27,6 +25,7 @@ import { splitKeyValue } from '@/lib/autocomplete'
 import { parseEnv } from '@/lib/envParse'
 import { envText, jwtExp, mask, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
+import { createSdkAccessSlice, type SdkAccessState } from './slices/sdkAccess'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -34,11 +33,7 @@ import type {
   EnvImportRow,
   InputMode,
   ManualRow,
-  PendingRequest,
   Screen,
-  SdkDir,
-  SdkDirEntry,
-  SdkProjectSummary,
   UnknownItem,
   VaultItem,
   View,
@@ -88,7 +83,12 @@ const revealTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 // 메타데이터(컬렉션·메모·만료) 편집을 디바운스해 백엔드에 저장한다(키 입력마다 요청 방지).
 const metaSaveT: Record<string, ReturnType<typeof setTimeout>> = {}
 
-interface KeylensState {
+/**
+ * 스토어 전체 상태. RUNTIME-1 SDK 접근 관리는 `slices/sdkAccess.ts` 로 분리했다 -
+ * 이 파일이 1,700줄까지 커지면서 "이 액션이 건드려야 할 상태"를 한눈에 볼 수 없게 됐고,
+ * 실제로 그 때문에 버그가 났다(승인 후 allSdkDirs 갱신 누락, 커밋 1388052).
+ */
+interface KeylensState extends SdkAccessState {
   // 화면
   screen: Screen
   view: View
@@ -172,8 +172,6 @@ interface KeylensState {
   resettingVault: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
-  /** RUNTIME-1 승인 대기 목록(값 없음 — 컬렉션·경로 문자열만). */
-  pendingRequests: PendingRequest[]
   // .env 가져오기
   /** 가져오기 모달 표시 여부. */
   envImportOpen: boolean
@@ -185,28 +183,6 @@ interface KeylensState {
   envImportBusy: boolean
   /** 파싱·분류 진행 중(드롭 연타로 /analyze 가 겹쳐 도는 것 방지). */
   envImportLoading: boolean
-  // RUNTIME-1 — 컬렉션 접근 설정 화면
-  // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
-  // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
-  // 그래서 아래 식별자들도 sdkProject* 이름을 유지한다.
-  /** 금고에 컬렉션이 지정된 항목이 있는 컬렉션 목록. */
-  sdkProjects: SdkProjectSummary[]
-  /** 설정 화면에서 선택된 컬렉션(없으면 null). */
-  selectedSdkProject: string | null
-  /** 선택된 컬렉션의 허용 디렉토리 목록. */
-  sdkDirs: SdkDir[]
-  /** 디렉토리 추가 입력 필드 값. */
-  newDirPath: string
-  /**
-   * 모든 컬렉션의 허용 디렉토리(승인 대기 화면의 "이미 허용한 디렉토리" 섹션용).
-   * `sdkDirs` 는 선택된 컬렉션 하나만 담으므로 별도로 둔다.
-   */
-  allSdkDirs: SdkDirEntry[]
-  /**
-   * 데스크톱 앱에서 네이티브 폴더 선택창을 쓸 수 있는지. 브라우저에서는 false 이며,
-   * 그때는 "찾아보기" 버튼을 아예 그리지 않는다 - 눌렀을 때 실패하는 것보다 낫다.
-   */
-  canPickDirectory: boolean
   /**
    * 이메일 내보내기 확인 코드. 요청이 성공하면 채워지고, 모달은 이걸 화면에 띄운다.
    * 사용자가 확인 페이지에 입력해야 실제 발송이 끝난다(메일에는 들어 있지 않다).
@@ -242,31 +218,8 @@ interface KeylensState {
   setEnvImportProject: (v: string) => void
   /** 체크된 줄을 금고에 일괄 저장한다. */
   saveEnvImport: () => Promise<void>
-  loadPending: () => Promise<void>
-  /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
-  approvePending: (id: number) => Promise<void>
-  /** 승인 대기 요청을 거부. */
-  denyPending: (id: number) => Promise<void>
   /** 컬렉션 접근 설정 화면으로 전환하고 컬렉션 목록을 새로 불러온다. */
   goProjectAccess: () => void
-  /** SDK 컬렉션 목록을 백엔드에서 다시 불러온다. */
-  loadSdkProjects: () => Promise<void>
-  /** 컬렉션을 선택하고 그 컬렉션의 허용 디렉토리 목록을 불러온다. */
-  selectSdkProject: (project: string) => void
-  /** 새 디렉토리 입력 필드 값 설정. */
-  setNewDirPath: (v: string) => void
-  /** 선택된 컬렉션에 디렉토리를 사전 등록(source=manual, 승인 팝업 없이 바로 통과). */
-  addSdkDir: () => void
-  /** 디렉토리 등록 해제. */
-  removeSdkDir: (dirId: number) => void
-  /** 모든 컬렉션의 허용 디렉토리를 불러온다. */
-  loadAllSdkDirs: () => Promise<void>
-  /** 컬렉션을 지정해 허용을 철회한다(선택된 컬렉션과 무관하게 동작). */
-  revokeSdkDir: (project: string, dirId: number) => Promise<void>
-  /** 네이티브 폴더 선택창을 열어 고른 경로를 입력 필드에 넣는다(데스크톱 전용). */
-  pickSdkDir: () => Promise<void>
-  /** 데스크톱 전용 기능 유무를 확인해 저장한다. */
-  loadDesktopCapabilities: () => Promise<void>
 
   setPw: (v: string) => void
   setPw2: (v: string) => void
@@ -415,6 +368,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
   }
 
   return {
+    // RUNTIME-1 SDK 접근 관리(승인 대기·허용 디렉토리·폴더 찾기).
+    ...createSdkAccessSlice(set, get, vaultErrorText),
     screen: 'setup',
     view: 'input',
     pw: '',
@@ -468,18 +423,11 @@ export const useKeylens = create<KeylensState>((set, get) => {
     resetVaultErr: '',
     resettingVault: false,
     knowledgeReady: false,
-    pendingRequests: [],
     envImportOpen: false,
     envImportRows: [],
     envImportProject: '',
     envImportBusy: false,
     envImportLoading: false,
-    sdkProjects: [],
-    selectedSdkProject: null,
-    sdkDirs: [],
-    newDirPath: '',
-    allSdkDirs: [],
-    canPickDirectory: false,
     emailSyncCode: null,
     toast: null,
 
@@ -736,139 +684,6 @@ export const useKeylens = create<KeylensState>((set, get) => {
       get().showToast(parts.join(' · '))
     },
 
-    loadPending: async () => {
-      try {
-        const rows = await sdkApi.pending()
-        set({
-          pendingRequests: rows.map((r) => ({
-            id: r.id,
-            project: r.project,
-            path: r.path,
-            requestedAt: r.requested_at,
-          })),
-        })
-      } catch {
-        /* 목록 로딩 실패는 조용히 무시(뱃지·화면이 이전 상태 유지) */
-      }
-    },
-    approvePending: async (id) => {
-      try {
-        await sdkApi.approve(id)
-        // 허용은 곧 디렉토리 등록이다 - 같은 화면의 "이미 허용한 디렉토리"가 그 자리에서
-        // 늘어나야 한다. 대기 목록만 새로 불러오면 방금 허용한 항목이 어디에도 안 보인다.
-        await Promise.all([get().loadPending(), get().loadAllSdkDirs()])
-        get().showToast('요청을 허용했어요 — 이후 자동으로 값을 받아갑니다')
-      } catch (e) {
-        // 허용은 권한 부여라 백엔드가 잠금 해제를 요구한다(401) — 잠긴 사실을 UI에 반영한다.
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '허용 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    denyPending: async (id) => {
-      try {
-        await sdkApi.deny(id)
-        await get().loadPending()
-        get().showToast('요청을 거부했어요')
-      } catch (e) {
-        get().showToast(vaultErrorText(e, '거부 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    loadSdkProjects: async () => {
-      try {
-        const rows = await sdkApi.projects()
-        set({ sdkProjects: rows.map((p) => ({ project: p.project, keyCount: p.key_count })) })
-      } catch {
-        /* 목록 로딩 실패는 조용히 무시 */
-      }
-    },
-    selectSdkProject: async (project) => {
-      set({ selectedSdkProject: project, sdkDirs: [] })
-      try {
-        const rows = await sdkApi.dirs(project)
-        set({
-          sdkDirs: rows.map((d) => ({
-            id: d.id,
-            path: d.path,
-            source: d.source,
-            createdAt: d.created_at,
-          })),
-        })
-      } catch (e) {
-        get().showToast(vaultErrorText(e, '디렉토리 목록을 불러오지 못했어요'))
-      }
-    },
-    setNewDirPath: (v) => set({ newDirPath: v }),
-    addSdkDir: async () => {
-      const project = get().selectedSdkProject
-      const path = get().newDirPath.trim()
-      if (!project) return
-      if (!path) {
-        get().showToast('등록할 디렉토리 경로를 입력해 주세요')
-        return
-      }
-      try {
-        await sdkApi.addDir(project, path)
-        set({ newDirPath: '' })
-        await get().selectSdkProject(project)
-        get().showToast('디렉토리를 등록했어요 — 이후 자동으로 값을 받아갑니다')
-      } catch (e) {
-        // 등록도 권한 부여다(위 approvePending 과 같은 이유로 401 가능).
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '디렉토리 등록 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    removeSdkDir: async (dirId) => {
-      const project = get().selectedSdkProject
-      if (!project) return
-      await get().revokeSdkDir(project, dirId)
-      await get().selectSdkProject(project)
-    },
-    loadAllSdkDirs: async () => {
-      try {
-        const rows = await sdkApi.allDirs()
-        set({
-          allSdkDirs: rows.map((d) => ({
-            id: d.id,
-            project: d.project,
-            path: d.path,
-            source: d.source,
-            createdAt: d.created_at,
-          })),
-        })
-      } catch {
-        /* 목록 로딩 실패는 조용히 무시 - 접힌 섹션이라 사용자가 보고 있지 않을 수 있다. */
-      }
-    },
-    revokeSdkDir: async (project, dirId) => {
-      try {
-        await sdkApi.removeDir(project, dirId)
-        // 낙관적 갱신 대신 다시 불러온다 - 두 화면이 같은 목록을 보므로 어긋나면 안 된다.
-        await get().loadAllSdkDirs()
-        get().showToast('허용을 철회했어요 - 다음 요청부터 다시 승인을 받습니다')
-      } catch (e) {
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '철회 실패 - 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    loadDesktopCapabilities: async () => {
-      try {
-        const caps = await desktopApi.capabilities()
-        set({ canPickDirectory: caps.directory_picker })
-      } catch {
-        // 못 물어봤으면 없는 것으로 둔다 - 있다고 가정했다가 눌렀을 때 실패하는 것보다 낫다.
-        set({ canPickDirectory: false })
-      }
-    },
-    pickSdkDir: async () => {
-      try {
-        const { path } = await desktopApi.pickDirectory()
-        // 취소는 정상 흐름이다 - 토스트를 띄우지 않는다.
-        if (path) set({ newDirPath: path })
-      } catch (e) {
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '폴더 찾기를 열지 못했어요 - 경로를 직접 입력해 주세요'))
-      }
-    },
 
     // ── 설정(최초 실행) ──
     setPw: (v) => set({ pw: v, setupErr: '' }),
