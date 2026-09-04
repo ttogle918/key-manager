@@ -267,54 +267,43 @@ def connect(path: str) -> sqlite3.Connection:
 **단, 이 변경은 반드시 "구버전 db 업그레이드" 테스트와 함께 가야 한다** - `user_version` 이
 0 인 기존 금고가 정확히 한 번 마이그레이션되는지가 유일한 위험이다.
 
-### 4.4 스토어 - 금고 액션 래퍼 (에러 처리 21곳)
+### 4.4 스토어 - 401 처리 누락 (조사 후 정정)
 
-**현재**: 액션마다 같은 catch 를 쓰는데, 401 잠금 반영은 **5곳에만** 있다. 나머지는 빠졌다.
+> **정정(2026-09-04, 적용 시점)**: 이 절의 초안은 "21곳 중 5곳에만 401 처리가 있으니
+> 일괄 래퍼로 감싸라"였다. 실제로 세어 보니 **21곳 중 13곳**에 있었고, 무엇보다
+> **일괄 래퍼는 틀린 처방이었다.**
+
+빠진 8곳을 백엔드와 대조하니 401 이 실제로 날 수 있는 곳은 **2곳뿐**이었다.
+
+| 액션 | 백엔드 | 401 가능? | 판정 |
+|------|--------|-----------|------|
+| `setVaultField` | `update_meta` → `_require_key()` | 예 | **누락 - 수정함** |
+| `importVault` | `import_bundle`(merge) → `_require_key()` | 예 | **누락 - 수정함** |
+| `denyPending`·`selectSdkProject` | `_require_key` 없음(잠금에서도 허용) | 아니오 | 제외가 맞음 |
+| `createVault`·`confirmForgotReset` | 인증 없음 | 아니오 | 제외가 맞음 |
+| `submitUnlock` | 401 = **오답 비밀번호** | 예 | **넣으면 안 됨** |
+
+마지막 줄이 핵심이다. `submitUnlock` 에서 401 은 "잠김"이 아니라 "비밀번호가 틀렸다"이다.
+일괄 래퍼로 감쌌다면 오답을 입력할 때마다 `locked: true` 를 덮어써 오류 표시를 방해했을 것이다.
+**중복처럼 보이는 코드가 실제로는 서로 다른 의미를 다루고 있었다.**
+
+`importVault` 에는 함정이 하나 더 있었다. `/vault/import` 는 **두 경우 모두 401** 을 주고
+`detail` 문자열로만 구분한다(번들 비밀번호 오답 / 현재 금고 잠김). 문자열 매칭은 깨지기 쉬우므로
+서버에 상태를 다시 물어 동기화한다 - `locked` 는 추측이 아니라 서버가 정한다.
 
 ```typescript
-try {
-  await sdkApi.approve(id)
-  await get().loadPending()
-} catch (e) {
-  if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-  get().showToast(vaultErrorText(e, '허용 실패'))
-}
-```
-
-**개선**: 잠금 반영을 빠뜨릴 수 없는 형태로 만든다.
-
-```typescript
-/**
- * 금고 API 호출을 감싼다. 401 은 **항상** 잠금 상태에 반영한다.
- *
- * 지금은 액션마다 손으로 적고 있어서 21곳 중 5곳에만 들어가 있다. 빠진 곳에서 세션이
- * 만료되면 화면은 "열린 상태"인데 모든 요청이 실패하는, 사용자가 원인을 알 수 없는 상태가 된다.
- */
-async function runVaultAction<T>(
-  set: (p: Partial<KeylensState>) => void,
-  get: () => KeylensState,
-  fn: () => Promise<T>,
-  fallbackMsg: string,
-): Promise<T | undefined> {
+if (e instanceof VaultApiError && e.status === 401) {
   try {
-    return await fn()
-  } catch (e) {
-    if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-    get().showToast(vaultErrorText(e, fallbackMsg))
-    return undefined
+    const st = await vaultApi.status()
+    set({ locked: !st.unlocked })
+  } catch {
+    /* 상태 조회까지 실패하면 화면 상태는 건드리지 않는다(추측하지 않는다). */
   }
 }
-
-// 사용
-approvePending: async (id) => {
-  const ok = await runVaultAction(set, get, async () => {
-    await sdkApi.approve(id)
-    await Promise.all([get().loadPending(), get().loadAllSdkDirs()])
-    return true
-  }, '허용 실패 - 잠시 후 다시 시도해 보세요')
-  if (ok) get().showToast('요청을 허용했어요 - 이후 자동으로 값을 받아갑니다')
-},
 ```
+
+**교훈**: 중복 제거를 제안하기 전에 "정말 같은 일을 하는가"를 확인해야 한다. 이 경우 반복되는
+`catch` 블록 21개는 형태만 같았고 의미는 최소 세 종류였다.
 
 ### 4.5 죽은 코드 제거 (가장 먼저 할 것)
 

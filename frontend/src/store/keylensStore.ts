@@ -920,6 +920,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
       } catch (e) {
         let msg = vaultErrorText(e, '잠금 해제 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
         if (e instanceof VaultApiError) {
+          // 여기서 401 은 "잠김"이 아니라 **오답 비밀번호**다. 다른 액션들처럼
+          // set({ locked: true }) 를 하면 안 된다 - 이미 잠금 화면이고, 상태를 덮어써서
+          // 오류 표시를 방해한다. 401 처리를 일괄 래퍼로 묶으면 이 구분이 사라진다.
           if (e.status === 401) msg = '마스터 비밀번호가 올바르지 않아요.'
           else if (e.status === 429)
             msg = `시도가 많아요 — ${e.retryAfter ?? '잠시'}초 후 다시 시도하세요.`
@@ -1357,7 +1360,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
             memo: cur.memo || null,
             expires_at: cur.expiresAt,
           })
-          .catch((e) => get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요')))
+          .catch((e) => {
+            // update_meta 는 _require_key() 를 거치므로 여기서 401 은 "잠김" 하나만 뜻한다.
+            // 자동잠금이 걸린 뒤에도 화면이 "열림"으로 남아 있으면, 사용자는 왜 저장이
+            // 안 되는지 알 수 없다.
+            if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
+            get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
+          })
       }, 600)
     },
     changeVaultService: async (id, service, kind) => {
@@ -1579,6 +1588,18 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return true
       } catch (e) {
         // 잘못된 비밀번호(401)·손상/버전(422)은 백엔드 메시지를 그대로 보여준다. 기존 금고는 무손상.
+        //
+        // 여기서 401 은 **두 가지**를 뜻한다(main.py 의 vault_import): 번들 비밀번호 오답,
+        // 그리고 병합 대상인 현재 금고가 잠김. detail 문자열로 가르는 건 깨지기 쉬우므로
+        // 서버에 실제 상태를 다시 물어 동기화한다 - locked 는 추측이 아니라 서버가 정한다.
+        if (e instanceof VaultApiError && e.status === 401) {
+          try {
+            const st = await vaultApi.status()
+            set({ locked: !st.unlocked })
+          } catch {
+            /* 상태 조회까지 실패하면 화면 상태는 건드리지 않는다(추측하지 않는다). */
+          }
+        }
         get().showToast(vaultErrorText(e, '가져오기 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         return false
       }
