@@ -1633,6 +1633,12 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await vaultApi.reset(get().resetVaultPw)
         get().resetProto()
       } catch (e) {
+        // 409(이미 비어 있음)는 위와 같은 이유로 성공처럼 다룬다.
+        if (e instanceof VaultApiError && e.status === 409) {
+          set({ resetVaultOpen: false, resetVaultPw: '' })
+          get().resetProto()
+          return
+        }
         let msg = vaultErrorText(e, '초기화 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
         if (e instanceof VaultApiError && e.status === 401) {
           msg = '마스터 비밀번호가 올바르지 않아요.'
@@ -1653,6 +1659,14 @@ export const useKeylens = create<KeylensState>((set, get) => {
         set({ forgotResetOpen: false, forgotResetText: '' })
         get().resetProto()
       } catch (e) {
+        // 이미 비어 있는 금고(409)는 실패가 아니다 - 사용자가 원한 상태가 이미 참이다.
+        // 다른 창에서 먼저 초기화했거나 이 화면이 낡았을 때 여기로 온다. 오류를 띄우면
+        // 사용자는 아무것도 잘못하지 않았는데 막힌 것처럼 보인다.
+        if (e instanceof VaultApiError && e.status === 409) {
+          set({ forgotResetOpen: false, forgotResetText: '' })
+          get().resetProto()
+          return
+        }
         set({
           resettingVault: false,
           forgotResetErr: vaultErrorText(e, '초기화 실패 - 잠시 후 다시 시도해 보세요.'),
