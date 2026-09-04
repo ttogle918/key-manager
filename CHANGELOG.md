@@ -9,6 +9,31 @@ SPDX-License-Identifier: MIT
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-04
+
+배포본을 실제로 압축 해제해 돌려보다 발견한 두 가지를 고칩니다. 기능 변화는 없습니다.
+
+### Fixed (수정)
+- **금고를 만들기 전 SDK 조회가 500 으로 죽던 문제**: `/sdk/pending`, `/sdk/dirs` 가
+  `no such table: sdk_pending_requests` 로 실패했습니다. 스키마 마이그레이션을 "이미 초기화된
+  금고"일 때만 돌렸기 때문인데, 그럴 이유가 없었습니다 - 초기화 판단은 `meta` **테이블**이
+  아니라 그 안의 **행**을 보므로 빈 테이블을 미리 만들어도 "아직 금고 없음" 상태는 그대로입니다.
+  조건을 없애서, 금고를 지운 직후와 한 번도 만든 적 없는 상태가 같은 모양이 됐습니다.
+
+### Security (보안)
+- **릴리스 zip 에 금고 파일이 섞여 들어갈 수 있던 경로를 막았습니다.** 패키징된 앱은 금고를
+  실행 파일 옆에 만들기 때문에, 빌드한 exe 를 한 번 실행해 보는 것만으로(= 정상적인 스모크
+  테스트) 산출물 안에 `vault.db` 가 생기고 그대로 압축됐습니다. v0.5.0 배포본에 실제로 빈
+  `vault.db` 가 들어 있었습니다 - **비어 있어 유출은 없었지만**, 키를 넣어 확인한 뒤 압축했다면
+  암호화된 금고가 배포될 수 있었습니다.
+
+### Added (기능)
+- **`desktop/package.py`**: 빌드 - 위생 검사 - 압축을 한 번에 하는 릴리스 스크립트. 금고와
+  SQLite 저널, `.env` 를 산출물에서 걷어내고, 완성된 zip 을 다시 열어 재확인합니다. 내용이
+  들어 있거나 열리지 않는 금고를 만나면 **지우지 않고 멈춥니다**(자동 삭제 자체가 사고라서).
+  이 가드는 CI 에서 매번 테스트합니다.
+
+
 ## [0.5.0] - 2026-09-03
 
 ### Added (기능)
@@ -221,7 +246,8 @@ SPDX-License-Identifier: MIT
 - 라이선스 카피레프트 0건(reuse lint 통과·SBOM), 의존성 취약점(SCA) 전 영역 0건(pip-audit·npm audit).
 - 마스킹 노출 축소·감사 이력·잠금 정책 등 [SECURITY_REVIEW.md](./SECURITY_REVIEW.md) 항목 해소.
 
-[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.5.0...main
+[Unreleased]: https://github.com/ttogle918/key-manager/compare/v0.5.1...main
+[0.5.1]: https://github.com/ttogle918/key-manager/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/ttogle918/key-manager/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ttogle918/key-manager/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/ttogle918/key-manager/compare/v0.2.0...v0.3.0

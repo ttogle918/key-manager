@@ -47,7 +47,7 @@ base = "gui" if sys.platform == "win32" else None
 
 setup(
     name="KeyLens",
-    version="0.5.0",
+    version="0.5.1",
     description="KeyLens — 로컬 자격증명 분류·암호화 금고 (데스크톱)",
     options={"build_exe": build_exe_options},
     executables=[Executable(str(Path(__file__).parent / "app.py"), base=base, target_name="KeyLens")],

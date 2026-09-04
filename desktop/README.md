@@ -57,7 +57,22 @@ pip install -r desktop/requirements-build.txt
 # 3) 빌드 (2단계에서 활성화한 venv 그대로)
 cd desktop && python setup.py build
 #   → desktop/build/exe.<플랫폼>/KeyLens(.exe) + 옆에 frontend/dist·backend/knowledge 동봉
+
+# 4) 배포용 zip 만들기 (위생 검사 포함)
+cd desktop && python package.py
+#   → desktop/build/KeyLens-v<버전>-win64.zip
 ```
+
+### 배포 zip 은 반드시 `package.py` 로 만드세요
+
+`build/exe.*` 를 직접 압축하면 안 됩니다. **패키징된 앱은 금고를 실행 파일 옆에 만들기 때문에**,
+빌드한 exe 를 한 번 실행해 보는 것만으로(= 정상적인 스모크 테스트) 산출물 안에 `vault.db` 가
+생기고 그대로 딸려 들어갑니다. v0.5.0 배포본에 실제로 빈 `vault.db` 가 들어갔습니다.
+
+`package.py` 는 압축 전에 금고·SQLite 저널·`.env` 를 걷어내고, 완성된 zip 을 다시 열어
+재확인합니다. 내용이 들어 있거나 열리지 않는 금고를 만나면 **지우지 않고 멈춥니다** - 자동
+삭제는 그 자체가 데이터 사고이고, 앱이 실행 중이라 잠긴 금고일 수도 있기 때문입니다.
+이 가드는 CI(`packaging-guard-test`)에서 매번 테스트합니다.
 
 `requirements-build.txt` 는 런타임 의존성(`requirements.txt`)에 패키저(`cx_Freeze==8.6.4`)만 얹은
 빌드 전용 목록입니다 — cx_Freeze 는 실행 파일에 실리지 않는 도구라 런타임 목록과 분리해 뒀습니다.
@@ -69,7 +84,7 @@ cd desktop && python setup.py build
 [GitHub Releases](https://github.com/ttogle918/key-manager/releases) 아티팩트로만 배포합니다.
 
 > ✅ **빌드 실증**: cx_Freeze 8.6.4 + `backend/.venv` 에서 `KeyLens.exe` 생성 확인. 실행 시 번들된
-> 지식베이스(9종)·SPA를 로드하고 백엔드가 정상 서빙됨(`/health`·`/knowledge`·`/analyze` 응답,
+> 지식베이스(10종)·SPA를 로드하고 백엔드가 정상 서빙됨(`/health`·`/knowledge`·`/analyze` 응답,
 > 더미 GitHub 키 분류까지 확인).
 >
 > 2026-08-30 재빌드 확인 — 동봉물: `frontend/dist`, `backend/knowledge` YAML 9종,

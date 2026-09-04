@@ -31,6 +31,21 @@ jobs:
         working-directory: backend
         run: python -m pytest -q
 
+  packaging-guard-test:
+    name: 패키징 위생 가드 테스트 (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # package.py 는 표준 라이브러리만 쓴다 - 데스크톱 런타임 의존성(pywebview 등) 없이 돈다.
+      - name: pytest 설치
+        run: pip install pytest
+      - name: pytest
+        working-directory: desktop
+        run: python -m pytest test_package.py -q
+
   manager-relay-test:
     name: 매니저 릴레이 테스트 (pytest)
     runs-on: ubuntu-latest

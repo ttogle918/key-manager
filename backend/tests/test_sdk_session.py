@@ -236,3 +236,32 @@ def test_set_pending_hook_can_be_cleared(vault):
     with pytest.raises(SdkApprovalPending):
         vault.sdk_env("블로그", "/repo/blog")
     assert calls == []
+
+
+def test_sdk_reads_on_uninitialized_vault_return_empty(tmp_path):
+    """금고를 만들기 전에도 SDK 조회는 빈 목록이어야 한다 - 예외가 아니라.
+
+    회귀 방지: vault_repo.connect() 가 스키마 생성을 is_initialized() 로 감싸던 시절엔
+    금고 생성 전 SDK 테이블이 아예 없어서 sqlite3.OperationalError("no such table:
+    sdk_pending_requests") 가 그대로 새어나갔고, /sdk/pending 은 HTTP 500 이 됐다.
+    """
+    svc = VaultService(str(tmp_path / "vault.db"))
+    assert svc.is_initialized() is False
+
+    assert svc.list_pending() == []
+    assert svc.list_projects() == []
+    assert svc.list_project_dirs("demo") == []
+
+    # 조회가 금고를 만들어버리지 않았는지 - 여전히 설정 화면이 떠야 한다.
+    assert svc.is_initialized() is False
+
+
+def test_uninitialized_reads_do_not_block_later_init(tmp_path):
+    """조회로 빈 스키마가 먼저 생겨도 금고 생성은 정상이어야 한다(executescript 멱등)."""
+    svc = VaultService(str(tmp_path / "vault.db"))
+    svc.list_pending()
+
+    svc.init(MASTER)
+    assert svc.is_initialized() is True
+    svc.unlock(MASTER)
+    assert svc.list_pending() == []
