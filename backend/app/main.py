@@ -15,10 +15,13 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import crypto, discoveries_repo, explain, ollama_client
+from . import crypto, desktop, discoveries_repo, explain, ollama_client
 from .classify.pipeline import analyze
 from .knowledge import load_knowledge_base
 from .models import (
+    SdkDirEntry,
+    DesktopCapabilities,
+    PickedDirectory,
     AnalyzeRequest,
     AnalyzeResponse,
     ExplainDiscoveryApprove,
@@ -541,6 +544,37 @@ def sdk_remove_dir(project: str, dir_id: int) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="디렉토리를 찾을 수 없습니다")
     return {"removed": True}
+
+
+@app.get("/sdk/directories", response_model=list[SdkDirEntry])
+def sdk_list_all_dirs() -> list[SdkDirEntry]:
+    """모든 컬렉션의 허용 디렉토리. "내가 뭘 허용해 뒀지"에 한 번에 답한다."""
+    return [SdkDirEntry(**d) for d in VAULT.list_all_project_dirs()]
+
+
+@app.get("/desktop/capabilities", response_model=DesktopCapabilities)
+def desktop_capabilities() -> DesktopCapabilities:
+    """데스크톱 셸에서만 되는 기능을 프론트에 알려준다(브라우저면 전부 false)."""
+    return DesktopCapabilities(directory_picker=desktop.has_directory_picker())
+
+
+@app.post("/desktop/pick-directory", response_model=PickedDirectory)
+async def desktop_pick_directory() -> PickedDirectory:
+    """네이티브 폴더 선택창을 띄우고 고른 절대경로를 돌려준다.
+
+    금고가 잠겨 있으면 거절한다. 고른 경로로 할 수 있는 일(디렉토리 등록)이 어차피 잠금
+    해제를 요구하므로, 잠긴 상태에서 대화상자만 뜨는 건 쓸모도 없고 표면만 넓힌다.
+
+    대화상자는 사용자가 닫을 때까지 반환하지 않는다 - 이벤트 루프를 붙잡지 않도록
+    스레드풀로 넘긴다(그러지 않으면 대화상자가 떠 있는 동안 앱 전체가 멈춘 것처럼 보인다).
+    """
+    if not VAULT.status()["unlocked"]:
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요")
+    try:
+        path = await run_in_threadpool(desktop.pick_directory)
+    except desktop.DirectoryPickerUnavailable as e:
+        raise HTTPException(status_code=501, detail=str(e)) from None
+    return PickedDirectory(path=path)
 
 
 @app.get("/sdk/pending", response_model=list[SdkPendingRequest])

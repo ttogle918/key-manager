@@ -10,6 +10,7 @@ import {
   analyzeApi,
   analyzeImageApi,
   ApiError,
+  desktopApi,
   explainDiscoveryApi,
   explainImageApi,
   explainStatusApi,
@@ -36,6 +37,7 @@ import type {
   PendingRequest,
   Screen,
   SdkDir,
+  SdkDirEntry,
   SdkProjectSummary,
   UnknownItem,
   VaultItem,
@@ -190,6 +192,16 @@ interface KeylensState {
   sdkDirs: SdkDir[]
   /** 디렉토리 추가 입력 필드 값. */
   newDirPath: string
+  /**
+   * 모든 컬렉션의 허용 디렉토리(승인 대기 화면의 "이미 허용한 디렉토리" 섹션용).
+   * `sdkDirs` 는 선택된 컬렉션 하나만 담으므로 별도로 둔다.
+   */
+  allSdkDirs: SdkDirEntry[]
+  /**
+   * 데스크톱 앱에서 네이티브 폴더 선택창을 쓸 수 있는지. 브라우저에서는 false 이며,
+   * 그때는 "찾아보기" 버튼을 아예 그리지 않는다 - 눌렀을 때 실패하는 것보다 낫다.
+   */
+  canPickDirectory: boolean
   toast: string | null
 
   // ── 액션 ──
@@ -237,6 +249,14 @@ interface KeylensState {
   addSdkDir: () => void
   /** 디렉토리 등록 해제. */
   removeSdkDir: (dirId: number) => void
+  /** 모든 컬렉션의 허용 디렉토리를 불러온다. */
+  loadAllSdkDirs: () => Promise<void>
+  /** 컬렉션을 지정해 허용을 철회한다(선택된 컬렉션과 무관하게 동작). */
+  revokeSdkDir: (project: string, dirId: number) => Promise<void>
+  /** 네이티브 폴더 선택창을 열어 고른 경로를 입력 필드에 넣는다(데스크톱 전용). */
+  pickSdkDir: () => Promise<void>
+  /** 데스크톱 전용 기능 유무를 확인해 저장한다. */
+  loadDesktopCapabilities: () => Promise<void>
 
   setPw: (v: string) => void
   setPw2: (v: string) => void
@@ -441,6 +461,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     selectedSdkProject: null,
     sdkDirs: [],
     newDirPath: '',
+    allSdkDirs: [],
+    canPickDirectory: false,
     toast: null,
 
     showToast: (msg) => {
@@ -778,12 +800,53 @@ export const useKeylens = create<KeylensState>((set, get) => {
     removeSdkDir: async (dirId) => {
       const project = get().selectedSdkProject
       if (!project) return
+      await get().revokeSdkDir(project, dirId)
+      await get().selectSdkProject(project)
+    },
+    loadAllSdkDirs: async () => {
+      try {
+        const rows = await sdkApi.allDirs()
+        set({
+          allSdkDirs: rows.map((d) => ({
+            id: d.id,
+            project: d.project,
+            path: d.path,
+            source: d.source,
+            createdAt: d.created_at,
+          })),
+        })
+      } catch {
+        /* 목록 로딩 실패는 조용히 무시 - 접힌 섹션이라 사용자가 보고 있지 않을 수 있다. */
+      }
+    },
+    revokeSdkDir: async (project, dirId) => {
       try {
         await sdkApi.removeDir(project, dirId)
-        await get().selectSdkProject(project)
-        get().showToast('디렉토리 등록을 해제했어요')
+        // 낙관적 갱신 대신 다시 불러온다 - 두 화면이 같은 목록을 보므로 어긋나면 안 된다.
+        await get().loadAllSdkDirs()
+        get().showToast('허용을 철회했어요 - 다음 요청부터 다시 승인을 받습니다')
       } catch (e) {
-        get().showToast(vaultErrorText(e, '해제 실패 — 잠시 후 다시 시도해 보세요'))
+        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
+        get().showToast(vaultErrorText(e, '철회 실패 - 잠시 후 다시 시도해 보세요'))
+      }
+    },
+    loadDesktopCapabilities: async () => {
+      try {
+        const caps = await desktopApi.capabilities()
+        set({ canPickDirectory: caps.directory_picker })
+      } catch {
+        // 못 물어봤으면 없는 것으로 둔다 - 있다고 가정했다가 눌렀을 때 실패하는 것보다 낫다.
+        set({ canPickDirectory: false })
+      }
+    },
+    pickSdkDir: async () => {
+      try {
+        const { path } = await desktopApi.pickDirectory()
+        // 취소는 정상 흐름이다 - 토스트를 띄우지 않는다.
+        if (path) set({ newDirPath: path })
+      } catch (e) {
+        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
+        get().showToast(vaultErrorText(e, '폴더 찾기를 열지 못했어요 - 경로를 직접 입력해 주세요'))
       }
     },
 

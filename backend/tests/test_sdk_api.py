@@ -179,3 +179,37 @@ def test_sdk_pending_before_vault_exists_returns_empty(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "VAULT", VaultService(str(tmp_path / "vault.db")))
     assert main.sdk_list_pending() == []
     assert main.sdk_list_projects() == []
+
+
+def test_all_directories_lists_every_collection_in_one_call(vault):
+    """"내가 뭘 허용해 뒀지"는 컬렉션을 하나씩 열어보며 답할 질문이 아니다."""
+    main.sdk_add_dir("블로그", SdkAddDirRequest(path="/repo/blog"))
+    main.sdk_add_dir("가계부", SdkAddDirRequest(path="/repo/ledger"))
+    main.sdk_add_dir("블로그", SdkAddDirRequest(path="/repo/blog-draft"))
+
+    rows = main.sdk_list_all_dirs()
+
+    assert [(r.project, r.path) for r in rows] == [
+        ("가계부", "/repo/ledger"),
+        ("블로그", "/repo/blog"),
+        ("블로그", "/repo/blog-draft"),
+    ]
+    assert {r.source for r in rows} == {"manual"}
+
+
+def test_all_directories_is_empty_before_a_vault_exists(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "VAULT", VaultService(str(tmp_path / "vault.db")))
+
+    assert main.sdk_list_all_dirs() == []
+
+
+def test_approving_a_request_shows_up_in_the_all_directories_list(vault):
+    """승인으로 등록된 것도 같은 목록에서 보이고, source 로 구분된다."""
+    with pytest.raises(HTTPException):
+        main.sdk_env(SdkEnvRequest(project="블로그", path="/repo/blog"))
+    pending = main.sdk_list_pending()
+    main.sdk_approve_pending(pending[0].id)
+
+    rows = main.sdk_list_all_dirs()
+
+    assert [(r.project, r.path, r.source) for r in rows] == [("블로그", "/repo/blog", "approved")]

@@ -370,6 +370,13 @@ class VaultService:
         finally:
             conn.close()
 
+    def list_all_project_dirs(self) -> list[dict]:
+        conn = self._conn()
+        try:
+            return sdk_repo.list_all_dirs(conn)
+        finally:
+            conn.close()
+
     def list_pending(self) -> list[dict]:
         conn = self._conn()
         try:

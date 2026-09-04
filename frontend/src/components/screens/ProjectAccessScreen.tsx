@@ -15,10 +15,14 @@ export function ProjectAccessScreen() {
   const setNewDirPath = useKeylens((s) => s.setNewDirPath)
   const addSdkDir = useKeylens((s) => s.addSdkDir)
   const removeSdkDir = useKeylens((s) => s.removeSdkDir)
+  const canPickDirectory = useKeylens((s) => s.canPickDirectory)
+  const pickSdkDir = useKeylens((s) => s.pickSdkDir)
+  const loadDesktopCapabilities = useKeylens((s) => s.loadDesktopCapabilities)
 
   useEffect(() => {
     loadSdkProjects()
-  }, [loadSdkProjects])
+    loadDesktopCapabilities()
+  }, [loadSdkProjects, loadDesktopCapabilities])
 
   return (
     <div className="mx-auto max-w-[720px] px-8 pb-[90px] pt-[44px] [animation:klFadeUp_.35s_ease]">
@@ -71,6 +75,18 @@ export function ProjectAccessScreen() {
                     placeholder="예: C:\repo\블로그 또는 /home/user/repo/blog"
                     className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-[9px] font-mono text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
                   />
+                  {/* 폴더 찾기는 데스크톱 앱에서만 됩니다 - 브라우저는 보안상 절대경로를
+                      주지 않아 흉내낼 수 없습니다. 없는 곳에서는 버튼을 그리지 않습니다. */}
+                  {canPickDirectory && (
+                    <button
+                      type="button"
+                      onClick={pickSdkDir}
+                      title="폴더를 골라서 경로를 채웁니다"
+                      className="shrink-0 cursor-pointer rounded-lg border border-border bg-surface px-3 py-[9px] text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
+                    >
+                      찾아보기
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={addSdkDir}

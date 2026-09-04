@@ -178,3 +178,8 @@ export interface SdkProjectDir {
   source: 'manual' | 'approved'
   created_at: string
 }
+
+/** 전체 목록(`GET /sdk/directories`)의 한 줄 - 어느 컬렉션 것인지가 함께 온다. */
+export interface SdkDirEntryDto extends SdkProjectDir {
+  project: string
+}

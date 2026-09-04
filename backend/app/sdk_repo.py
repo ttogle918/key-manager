@@ -74,6 +74,19 @@ def list_project_dirs(conn: sqlite3.Connection, project: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def list_all_dirs(conn: sqlite3.Connection) -> list[dict]:
+    """모든 컬렉션의 허용 디렉토리를 한 번에(컬렉션명 포함, 컬렉션 -> 등록순).
+
+    "내가 뭘 허용해 뒀지"는 컬렉션을 하나씩 열어보며 답할 질문이 아니다. 프론트가 컬렉션
+    수만큼 요청을 날리지 않도록 여기서 한 번에 준다.
+    """
+    rows = conn.execute(
+        "SELECT id, project, path, source, created_at FROM sdk_project_dirs"
+        " ORDER BY project, id"
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def is_path_approved(conn: sqlite3.Connection, project: str, path: str) -> bool:
     """path가 project에 등록돼 있는지."""
     norm = _normalize_path(path)

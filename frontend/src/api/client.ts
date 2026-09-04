@@ -8,6 +8,7 @@ import type {
   KnowledgeResponse,
   SdkPendingRequest,
   SdkProject,
+  SdkDirEntryDto,
   SdkProjectDir,
   VaultEntryCreate,
   VaultEntryMeta,
@@ -229,11 +230,24 @@ export const sdkApi = {
       method: 'POST',
       body: JSON.stringify({ path }),
     }),
+  allDirs: () => vreq<SdkDirEntryDto[]>('/sdk/directories'),
   removeDir: (project: string, dirId: number) =>
     vreq<{ removed: boolean }>(
       `/sdk/projects/${encodeURIComponent(project)}/directories/${dirId}`,
       { method: 'DELETE' },
     ),
+}
+
+// ── 데스크톱 셸 전용 기능 ──
+
+/**
+ * 폴더 찾기는 데스크톱 앱에서만 됩니다 - 브라우저는 보안상 절대경로를 주지 않아
+ * 흉내낼 수 없습니다. 그래서 버튼을 그리기 전에 기능 유무부터 물어봅니다.
+ */
+export const desktopApi = {
+  capabilities: () => vreq<{ directory_picker: boolean }>('/desktop/capabilities'),
+  /** 네이티브 폴더 선택창. 사용자가 취소하면 path 가 null 이며, 이는 오류가 아닙니다. */
+  pickDirectory: () => vreq<{ path: string | null }>('/desktop/pick-directory', { method: 'POST' }),
 }
 
 // ── 화면 설명(EXPLAIN, 1단계) ──
