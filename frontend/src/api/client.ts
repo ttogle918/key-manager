@@ -8,6 +8,7 @@ import type {
   KnowledgeResponse,
   SdkPendingRequest,
   SdkProject,
+  SdkDirEntryDto,
   SdkProjectDir,
   VaultEntryCreate,
   VaultEntryMeta,
@@ -213,6 +214,15 @@ export const vaultApi = {
     }),
   reset: (password: string) =>
     vreq<VaultStatus>('/vault/reset', { method: 'POST', body: JSON.stringify({ password }) }),
+  /**
+   * 비밀번호를 잊었을 때의 초기화 - 비밀번호 대신 확인 문구를 보낸다.
+   * 문구는 백엔드 models.py 의 FORGOTTEN_RESET_PHRASE 와 같아야 한다.
+   */
+  resetForgotten: (confirmation: string) =>
+    vreq<VaultStatus>('/vault/reset/forgotten', {
+      method: 'POST',
+      body: JSON.stringify({ confirmation }),
+    }),
 }
 
 // ── RUNTIME-1: SDK 접근 관리 — 승인 대기 + 컬렉션별 디렉토리 사전등록 ──
@@ -229,11 +239,24 @@ export const sdkApi = {
       method: 'POST',
       body: JSON.stringify({ path }),
     }),
+  allDirs: () => vreq<SdkDirEntryDto[]>('/sdk/directories'),
   removeDir: (project: string, dirId: number) =>
     vreq<{ removed: boolean }>(
       `/sdk/projects/${encodeURIComponent(project)}/directories/${dirId}`,
       { method: 'DELETE' },
     ),
+}
+
+// ── 데스크톱 셸 전용 기능 ──
+
+/**
+ * 폴더 찾기는 데스크톱 앱에서만 됩니다 - 브라우저는 보안상 절대경로를 주지 않아
+ * 흉내낼 수 없습니다. 그래서 버튼을 그리기 전에 기능 유무부터 물어봅니다.
+ */
+export const desktopApi = {
+  capabilities: () => vreq<{ directory_picker: boolean }>('/desktop/capabilities'),
+  /** 네이티브 폴더 선택창. 사용자가 취소하면 path 가 null 이며, 이는 오류가 아닙니다. */
+  pickDirectory: () => vreq<{ path: string | null }>('/desktop/pick-directory', { method: 'POST' }),
 }
 
 // ── 화면 설명(EXPLAIN, 1단계) ──

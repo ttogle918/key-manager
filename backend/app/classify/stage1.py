@@ -118,7 +118,7 @@ def extract_candidates(text: str) -> list[tuple[str, str, str | None, bool]]:
             out.append((tok, "token", None, False))
         # 백엔드 OCR(RapidOCR)이 하이픈 앞에 공백을 잘못 끼워 넣는 경우 대비
         # (예: "sk-proj -abc..." — 실측 openai.png). 다음 토큰이 '-'로 시작하면 붙여서도
-        # 후보로 시도한다 — 프론트 reconstruct.ts의 구두점 간격 재결합과 같은 발상.
+        # 후보로 시도한다 - 제거된 브라우저 OCR 경로의 구두점 간격 재결합과 같은 발상.
         if tok and i + 1 < len(raw_tokens):
             nxt = _clean(raw_tokens[i + 1])
             if nxt.startswith("-"):

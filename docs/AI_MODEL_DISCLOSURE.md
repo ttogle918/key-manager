@@ -33,10 +33,13 @@ SPDX-License-Identifier: MIT
 | 모델 출처 | RapidOCR: https://github.com/RapidAI/RapidOCR · 가중치: https://www.modelscope.cn/models/RapidAI/RapidOCR(v3.9.2 릴리스) |
 | 실행 위치 | **로컬 백엔드(사용자 기기 안, 127.0.0.1)** — 이미지·값이 기기를 떠나지 않음(로컬·프라이버시) |
 | 비고 | 초기(CORE-3 이전) 버전은 브라우저 `tesseract.js`(WASM)를 사용했으나, 한글 단일 글자 라벨 오독
-  문제로 이 RapidOCR 백엔드 경로로 전면 교체했다 — `frontend/src/ocr/ocr.ts`·`reconstruct.ts`는
-  현재 실제 분석 흐름에서 호출되지 않는 레거시 코드로 남아 있다(삭제하지 않은 이유: 유닛 테스트
-  `reconstruct.test.ts`가 재구성 로직 자체의 회귀를 계속 검증). 상세 근거는
-  `THIRD-PARTY-NOTICES.md`의 "스크린샷 OCR (backend, CORE-3)" 절 참고. |
+  문제로 이 RapidOCR 백엔드 경로로 전면 교체했다. 남아 있던 레거시 코드(`frontend/src/ocr/`)는
+  **2026-09-04 에 제거**했다 — 유지 근거였던 "유닛 테스트가 재구성 로직을 계속 검증한다"가
+  성립하지 않았기 때문이다: 그 테스트는 어느 파일도 import 하지 않는 TS 복사본을 검증했고,
+  실제로 도는 줄 재구성은 `backend/app/ocr.py` 다. 제거로 빌드 산출물이 50MB → 3.5MB 로 줄었다
+  (미사용 WASM·언어데이터 44MB + 3MB 가 매 빌드마다 `dist/` 에 실려 exe 까지 들어가고 있었다).
+  상세 근거는 `THIRD-PARTY-NOTICES.md`의 "스크린샷 OCR (backend, CORE-3)" 절과
+  `docs/memo/2026-09-04-codebase-refactoring-review.md` 참고. |
 
 ### 2-2. 화면 설명 기능용 LLM(Ollama) — 옵트인, 앱에 가중치 미포함
 
@@ -88,9 +91,6 @@ Ollama가 지식베이스에 없는 서비스를 추측했을 때, 그 추측이
 | 분류 엔진(모델 출력 활용) | `backend/app/classify/*.py` | MIT | OCR 텍스트 → 맥락 기반 분류 |
 | Ollama 호출(화면 설명, 옵트인) | `backend/app/ollama_client.py` | MIT | 로컬 Ollama HTTP API 호출(urllib만 사용) |
 | 화면 설명 파이프라인(모델 출력 활용) | `backend/app/explain.py` | MIT | 지식베이스 대조 + 미분류 줄만 Ollama에 배치 질의 |
-| OCR 호출·값 정밀 재인식(레거시, 미사용) | `frontend/src/ocr/ocr.ts` | MIT | tesseract.js 호출 — CORE-3에서 RapidOCR로 대체, 현재 실제 흐름에서 미호출 |
-| 라벨-값 공간 재구성(레거시, 유닛테스트만 참조) | `frontend/src/ocr/reconstruct.ts` | MIT | word 박스 → 라인 보존 텍스트, 라벨-값 페어링 |
-| 자산 로컬 벤더링(레거시 경로용) | `frontend/scripts/vendor-tesseract.mjs` | MIT | WASM·언어데이터 로컬 번들(오프라인·재현성) |
 
 - 코드 저장소: https://github.com/ttogle918/key-manager (MIT)
 - **다른 도구의 탐지 패턴/코드를 포팅하지 않았다.** 키 포맷 정규식은 각 서비스 공식 문서 기준으로 직접 작성(AGPL TruffleHog 포팅 금지 규칙 준수).

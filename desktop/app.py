@@ -43,6 +43,7 @@ if FROZEN:
 else:
     sys.path.insert(0, str(_BASE / "backend"))
 
+from app import desktop  # noqa: E402 — 같은 이유
 from app.main import app, VAULT  # noqa: E402 — 경로·환경 설정 후 임포트
 
 
@@ -81,6 +82,25 @@ def _wait_ready(timeout: float = 20.0) -> bool:
     return False
 
 
+def _build_directory_picker(webview, window):
+    """네이티브 폴더 선택창을 여는 함수를 만든다(백엔드가 /desktop/pick-directory 에서 호출).
+
+    브라우저에서는 이걸 흉내낼 수 없다 - 웹 표준이 보안상 절대경로를 주지 않는다. 그래서
+    폴더 찾기는 데스크톱 앱에서만 되고, 백엔드는 이 함수가 주입됐는지로 기능 유무를 판단한다.
+
+    pywebview 6.x 의 FOLDER_DIALOG 상수는 폐기 예정이라 FileDialog.FOLDER 를 쓴다.
+    반환값은 고른 경로들의 시퀀스이거나, 사용자가 취소하면 None 이다.
+    """
+
+    def pick() -> str | None:
+        chosen = window.create_file_dialog(webview.FileDialog.FOLDER)
+        if not chosen:
+            return None
+        return str(chosen[0])
+
+    return pick
+
+
 def main() -> None:
     import webview  # 지연 임포트 — 서버 검증(mount/serve)은 pywebview 없이도 돈다.
 
@@ -95,6 +115,7 @@ def main() -> None:
         "KeyLens", f"http://localhost:{PORT}", width=1120, height=780, min_size=(900, 620)
     )
     VAULT.set_pending_hook(notify.build_notifier(window))
+    desktop.set_directory_picker(_build_directory_picker(webview, window))
     webview.start()
 
 

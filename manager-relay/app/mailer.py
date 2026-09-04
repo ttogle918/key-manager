@@ -29,7 +29,7 @@ class SmtpConfig:
         e = env if env is not None else os.environ
         missing = [k for k in ("SMTP_HOST", "SMTP_USER", "SMTP_PASS") if not e.get(k)]
         if missing:
-            raise RuntimeError(f"SMTP 설정이 없습니다 — 환경변수 {', '.join(missing)} 를 설정하세요")
+            raise RuntimeError(f"SMTP 설정이 없습니다 - 환경변수 {', '.join(missing)} 를 설정하세요")
         return cls(
             host=e["SMTP_HOST"],
             port=int(e.get("SMTP_PORT", "587")),
@@ -47,7 +47,7 @@ def send_confirm_email(config: SmtpConfig, destination_email: str, confirm_url: 
     msg.set_content(
         "KeyLens에서 이 주소로 금고 내보내기 요청이 있었습니다.\n\n"
         f"본인이 요청한 것이 맞다면 아래 링크를 클릭해 실제 파일을 받으세요:\n{confirm_url}\n\n"
-        "요청한 적이 없다면 이 메일을 무시하세요 — 클릭하지 않으면 아무 일도 일어나지 않습니다.\n"
+        "요청한 적이 없다면 이 메일을 무시하세요 - 클릭하지 않으면 아무 일도 일어나지 않습니다.\n"
         "이 링크는 15분간만 유효합니다."
     )
     _send(config, msg)

@@ -5,7 +5,7 @@
  *
  * 왜: KeyLens 는 **로컬 우선(local-first)** 도구다. 폰트를 Google Fonts·jsdelivr CDN 에서
  * 런타임 로드하면 앱을 열 때마다 외부 요청이 나가 "외부 서버 없음·오프라인" 원칙에 어긋난다.
- * → 폰트를 로컬에 두고 same-origin 으로 서빙한다(tesseract 자산 벤더링과 동일 패턴).
+ * → 폰트를 로컬에 두고 same-origin 으로 서빙한다(외부 자산은 빌드 시 로컬로 내려받아 same-origin 으로 서빙한다).
  *
  * 라이선스: 두 폰트 모두 **SIL Open Font License 1.1 (OFL-1.1, permissive)**. THIRD-PARTY-NOTICES 참조.
  * 받은 파일은 public/fonts/ 에만 두고 저장소엔 커밋하지 않는다(.gitignore).

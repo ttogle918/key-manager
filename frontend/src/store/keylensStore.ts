@@ -14,7 +14,6 @@ import {
   explainImageApi,
   explainStatusApi,
   fetchKnowledge,
-  sdkApi,
   vaultApi,
   VaultApiError,
 } from '@/api/client'
@@ -26,6 +25,7 @@ import { splitKeyValue } from '@/lib/autocomplete'
 import { parseEnv } from '@/lib/envParse'
 import { envText, jwtExp, mask, passwordPolicyError, projectKey, today } from '@/lib/format'
 import { requestEmailExport, SyncRelayError } from '@/lib/syncRelay'
+import { createSdkAccessSlice, type SdkAccessState } from './slices/sdkAccess'
 import type {
   AnalysisResult,
   DeleteTarget,
@@ -33,10 +33,7 @@ import type {
   EnvImportRow,
   InputMode,
   ManualRow,
-  PendingRequest,
   Screen,
-  SdkDir,
-  SdkProjectSummary,
   UnknownItem,
   VaultItem,
   View,
@@ -86,7 +83,12 @@ const revealTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 // 메타데이터(컬렉션·메모·만료) 편집을 디바운스해 백엔드에 저장한다(키 입력마다 요청 방지).
 const metaSaveT: Record<string, ReturnType<typeof setTimeout>> = {}
 
-interface KeylensState {
+/**
+ * 스토어 전체 상태. RUNTIME-1 SDK 접근 관리는 `slices/sdkAccess.ts` 로 분리했다 -
+ * 이 파일이 1,700줄까지 커지면서 "이 액션이 건드려야 할 상태"를 한눈에 볼 수 없게 됐고,
+ * 실제로 그 때문에 버그가 났다(승인 후 allSdkDirs 갱신 누락, 커밋 1388052).
+ */
+interface KeylensState extends SdkAccessState {
   // 화면
   screen: Screen
   view: View
@@ -161,12 +163,15 @@ interface KeylensState {
   /** 금고 완전 초기화 확인 모달 상태(VAULT-RESET) — 교육·공용 PC용, 비밀번호 재확인 필수. */
   resetVaultOpen: boolean
   resetVaultPw: string
+  /** 비밀번호를 잊었을 때의 초기화 모달(잠금 화면에서 진입). */
+  forgotResetOpen: boolean
+  /** 사용자가 타이핑한 확인 문구. 실수로 지우는 걸 막는 유일한 장치다. */
+  forgotResetText: string
+  forgotResetErr: string
   resetVaultErr: string
   resettingVault: boolean
   /** `/knowledge` 로드 완료 여부 — 서비스맵 갱신 시 리렌더 트리거용. */
   knowledgeReady: boolean
-  /** RUNTIME-1 승인 대기 목록(값 없음 — 컬렉션·경로 문자열만). */
-  pendingRequests: PendingRequest[]
   // .env 가져오기
   /** 가져오기 모달 표시 여부. */
   envImportOpen: boolean
@@ -178,18 +183,11 @@ interface KeylensState {
   envImportBusy: boolean
   /** 파싱·분류 진행 중(드롭 연타로 /analyze 가 겹쳐 도는 것 방지). */
   envImportLoading: boolean
-  // RUNTIME-1 — 컬렉션 접근 설정 화면
-  // 주의: 화면·문서에서는 '컬렉션'이지만, 백엔드 API·DB 컬럼명은 계속 project 다
-  // (keylens-env가 다른 레포에 버전 고정으로 설치되므로 와이어 포맷은 바꾸지 않는다).
-  // 그래서 아래 식별자들도 sdkProject* 이름을 유지한다.
-  /** 금고에 컬렉션이 지정된 항목이 있는 컬렉션 목록. */
-  sdkProjects: SdkProjectSummary[]
-  /** 설정 화면에서 선택된 컬렉션(없으면 null). */
-  selectedSdkProject: string | null
-  /** 선택된 컬렉션의 허용 디렉토리 목록. */
-  sdkDirs: SdkDir[]
-  /** 디렉토리 추가 입력 필드 값. */
-  newDirPath: string
+  /**
+   * 이메일 내보내기 확인 코드. 요청이 성공하면 채워지고, 모달은 이걸 화면에 띄운다.
+   * 사용자가 확인 페이지에 입력해야 실제 발송이 끝난다(메일에는 들어 있지 않다).
+   */
+  emailSyncCode: string | null
   toast: string | null
 
   // ── 액션 ──
@@ -220,23 +218,8 @@ interface KeylensState {
   setEnvImportProject: (v: string) => void
   /** 체크된 줄을 금고에 일괄 저장한다. */
   saveEnvImport: () => Promise<void>
-  loadPending: () => Promise<void>
-  /** 승인 대기 요청을 허용 — 이후 해당 디렉토리는 자동 통과. */
-  approvePending: (id: number) => Promise<void>
-  /** 승인 대기 요청을 거부. */
-  denyPending: (id: number) => Promise<void>
   /** 컬렉션 접근 설정 화면으로 전환하고 컬렉션 목록을 새로 불러온다. */
   goProjectAccess: () => void
-  /** SDK 컬렉션 목록을 백엔드에서 다시 불러온다. */
-  loadSdkProjects: () => Promise<void>
-  /** 컬렉션을 선택하고 그 컬렉션의 허용 디렉토리 목록을 불러온다. */
-  selectSdkProject: (project: string) => void
-  /** 새 디렉토리 입력 필드 값 설정. */
-  setNewDirPath: (v: string) => void
-  /** 선택된 컬렉션에 디렉토리를 사전 등록(source=manual, 승인 팝업 없이 바로 통과). */
-  addSdkDir: () => void
-  /** 디렉토리 등록 해제. */
-  removeSdkDir: (dirId: number) => void
 
   setPw: (v: string) => void
   setPw2: (v: string) => void
@@ -336,6 +319,10 @@ interface KeylensState {
   closeResetVault: () => void
   setResetVaultPw: (v: string) => void
   confirmResetVault: () => Promise<void>
+  openForgotReset: () => void
+  closeForgotReset: () => void
+  setForgotResetText: (v: string) => void
+  confirmForgotReset: () => Promise<void>
 
   resetProto: () => void
 }
@@ -381,6 +368,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
   }
 
   return {
+    // RUNTIME-1 SDK 접근 관리(승인 대기·허용 디렉토리·폴더 찾기).
+    ...createSdkAccessSlice(set, get, vaultErrorText),
     screen: 'setup',
     view: 'input',
     pw: '',
@@ -428,19 +417,18 @@ export const useKeylens = create<KeylensState>((set, get) => {
     emailSyncOpen: false,
     resetVaultOpen: false,
     resetVaultPw: '',
+    forgotResetOpen: false,
+    forgotResetText: '',
+    forgotResetErr: '',
     resetVaultErr: '',
     resettingVault: false,
     knowledgeReady: false,
-    pendingRequests: [],
     envImportOpen: false,
     envImportRows: [],
     envImportProject: '',
     envImportBusy: false,
     envImportLoading: false,
-    sdkProjects: [],
-    selectedSdkProject: null,
-    sdkDirs: [],
-    newDirPath: '',
+    emailSyncCode: null,
     toast: null,
 
     showToast: (msg) => {
@@ -696,96 +684,6 @@ export const useKeylens = create<KeylensState>((set, get) => {
       get().showToast(parts.join(' · '))
     },
 
-    loadPending: async () => {
-      try {
-        const rows = await sdkApi.pending()
-        set({
-          pendingRequests: rows.map((r) => ({
-            id: r.id,
-            project: r.project,
-            path: r.path,
-            requestedAt: r.requested_at,
-          })),
-        })
-      } catch {
-        /* 목록 로딩 실패는 조용히 무시(뱃지·화면이 이전 상태 유지) */
-      }
-    },
-    approvePending: async (id) => {
-      try {
-        await sdkApi.approve(id)
-        await get().loadPending()
-        get().showToast('요청을 허용했어요 — 이후 자동으로 값을 받아갑니다')
-      } catch (e) {
-        // 허용은 권한 부여라 백엔드가 잠금 해제를 요구한다(401) — 잠긴 사실을 UI에 반영한다.
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '허용 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    denyPending: async (id) => {
-      try {
-        await sdkApi.deny(id)
-        await get().loadPending()
-        get().showToast('요청을 거부했어요')
-      } catch (e) {
-        get().showToast(vaultErrorText(e, '거부 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    loadSdkProjects: async () => {
-      try {
-        const rows = await sdkApi.projects()
-        set({ sdkProjects: rows.map((p) => ({ project: p.project, keyCount: p.key_count })) })
-      } catch {
-        /* 목록 로딩 실패는 조용히 무시 */
-      }
-    },
-    selectSdkProject: async (project) => {
-      set({ selectedSdkProject: project, sdkDirs: [] })
-      try {
-        const rows = await sdkApi.dirs(project)
-        set({
-          sdkDirs: rows.map((d) => ({
-            id: d.id,
-            path: d.path,
-            source: d.source,
-            createdAt: d.created_at,
-          })),
-        })
-      } catch (e) {
-        get().showToast(vaultErrorText(e, '디렉토리 목록을 불러오지 못했어요'))
-      }
-    },
-    setNewDirPath: (v) => set({ newDirPath: v }),
-    addSdkDir: async () => {
-      const project = get().selectedSdkProject
-      const path = get().newDirPath.trim()
-      if (!project) return
-      if (!path) {
-        get().showToast('등록할 디렉토리 경로를 입력해 주세요')
-        return
-      }
-      try {
-        await sdkApi.addDir(project, path)
-        set({ newDirPath: '' })
-        await get().selectSdkProject(project)
-        get().showToast('디렉토리를 등록했어요 — 이후 자동으로 값을 받아갑니다')
-      } catch (e) {
-        // 등록도 권한 부여다(위 approvePending 과 같은 이유로 401 가능).
-        if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
-        get().showToast(vaultErrorText(e, '디렉토리 등록 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
-    removeSdkDir: async (dirId) => {
-      const project = get().selectedSdkProject
-      if (!project) return
-      try {
-        await sdkApi.removeDir(project, dirId)
-        await get().selectSdkProject(project)
-        get().showToast('디렉토리 등록을 해제했어요')
-      } catch (e) {
-        get().showToast(vaultErrorText(e, '해제 실패 — 잠시 후 다시 시도해 보세요'))
-      }
-    },
 
     // ── 설정(최초 실행) ──
     setPw: (v) => set({ pw: v, setupErr: '' }),
@@ -837,6 +735,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
       } catch (e) {
         let msg = vaultErrorText(e, '잠금 해제 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
         if (e instanceof VaultApiError) {
+          // 여기서 401 은 "잠김"이 아니라 **오답 비밀번호**다. 다른 액션들처럼
+          // set({ locked: true }) 를 하면 안 된다 - 이미 잠금 화면이고, 상태를 덮어써서
+          // 오류 표시를 방해한다. 401 처리를 일괄 래퍼로 묶으면 이 구분이 사라진다.
           if (e.status === 401) msg = '마스터 비밀번호가 올바르지 않아요.'
           else if (e.status === 429)
             msg = `시도가 많아요 — ${e.retryAfter ?? '잠시'}초 후 다시 시도하세요.`
@@ -1274,7 +1175,13 @@ export const useKeylens = create<KeylensState>((set, get) => {
             memo: cur.memo || null,
             expires_at: cur.expiresAt,
           })
-          .catch((e) => get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요')))
+          .catch((e) => {
+            // update_meta 는 _require_key() 를 거치므로 여기서 401 은 "잠김" 하나만 뜻한다.
+            // 자동잠금이 걸린 뒤에도 화면이 "열림"으로 남아 있으면, 사용자는 왜 저장이
+            // 안 되는지 알 수 없다.
+            if (e instanceof VaultApiError && e.status === 401) set({ locked: true })
+            get().showToast(vaultErrorText(e, '메모 저장 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
+          })
       }, 600)
     },
     changeVaultService: async (id, service, kind) => {
@@ -1450,8 +1357,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     openSync: () => set({ syncOpen: true }),
     closeSync: () => set({ syncOpen: false }),
-    openEmailSync: () => set({ emailSyncOpen: true }),
-    closeEmailSync: () => set({ emailSyncOpen: false }),
+    openEmailSync: () => set({ emailSyncOpen: true, emailSyncCode: null }),
+    closeEmailSync: () => set({ emailSyncOpen: false, emailSyncCode: null }),
     emailExport: async (destEmail) => {
       if (get().locked) {
         get().showToast('잠금 상태에서는 내보낼 수 없어요 — 먼저 잠금을 해제하세요')
@@ -1459,9 +1366,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
       try {
         const bundle = await vaultApi.exportBundle()
-        await requestEmailExport(destEmail, bundle)
-        set({ emailSyncOpen: false })
-        get().showToast('확인 메일을 보냈어요 — 메일함에서 링크를 클릭하면 실제 파일이 발송됩니다')
+        const code = await requestEmailExport(destEmail, bundle)
+        // 모달을 닫지 않는다 - 코드를 여기서만 볼 수 있으므로, 닫으면 발송을 끝낼 방법이 없다.
+        set({ emailSyncCode: code })
+        get().showToast('확인 메일을 보냈어요 — 링크를 열고 아래 코드를 입력하면 발송됩니다')
         return true
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
@@ -1495,6 +1403,18 @@ export const useKeylens = create<KeylensState>((set, get) => {
         return true
       } catch (e) {
         // 잘못된 비밀번호(401)·손상/버전(422)은 백엔드 메시지를 그대로 보여준다. 기존 금고는 무손상.
+        //
+        // 여기서 401 은 **두 가지**를 뜻한다(main.py 의 vault_import): 번들 비밀번호 오답,
+        // 그리고 병합 대상인 현재 금고가 잠김. detail 문자열로 가르는 건 깨지기 쉬우므로
+        // 서버에 실제 상태를 다시 물어 동기화한다 - locked 는 추측이 아니라 서버가 정한다.
+        if (e instanceof VaultApiError && e.status === 401) {
+          try {
+            const st = await vaultApi.status()
+            set({ locked: !st.unlocked })
+          } catch {
+            /* 상태 조회까지 실패하면 화면 상태는 건드리지 않는다(추측하지 않는다). */
+          }
+        }
         get().showToast(vaultErrorText(e, '가져오기 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요'))
         return false
       }
@@ -1549,11 +1469,44 @@ export const useKeylens = create<KeylensState>((set, get) => {
         await vaultApi.reset(get().resetVaultPw)
         get().resetProto()
       } catch (e) {
+        // 409(이미 비어 있음)는 위와 같은 이유로 성공처럼 다룬다.
+        if (e instanceof VaultApiError && e.status === 409) {
+          set({ resetVaultOpen: false, resetVaultPw: '' })
+          get().resetProto()
+          return
+        }
         let msg = vaultErrorText(e, '초기화 실패 — 잠시 후 다시 시도하거나 KeyLens를 재시작해 보세요.')
         if (e instanceof VaultApiError && e.status === 401) {
           msg = '마스터 비밀번호가 올바르지 않아요.'
         }
         set({ resettingVault: false, resetVaultErr: msg })
+      }
+    },
+
+    openForgotReset: () => set({ forgotResetOpen: true, forgotResetText: '', forgotResetErr: '' }),
+    closeForgotReset: () => set({ forgotResetOpen: false, forgotResetText: '', forgotResetErr: '' }),
+    setForgotResetText: (v) => set({ forgotResetText: v, forgotResetErr: '' }),
+    confirmForgotReset: async () => {
+      if (get().resettingVault) return
+      set({ resettingVault: true, forgotResetErr: '' })
+      try {
+        await vaultApi.resetForgotten(get().forgotResetText)
+        // resetProto 가 화면을 setup 으로 돌려놓는다 - 초기화 직후 바로 새로 만들 수 있어야 한다.
+        set({ forgotResetOpen: false, forgotResetText: '' })
+        get().resetProto()
+      } catch (e) {
+        // 이미 비어 있는 금고(409)는 실패가 아니다 - 사용자가 원한 상태가 이미 참이다.
+        // 다른 창에서 먼저 초기화했거나 이 화면이 낡았을 때 여기로 온다. 오류를 띄우면
+        // 사용자는 아무것도 잘못하지 않았는데 막힌 것처럼 보인다.
+        if (e instanceof VaultApiError && e.status === 409) {
+          set({ forgotResetOpen: false, forgotResetText: '' })
+          get().resetProto()
+          return
+        }
+        set({
+          resettingVault: false,
+          forgotResetErr: vaultErrorText(e, '초기화 실패 - 잠시 후 다시 시도해 보세요.'),
+        })
       }
     },
 

@@ -271,6 +271,16 @@ class SdkProjectDir(BaseModel):
     created_at: str
 
 
+class SdkDirEntry(BaseModel):
+    """허용 디렉토리 한 건 + 어느 컬렉션 것인지(전체 목록용)."""
+
+    id: int
+    project: str
+    path: str
+    source: Literal["manual", "approved"]
+    created_at: str
+
+
 class SdkAddDirRequest(BaseModel):
     path: str = Field(min_length=1, max_length=4096)
 
@@ -280,6 +290,35 @@ class SdkPendingRequest(BaseModel):
     project: str
     path: str
     requested_at: str
+
+
+# 비밀번호를 잊었을 때의 초기화에서 사용자가 그대로 입력해야 하는 문구.
+# 프론트(LockScreen)도 같은 문자열을 보여준다 - 바꾸면 양쪽을 함께 고쳐야 한다.
+FORGOTTEN_RESET_PHRASE = "모두 삭제"
+
+
+class VaultForgottenReset(BaseModel):
+    """비밀번호 없이 금고를 비운다. 실수 방지는 확인 문구가 맡는다."""
+
+    confirmation: str
+
+
+# ── 데스크톱 셸 전용 기능 ──
+
+
+class DesktopCapabilities(BaseModel):
+    """브라우저에서는 못 하는 일을 프론트가 미리 알 수 있게 한다.
+
+    프론트가 버튼을 그려 놓고 눌렀을 때 실패하는 것보다, 애초에 안 그리는 쪽이 낫다.
+    """
+
+    directory_picker: bool
+
+
+class PickedDirectory(BaseModel):
+    """폴더 선택 결과. 사용자가 취소하면 path 는 None 이다(오류가 아니다)."""
+
+    path: str | None
 
 
 # ── 화면 설명(EXPLAIN, 1단계: 지식베이스 대조 + 로컬 Ollama) ──

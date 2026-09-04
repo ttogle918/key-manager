@@ -4,7 +4,7 @@
  * simple-icons(CC0-1.0 — 저작권은 포기되지만 상표권은 각 브랜드사 소유, THIRD-PARTY-NOTICES.md
  * 참고)에서 KeyLens가 쓰는 6개 서비스 로고만 뽑아 src/assets/logos/ 에 커밋 대상 정적 파일로
  * 복사한다. 런타임 코드는 simple-icons를 import하지 않는다(devDependency 전용) — 결과 SVG
- * 파일 6개(수 KB)만 저장소에 커밋하고, tesseract 모델처럼 매 빌드마다 다시 뽑을 필요는 없다.
+ * 파일 6개(수 KB)만 저장소에 커밋하고, 폰트처럼 매 빌드마다 다시 뽑을 필요는 없다.
  * 새 서비스 로고가 필요해지면 LOGOS에 한 줄 추가 후 수동 실행: npm run vendor:logos
  *
  * OpenAI·Slack·AWS는 simple-icons에 아이콘 자체가 없다(브랜드 요청으로 제거됨 —

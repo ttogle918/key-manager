@@ -42,3 +42,20 @@ def test_retry_after_reported_on_exceeded():
     with pytest.raises(RateLimitExceeded) as exc_info:
         limiter.check("user@example.com")
     assert 45 <= exc_info.value.retry_after <= 50
+
+
+def test_refund_returns_the_most_recent_slot():
+    limiter = RateLimiter(limit=2, window_seconds=3600)
+    limiter.check("a@example.com")
+    limiter.check("a@example.com")
+
+    limiter.refund("a@example.com")
+
+    limiter.check("a@example.com")  # 환불된 자리를 다시 쓸 수 있어야 한다
+    with pytest.raises(RateLimitExceeded):
+        limiter.check("a@example.com")
+
+
+def test_refund_on_an_unseen_key_is_harmless():
+    """없는 키를 환불해도 조용히 넘어간다 - 방어적 호출이 예외를 만들면 안 된다."""
+    RateLimiter(limit=1).refund("never-seen@example.com")

@@ -614,11 +614,11 @@ SPDX-License-Identifier: MIT
     <div class="faq reveal">
       <details class="faq-item">
         <summary>마스터 비밀번호를 잊으면 어떻게 되나요?<span class="plus">+</span></summary>
-        <div class="a">복구할 방법이 없습니다 — 백도어를 두지 않았기 때문입니다. 대신 평소에 암호화 번들을 내보내 두면(아래 "다른 기기로 옮기기") 새 마스터 비밀번호로 다시 만든 금고에 가져와 복구할 수 있습니다.</div>
+        <div class="a">복구할 방법이 없습니다 &mdash; 백도어를 두지 않았기 때문입니다. 대신 평소에 암호화 번들을 내보내 두면(아래 "다른 기기로 옮기기") 새 마스터 비밀번호로 다시 만든 금고에 가져와 복구할 수 있습니다. 백업이 없다면 잠금 화면의 <strong>"비밀번호를 잊으셨나요?"</strong>로 금고를 비우고 처음부터 시작할 수 있습니다(저장된 값은 함께 사라집니다). 이때 비밀번호를 묻지 않는 이유는, 금고 파일이 디스크에 있어 이 기기에 접근할 수 있으면 어차피 지울 수 있기 때문입니다 &mdash; 인증을 요구해도 막아지는 공격이 없고, 잊은 사람만 갇힙니다.</div>
       </details>
       <details class="faq-item">
         <summary>여러 기기에서 쓸 수 있나요?<span class="plus">+</span></summary>
-        <div class="a">서버 없이도 됩니다. 금고 전체를 암호화 번들 파일(<code>.klvault.json</code>)로 내보내 USB·개인 클라우드로 옮기거나, 계정 없이 SMTP로만 자기 자신에게 이메일로 전달(옵트인, 별도 배포)할 수 있습니다. 둘 다 암호문 상태로만 이동합니다.</div>
+        <div class="a">서버 없이도 됩니다. 금고 전체를 암호화 번들 파일(<code>.klvault.json</code>)로 내보내 USB·개인 클라우드로 옮기거나, 계정 없이 SMTP로만 자기 자신에게 이메일로 전달(옵트인, 별도 배포)할 수 있습니다. 둘 다 암호문 상태로만 이동합니다. 이메일 전달은 <strong>링크만으로는 발송되지 않습니다</strong> &mdash; 메일의 링크를 열면 입력 폼만 뜨고, KeyLens 화면에 표시된 6자리 코드를 넣어야 파일이 나갑니다. 주소를 잘못 적었을 때 낯선 사람이 링크만으로 받아가지 못하게 하려는 장치입니다.</div>
       </details>
       <details class="faq-item">
         <summary>왜 브라우저 확장이 아니라 로컬 앱인가요?<span class="plus">+</span></summary>
@@ -679,7 +679,8 @@ keylens_env.load_env()
 os.environ["OPENAI_API_KEY"]</pre>
     <p class="note reveal" style="max-width:66ch">
       프로젝트마다 접근 범위가 나뉩니다. 등록되지 않은 디렉토리가 키를 요청하면 KeyLens 창에 승인 팝업이 뜨고,
-      허용한 프로젝트의 키만 내려갑니다.
+      허용한 프로젝트의 키만 내려갑니다. 허용한 뒤에도 <strong>승인 대기 화면에서 목록을 펼쳐 언제든 철회</strong>할 수
+      있습니다 &mdash; 권한을 주는 자리와 회수하는 자리가 떨어져 있으면 회수는 사실상 일어나지 않으니까요.
     </p>
   </section>
 

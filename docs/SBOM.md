@@ -66,27 +66,27 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 유입 |
 |---|---|---|---|---|---|
-| 7 | anyio | 4.14.1 | MIT | https://github.com/agronholm/anyio | ← starlette |
-| 8 | idna | 3.18 | BSD-3-Clause | https://github.com/kjd/idna | ← anyio |
-| 9 | typing_extensions | 4.16.0 | Python-2.0 (PSF) | https://github.com/python/typing_extensions | ← pydantic/fastapi/anyio |
-| 10 | typing-inspection | 0.4.2 | MIT | https://github.com/pydantic/typing-inspection | ← pydantic/fastapi |
-| 11 | annotated-doc | 0.0.4 | MIT | https://github.com/tiangolo/annotated-doc | ← fastapi |
-| 12 | pydantic-core | 2.27.2 | MIT | https://github.com/pydantic/pydantic-core | ← pydantic |
-| 13 | annotated-types | 0.7.0 | MIT | https://github.com/annotated-types/annotated-types | ← pydantic |
-| 14 | click | 8.4.2 | BSD-3-Clause | https://github.com/pallets/click | ← uvicorn |
-| 15 | h11 | 0.16.0 | MIT | https://github.com/python-hyper/h11 | ← uvicorn |
-| 16 | colorama | 0.4.6 | BSD-3-Clause | https://github.com/tartley/colorama | ← click (Windows) |
-| 17 | cffi | 2.0.0 | MIT | https://github.com/python-cffi/cffi | ← cryptography |
-| 18 | pycparser | 3.0 | BSD-3-Clause | https://github.com/eliben/pycparser | ← cffi |
+| 1 | anyio | 4.14.1 | MIT | https://github.com/agronholm/anyio | ← starlette |
+| 2 | idna | 3.18 | BSD-3-Clause | https://github.com/kjd/idna | ← anyio |
+| 3 | typing_extensions | 4.16.0 | Python-2.0 (PSF) | https://github.com/python/typing_extensions | ← pydantic/fastapi/anyio |
+| 4 | typing-inspection | 0.4.2 | MIT | https://github.com/pydantic/typing-inspection | ← pydantic/fastapi |
+| 5 | annotated-doc | 0.0.4 | MIT | https://github.com/tiangolo/annotated-doc | ← fastapi |
+| 6 | pydantic-core | 2.27.2 | MIT | https://github.com/pydantic/pydantic-core | ← pydantic |
+| 7 | annotated-types | 0.7.0 | MIT | https://github.com/annotated-types/annotated-types | ← pydantic |
+| 8 | click | 8.4.2 | BSD-3-Clause | https://github.com/pallets/click | ← uvicorn |
+| 9 | h11 | 0.16.0 | MIT | https://github.com/python-hyper/h11 | ← uvicorn |
+| 10 | colorama | 0.4.6 | BSD-3-Clause | https://github.com/tartley/colorama | ← click (Windows) |
+| 11 | cffi | 2.0.0 | MIT | https://github.com/python-cffi/cffi | ← cryptography |
+| 12 | pycparser | 3.0 | BSD-3-Clause | https://github.com/eliben/pycparser | ← cffi |
 
 ### 1-3. 테스트 전용 (`backend/requirements-dev.txt`, 배포물 아님)
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 사용 목적 |
 |---|---|---|---|---|---|
-| 19 | pytest | 9.0.3 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
-| 20 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging | ← pytest |
-| 21 | iniconfig | 2.3.0 | MIT | https://github.com/pytest-dev/iniconfig | ← pytest |
-| 22 | pluggy | 1.6.0 | MIT | https://github.com/pytest-dev/pluggy | ← pytest |
+| 1 | pytest | 9.0.3 | MIT | https://github.com/pytest-dev/pytest | 테스트 러너 |
+| 2 | packaging | 26.2 | Apache-2.0 OR BSD-2-Clause | https://github.com/pypa/packaging | ← pytest |
+| 3 | iniconfig | 2.3.0 | MIT | https://github.com/pytest-dev/iniconfig | ← pytest |
+| 4 | pluggy | 1.6.0 | MIT | https://github.com/pytest-dev/pluggy | ← pytest |
 
 ---
 
@@ -99,32 +99,22 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 | 1 | react | 19.2.7 | MIT | https://github.com/facebook/react | UI 프레임워크 |
 | 2 | react-dom | 19.2.7 | MIT | https://github.com/facebook/react | DOM 렌더러 |
 | 3 | zustand | 5.0.14 | MIT | https://github.com/pmndrs/zustand | 상태 관리 |
-| 4 | tesseract.js | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js | ⚠️ **레거시** — CORE-3에서 백엔드 RapidOCR로 대체, 현재 분석 흐름에서 미호출(재구성 로직 유닛테스트만 참조) |
-| 5 | @radix-ui/react-dialog | 1.1.18 | MIT | https://github.com/radix-ui/primitives | 접근성 다이얼로그 |
-| 6 | @radix-ui/react-select | 2.3.2 | MIT | https://github.com/radix-ui/primitives | 접근성 셀렉트 |
-| 7 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx | 클래스 병합 |
-| 8 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge | Tailwind 클래스 충돌 해소 |
-| 9 | @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui | 분석 결과 요약 DataGrid UI(`frontend/src/mui/theme.ts`) |
-| 10 | @mui/x-data-grid | 9.12.0 | MIT(Community 등급) | https://github.com/mui/mui-x | 결과 목록 표(`ResultsGrid.tsx`) — ⚠️ Pro/Premium 유료 등급 미사용, Community만 사용 |
-| 11 | @emotion/react | 11.14.0 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
-| 12 | @emotion/styled | 11.14.1 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
-| 13 | @dnd-kit/core | 6.3.1 | MIT | https://github.com/clauderic/dnd-kit | 보관함 항목 press-and-hold(2초) 드래그로 서비스 그룹 이동 |
+| 4 | @radix-ui/react-dialog | 1.1.18 | MIT | https://github.com/radix-ui/primitives | 접근성 다이얼로그 |
+| 5 | clsx | 2.1.1 | MIT | https://github.com/lukeed/clsx | 클래스 병합 |
+| 6 | tailwind-merge | 3.6.0 | MIT | https://github.com/dcastil/tailwind-merge | Tailwind 클래스 충돌 해소 |
+| 7 | @mui/material | 9.3.1 | MIT | https://github.com/mui/material-ui | 분석 결과 요약 DataGrid UI(`frontend/src/mui/theme.ts`) |
+| 8 | @mui/x-data-grid | 9.12.0 | MIT(Community 등급) | https://github.com/mui/mui-x | 결과 목록 표(`ResultsGrid.tsx`) — ⚠️ Pro/Premium 유료 등급 미사용, Community만 사용 |
+| 9 | @emotion/react | 11.14.0 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
+| 10 | @emotion/styled | 11.14.1 | MIT | https://github.com/emotion-js/emotion | MUI 스타일링 엔진(전이 의존성) |
+| 11 | @dnd-kit/core | 6.3.1 | MIT | https://github.com/clauderic/dnd-kit | 보관함 항목 press-and-hold(2초) 드래그로 서비스 그룹 이동 |
 
 ### 2-2. 주요 전이 의존성 (런타임)
 
 | # | 라이브러리명 | 버전 | 라이선스 | 공식 저장소 URL | 유입 |
 |---|---|---|---|---|---|
-| 10 | tesseract.js-core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | ← tesseract.js |
-| 11 | idb-keyval | 6.2.6 | Apache-2.0 | https://github.com/jakearchibald/idb-keyval | ← tesseract.js |
-| 12 | wasm-feature-detect | 1.8.0 | Apache-2.0 | https://github.com/GoogleChromeLabs/wasm-feature-detect | ← tesseract.js |
-| 13 | node-fetch | 2.7.0 | MIT | https://github.com/bitinn/node-fetch | ← tesseract.js |
-| 14 | bmp-js | 0.1.0 | MIT | https://github.com/shaozilee/bmp-js | ← tesseract.js |
-| 15 | is-url | 1.2.4 | MIT | https://github.com/segmentio/is-url | ← tesseract.js |
-| 16 | zlibjs | 0.3.1 | MIT | https://github.com/imaya/zlib.js | ← tesseract.js |
-| 17 | webidl-conversions | 3.0.1 | BSD-2-Clause | https://github.com/jsdom/webidl-conversions | ← tesseract.js |
-| 18 | tslib | 2.8.1 | 0BSD | https://github.com/microsoft/tslib | ← radix-ui, @dnd-kit |
-| 19 | @dnd-kit/accessibility | 3.1.1 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
-| 20 | @dnd-kit/utilities | 3.2.2 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
+| 1 | tslib | 2.8.1 | 0BSD | https://github.com/microsoft/tslib | ← radix-ui, @dnd-kit |
+| 2 | @dnd-kit/accessibility | 3.1.1 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
+| 3 | @dnd-kit/utilities | 3.2.2 | MIT | https://github.com/clauderic/dnd-kit | ← @dnd-kit/core |
 
 > 프론트 production 트리 전체(148종, 2026-09-03 `license-checker --production` 실측)는 MIT 137 ·
 > Apache-2.0 4 · BSD-3 3 · ISC 2 · 0BSD 1 · BSD-2 1 로만 구성(카피레프트 0). 위 표는 대표 항목이며
@@ -137,8 +127,6 @@ CLAUDE.md 규칙에 따라 별도 기록. 둘 다 **수정 없이 그대로 사�
 | 자산 | 버전 | 라이선스 | 출처 | 사용 목적 |
 |---|---|---|---|---|
 | PP-OCRv5 한국어 인식 모델(가중치) | v3.9.2 릴리스 | Apache-2.0 | https://www.modelscope.cn/models/RapidAI/RapidOCR | 백엔드 OCR(RapidOCR) 한국어 인식 — 현재 활성 경로, `backend/scripts/vendor_ocr_models.py`가 해시 검증 후 로컬 벤더링(커밋 제외) |
-| Tesseract 학습 데이터 (eng·kor `.traineddata`) | tessdata_fast | Apache-2.0 | https://github.com/tesseract-ocr/tessdata_fast | ⚠️ 레거시(브라우저 OCR, 현재 미사용 경로) — 로컬 벤더링 |
-| tesseract.js WASM core | 7.0.0 | Apache-2.0 | https://github.com/naptha/tesseract.js-core | ⚠️ 레거시(브라우저 OCR, 현재 미사용 경로) |
 | Pretendard (Variable) | 1.3.9 | OFL-1.1 | https://github.com/orioncactus/pretendard | 본문 폰트(로컬 벤더링) |
 | JetBrains Mono | 2.304 | OFL-1.1 | https://github.com/JetBrains/JetBrainsMono | 값·키 모노 폰트(로컬 벤더링) |
 | simple-icons | 16.28.0 | CC0-1.0 | https://github.com/simple-icons/simple-icons | 서비스 로고 SVG 6종(Notion·Kakao·GCP·Ollama·GitHub·Stripe) — devDependency, `frontend/scripts/vendor-logos.mjs`가 수정 없이 `frontend/src/assets/logos/*.svg`로 로컬 벤더링해 빌드 산출물에 포함(npm 패키지 `simple-icons` 자체는 런타임에 import하지 않음 — 벤더링된 SVG 파일만 로드) |

@@ -11,6 +11,7 @@ export function LockScreen() {
   const unlocking = useKeylens((s) => s.unlocking)
   const setLockPw = useKeylens((s) => s.setLockPw)
   const submitUnlock = useKeylens((s) => s.submitUnlock)
+  const openForgotReset = useKeylens((s) => s.openForgotReset)
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter') submitUnlock()
@@ -70,7 +71,16 @@ export function LockScreen() {
         >
           {unlocking ? '여는 중…' : '잠금 해제'}
         </button>
-        <div className="mt-4 text-[11px] text-dim-3">서버 전송 없음 · 마스터 비밀번호로 로컬 인증(틀리면 복호화 거부)</div>
+        {/* 비밀번호를 잊으면 앱 안에 나갈 길이 있어야 한다. 없으면 사용자는 vault.db 를
+            직접 찾아 지워야 한다는 걸 스스로 알아내야 하고, 대부분은 못 한다. */}
+        <button
+          type="button"
+          onClick={openForgotReset}
+          className="mt-[14px] cursor-pointer border-none bg-none text-[11.5px] text-dim-3 underline underline-offset-2 hover:text-muted"
+        >
+          비밀번호를 잊으셨나요?
+        </button>
+        <div className="mt-3 text-[11px] text-dim-3">서버 전송 없음 · 마스터 비밀번호로 로컬 인증(틀리면 복호화 거부)</div>
       </div>
     </div>
   )

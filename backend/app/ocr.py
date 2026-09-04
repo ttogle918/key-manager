@@ -24,7 +24,8 @@ logging.getLogger("RapidOCR").setLevel(logging.WARNING)
 _KOREAN_REC_MODEL = Path(__file__).resolve().parent / "ocr_models" / "korean_PP-OCRv5_rec_mobile.onnx"
 
 # 콘솔 UI 잡음(복사/표시 버튼 등) — 라벨·값이 아니므로 재구성 텍스트에서 제외한다.
-# frontend/src/ocr/reconstruct.ts 의 NOISE_WORDS 와 동일 기준(엔진만 다름).
+# 기준: 값도 라벨도 아닌 조작 버튼 텍스트. 원래 브라우저 OCR(tesseract.js) 경로에서 쓰던
+# 목록을 그대로 옮겨왔고, 그 경로는 2026-09-04 에 제거됐다(dist 44MB 감축).
 _NOISE_LINES = {
     "copy", "copied", "복사", "복사됨", "show", "hide", "표시", "숨기기",
     "reveal", "regenerate", "재발급", "refresh", "reset", "edit", "delete", "삭제",
@@ -46,7 +47,7 @@ def _get_engine() -> RapidOCR:
         if _engine is None:
             if not _KOREAN_REC_MODEL.exists():
                 raise OcrUnavailableError(
-                    "OCR 모델이 없습니다 — "
+                    "OCR 모델이 없습니다 - "
                     "`python backend/scripts/vendor_ocr_models.py` 를 먼저 실행하세요."
                 )
             _engine = RapidOCR(

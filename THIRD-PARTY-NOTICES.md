@@ -9,29 +9,14 @@ SPDX-License-Identifier: MIT
 `backend/app/ocr.py`(CORE-3 백엔드 OCR) 경로에 한해 **약한 카피레프트(LGPL/MPL) 3건**을 의도적으로
 포함합니다 — 아래 "스크린샷 OCR(backend)" 절에 왜 안전한지 근거를 명시합니다.
 
-## 브라우저 OCR (frontend, CORE-3)
+## 브라우저 OCR (frontend, CORE-3) - 제거됨
 
-### tesseract.js
-- 버전: 7.0.0
-- 라이선스: Apache-2.0
-- 출처: https://github.com/naptha/tesseract.js
-- 비고: 런타임 전이 의존성 전부 permissive — tesseract.js-core·idb-keyval·wasm-feature-detect(Apache-2.0);
-  bmp-js·is-url·node-fetch·opencollective-postinstall·regenerator-runtime·whatwg-url·tr46·zlibjs(MIT);
-  webidl-conversions(BSD-2-Clause).
+초기 구현은 브라우저에서 `tesseract.js`(Apache-2.0)로 OCR 했다. 한글 단일 글자 라벨 오독 때문에
+아래 백엔드 RapidOCR 경로로 교체했고, 남아 있던 코드와 벤더 자산은 **2026-09-04 에 제거**했다.
+`tesseract.js` 와 그 전이 의존성 8건은 더 이상 이 프로젝트의 의존성이 아니다.
 
-### tesseract.js-core (WASM 엔진)
-- 버전: 7.0.0
-- 라이선스: Apache-2.0
-- 출처: https://github.com/naptha/tesseract.js-core
-
-### Tesseract 학습 데이터 (traineddata)
-- 파일: eng.traineddata, kor.traineddata
-- 라이선스: Apache-2.0
-- 출처: https://github.com/tesseract-ocr/tessdata_fast
-  (고정밀이 필요하면 https://github.com/tesseract-ocr/tessdata_best, 동일 Apache-2.0)
-- 비고: 재현성을 위해 위 저장소의 파일을 `frontend/scripts/vendor-tesseract.mjs`가
-  `frontend/public/tessdata/`에 로컬 번들한다. 런타임 CDN 다운로드는 사용하지 않는다.
-  (core WASM·worker 역시 node_modules에서 `frontend/public/tesseract/`로 로컬 복사.)
+> 제거 근거와 영향(빌드 산출물 50MB → 3.5MB)은
+> `docs/memo/2026-09-04-codebase-refactoring-review.md` 참고.
 
 ## 스크린샷 OCR (backend, CORE-3 — 한국어 라벨 인식 정확도 개선)
 

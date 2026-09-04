@@ -17,7 +17,7 @@ import { InputScreen } from '@/components/screens/InputScreen'
 import { VaultScreen } from '@/components/screens/VaultScreen'
 import { PendingScreen } from '@/components/screens/PendingScreen'
 import { ProjectAccessScreen } from '@/components/screens/ProjectAccessScreen'
-import { DeleteModal, DupModal, EmailSyncModal, EnvModal, ResetVaultModal, RotateModal, SyncModal } from '@/components/modals/Modals'
+import { DeleteModal, DupModal, EmailSyncModal, EnvModal, ForgotResetModal, ResetVaultModal, RotateModal, SyncModal } from '@/components/modals/Modals'
 import { ExplainModal } from '@/components/modals/ExplainModal'
 import { EnvImportModal } from '@/components/modals/EnvImportModal'
 import { Toast } from '@/components/ui/Toast'
@@ -100,6 +100,7 @@ export default function App() {
       <EmailSyncModal />
       <ExplainModal />
       <ResetVaultModal />
+      <ForgotResetModal />
       <Toast />
     </>
   )

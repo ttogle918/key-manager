@@ -179,6 +179,11 @@ export interface SdkDir {
   createdAt: string
 }
 
+/** 허용 디렉토리 한 건 + 어느 컬렉션 것인지(전체 목록용, RUNTIME-1). */
+export interface SdkDirEntry extends SdkDir {
+  project: string
+}
+
 /** `.env` 가져오기 표의 한 줄. 저장 전 상태라 값이 평문으로 들어 있다. */
 export interface EnvImportRow {
   id: string
