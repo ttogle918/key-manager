@@ -169,3 +169,13 @@ def test_deny_and_remove_still_work_while_locked(vault):
     main.vault_lock()
     assert main.sdk_remove_dir("블로그", dir_id) == {"removed": True}
     assert main.sdk_deny_pending(pending_id) == {"denied": True}
+
+
+def test_sdk_pending_before_vault_exists_returns_empty(tmp_path, monkeypatch):
+    """금고 생성 전 /sdk/pending 은 빈 목록(200) - 예전엔 여기서 500 이 났다.
+
+    vault 픽스처를 쓰지 않는다: 이 테스트의 요점이 "금고가 아직 없는 상태"다.
+    """
+    monkeypatch.setattr(main, "VAULT", VaultService(str(tmp_path / "vault.db")))
+    assert main.sdk_list_pending() == []
+    assert main.sdk_list_projects() == []

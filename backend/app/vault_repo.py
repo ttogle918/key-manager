@@ -124,17 +124,21 @@ def connect(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    # 이미 초기화된 금고(= meta 테이블 존재)라면, 이후 버전에서 _SCHEMA 에 추가된
-    # 새 테이블(CREATE TABLE IF NOT EXISTS)을 이 연결 시점에 채워 넣는다 — 마이그레이션.
-    # 초기화되지 않은 빈 파일에는 실행하지 않는다: init_vault() 의
-    # is_initialized() 판단(= "아직 초기화 안 됨")을 건드리면 안 되기 때문.
-    if is_initialized(conn):
-        conn.executescript(_SCHEMA)
-        # CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양을 바꾸지 않는다 —
-        # path_norm 없는 구버전 sdk_project_dirs/sdk_pending_requests(5컬럼)를 위한
-        # 컬럼 레벨 보강 마이그레이션(3차 리뷰 반영).
-        _ensure_path_norm_column(conn, "sdk_project_dirs")
-        _ensure_path_norm_column(conn, "sdk_pending_requests")
+    # 이후 버전에서 _SCHEMA 에 추가된 새 테이블(CREATE TABLE IF NOT EXISTS)을 이 연결
+    # 시점에 채워 넣는다 — 마이그레이션. **초기화 여부와 무관하게** 실행한다.
+    #
+    # 예전에는 여기를 is_initialized() 로 감쌌는데, 그러면 금고를 만들기 전에는 SDK 테이블이
+    # 없어서 /sdk/pending·/sdk/dirs 가 "no such table"(HTTP 500)로 죽었다. 감쌀 이유도
+    # 없었다 — is_initialized() 는 meta 테이블이 아니라 meta 의 행(id=1)을 보므로 빈
+    # 테이블을 만들어도 "아직 초기화 안 됨" 판단은 그대로고, init_vault() 의 executescript
+    # 도 멱등이다. 조건을 없애면 reset_vault() 직후(테이블만 남고 행은 빈 상태)와 한 번도
+    # 초기화된 적 없는 db 가 같은 모양이 된다 — unlock() docstring 이 요구하는 그 통일이다.
+    conn.executescript(_SCHEMA)
+    # CREATE TABLE IF NOT EXISTS는 테이블이 이미 있으면 컬럼 모양을 바꾸지 않는다 —
+    # path_norm 없는 구버전 sdk_project_dirs/sdk_pending_requests(5컬럼)를 위한
+    # 컬럼 레벨 보강 마이그레이션(3차 리뷰 반영).
+    _ensure_path_norm_column(conn, "sdk_project_dirs")
+    _ensure_path_norm_column(conn, "sdk_pending_requests")
     return conn
 
 
