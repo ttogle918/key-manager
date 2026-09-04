@@ -411,6 +411,7 @@ export function EmailSyncModal() {
   const open = useKeylens((s) => s.emailSyncOpen)
   const close = useKeylens((s) => s.closeEmailSync)
   const emailExport = useKeylens((s) => s.emailExport)
+  const code = useKeylens((s) => s.emailSyncCode)
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -435,7 +436,9 @@ export function EmailSyncModal() {
       <p className="mt-2 text-[12.5px] leading-[1.6] text-muted">
         금고 번들을 입력한 이메일로 보내드려요. 먼저{' '}
         <span className="font-mono text-fg-soft">확인 링크</span>가 담긴 메일이 가고, 그 링크를
-        눌러야 실제 파일이 담긴 메일이 한 번 더 발송됩니다. 비밀 값은 암호화되어 있지만,
+        연 뒤 <span className="font-mono text-fg-soft">확인 코드</span>를 넣어야 실제 파일이 담긴
+        메일이 발송됩니다. 코드는 메일이 아니라 이 화면에만 표시돼요 — 주소를 잘못 적었을 때
+        낯선 사람이 링크만으로 받아가지 못하게 하려는 장치입니다. 비밀 값은 암호화되어 있지만,
         서비스명·라벨·컬렉션명·메모 같은 메타데이터는 평문으로 포함되어 이 메일을 중계하는
         매니저와 메일 제공자가 볼 수 있어요.
       </p>
@@ -450,13 +453,22 @@ export function EmailSyncModal() {
         autoFocus
         className="mt-[14px] w-full rounded-lg border border-border bg-surface px-3 py-[10px] text-[12.5px] text-fg outline-none focus:border-[rgba(62,207,142,.55)]"
       />
+      {code && (
+        <div className="mt-[14px] rounded-xl border border-[rgba(62,207,142,.35)] bg-[rgba(62,207,142,.07)] px-4 py-[14px] text-center">
+          <div className="text-[11.5px] text-muted">확인 페이지에 입력할 코드</div>
+          <div className="mt-1 font-mono text-[30px] font-bold tracking-[.28em] text-fg">{code}</div>
+          <div className="mt-1 text-[11px] text-dim-3">
+            이 창을 닫으면 코드를 다시 볼 수 없어요 — 발송이 끝날 때까지 열어 두세요.
+          </div>
+        </div>
+      )}
       <div className="mt-[18px] flex justify-end gap-2">
         <button
           type="button"
           onClick={close}
           className="cursor-pointer rounded-lg border border-border bg-none px-[14px] py-2 text-[12.5px] font-semibold text-muted hover:border-border-strong hover:text-fg-soft"
         >
-          취소
+          {code ? '닫기' : '취소'}
         </button>
         <button
           type="button"
@@ -469,7 +481,7 @@ export function EmailSyncModal() {
             cursor: canRun ? 'pointer' : 'not-allowed',
           }}
         >
-          {busy ? '요청 중…' : '확인 메일 보내기'}
+          {busy ? '요청 중…' : code ? '다시 보내기' : '확인 메일 보내기'}
         </button>
       </div>
     </Modal>

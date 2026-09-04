@@ -11,8 +11,10 @@ docs/superpowers/specs/2026-08-26-sync2-email-relay-design.md).
 """
 from __future__ import annotations
 
+import html
 import json
 import os
+import urllib.parse
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -94,7 +96,7 @@ def sync_request(body: SyncRequestBody, client_ip: str = Depends(_client_ip)) ->
             status_code=429, detail=str(e), headers={"Retry-After": str(int(e.retry_after))}
         ) from e
 
-    token = STORE.issue(body.destination_email, body.bundle)
+    token, code = STORE.issue(body.destination_email, body.bundle)
     confirm_url = f"{PUBLIC_BASE_URL}/sync/confirm?token={token}"
     try:
         send_confirm_email(SMTP, body.destination_email, confirm_url)
@@ -103,40 +105,115 @@ def sync_request(body: SyncRequestBody, client_ip: str = Depends(_client_ip)) ->
         raise HTTPException(
             status_code=502, detail="확인 메일 발송에 실패했어요 — 잠시 후 다시 시도하세요"
         ) from e
-    return {"requested": True}
+    # 코드는 **메일에 넣지 않는다**. 메일함을 가진 사람이 아니라 요청을 시작한 사람만
+    # 발송을 끝낼 수 있어야 하므로, 요청한 앱에만 돌려주고 앱이 자기 화면에 띄운다.
+    # (수신 주소를 오타 냈을 때 낯선 사람이 링크를 눌러 번들을 받아가는 걸 막는 장치다.)
+    return {"requested": True, "code": code}
+
+
+_PAGE_STYLE = (
+    "font-family:system-ui,-apple-system,'Segoe UI',sans-serif;max-width:520px;"
+    "margin:56px auto;padding:0 20px;line-height:1.6;color:#1a1a1a"
+)
+
+
+def _page(title: str, body: str, status: int = 200) -> HTMLResponse:
+    """이 화면들은 비개발자가 메일 링크로 브라우저에서 직접 본다 - JSON 이 아니라 안내문이어야 한다."""
+    return HTMLResponse(
+        status_code=status,
+        content=(
+            f'<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+            f'<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f"<title>{title}</title></head>"
+            f'<body style="{_PAGE_STYLE}"><h1>{title}</h1>{body}</body></html>'
+        ),
+    )
+
+
+def _expired_page() -> HTMLResponse:
+    return _page(
+        "요청이 만료됐어요",
+        "<p>요청이 만료되었거나 이미 처리됐어요 - KeyLens에서 다시 내보내기를 시도하세요.</p>",
+        status=410,
+    )
+
+
+def _code_form(token: str, error: str = "") -> HTMLResponse:
+    note = f'<p style="color:#b3261e"><strong>{error}</strong></p>' if error else ""
+    return _page(
+        "확인 코드를 입력하세요",
+        (
+            "<p>KeyLens 앱 화면에 표시된 <strong>6자리 확인 코드</strong>를 입력하면 "
+            "금고 파일을 보내드립니다.</p>"
+            f"{note}"
+            '<form method="post" action="/sync/confirm">'
+            f'<input type="hidden" name="token" value="{html.escape(token)}">'
+            '<input name="code" inputmode="numeric" autocomplete="one-time-code" '
+            'pattern="[0-9]*" maxlength="6" required autofocus '
+            'style="font-size:24px;letter-spacing:.3em;padding:10px 14px;width:200px">'
+            '<button type="submit" style="font-size:16px;padding:11px 18px;margin-left:8px">'
+            "보내기</button>"
+            "</form>"
+        ),
+    )
 
 
 @app.get("/sync/confirm", response_class=HTMLResponse)
-def sync_confirm(token: str) -> HTMLResponse:
-    # 이 엔드포인트는 비개발자가 이메일의 링크를 눌러 브라우저로 직접 방문한다 — 실패 시에도
-    # raw JSON({"detail": ...})이 아니라 사람이 읽을 안내 HTML을 보여줘야 한다.
+def sync_confirm_form(token: str) -> HTMLResponse:
+    """확인 코드 입력 폼만 보여준다 - **부작용이 없다.**
+
+    예전에는 이 GET 이 곧바로 번들을 발송하고 토큰을 소진했다. 그런데 Gmail·Outlook ATP 같은
+    메일 보안 스캐너는 메일 속 링크를 사용자 대신 미리 열어본다. 그러면 사용자가 누르지도
+    않았는데 발송이 일어나고, 정작 눌렀을 때는 "만료됐다"는 화면을 보게 된다. 실제 발송은
+    아래 POST 로 옮겼다 - 프리페치는 폼을 제출하지 않는다.
+    """
+    if STORE.peek(token) is None:
+        return _expired_page()
+    return _code_form(token)
+
+
+@app.post("/sync/confirm", response_class=HTMLResponse)
+async def sync_confirm_submit(request: Request) -> HTMLResponse:
+    """코드가 맞으면 번들을 발송한다.
+
+    폼 파싱을 직접 한다(fastapi 의 Form 이나 starlette 의 request.form 대신): 그 둘은
+    python-multipart 를 요구하는데, HTML 폼의 기본 인코딩인 urlencoded 하나 읽자고
+    런타임 의존성을 늘릴 이유가 없다(이 프로젝트는 certifi 때문에 httpx 도 뺐다).
+    """
+    fields = urllib.parse.parse_qs((await request.body()).decode("utf-8", errors="replace"))
+    token = (fields.get("token") or [""])[0]
+    code = (fields.get("code") or [""])[0].strip()
+
     entry = STORE.peek(token)
     if entry is None:
-        return HTMLResponse(
-            status_code=410,
-            content=(
-                "<html><body><h1>요청이 만료됐어요</h1>"
-                "<p>요청이 만료되었거나 이미 처리됐어요 — KeyLens에서 다시 내보내기를 시도하세요.</p>"
-                "</body></html>"
-            ),
+        return _expired_page()
+
+    ok, attempts_left = STORE.verify_code(token, code)
+    if not ok:
+        if attempts_left <= 0:
+            return _page(
+                "확인에 실패했어요",
+                "<p>코드를 여러 번 잘못 입력해 이 요청을 취소했어요 - "
+                "KeyLens에서 다시 내보내기를 시도하세요.</p>",
+                status=410,
+            )
+        return _code_form(
+            token, f"코드가 맞지 않아요 - {attempts_left}번 더 시도할 수 있어요."
         )
+
     try:
         send_bundle_email(SMTP, entry.destination_email, json.dumps(entry.bundle))
     except MailSendError:
-        return HTMLResponse(
-            status_code=502,
-            content=(
-                "<html><body><h1>발송에 실패했어요</h1>"
-                "<p>파일 발송에 실패했어요 — 이 링크를 다시 눌러 재시도하세요.</p>"
-                "</body></html>"
-            ),
+        # 토큰을 소진하지 않는다 - 발송만 실패한 것이라 같은 코드로 재시도할 수 있어야 한다.
+        return _page(
+            "발송에 실패했어요",
+            "<p>파일 발송에 실패했어요 - 잠시 후 코드를 다시 입력해 주세요.</p>",
+            status=502,
         )
     STORE.consume(token)
-    return HTMLResponse(
-        content=(
-            "<html><body><h1>발송 완료</h1>"
-            "<p>요청하신 파일을 이메일로 보냈습니다. 이메일함을 확인하세요.</p></body></html>"
-        )
+    return _page(
+        "발송 완료",
+        "<p>요청하신 파일을 이메일로 보냈습니다. 이메일함을 확인하세요.</p>",
     )
 
 

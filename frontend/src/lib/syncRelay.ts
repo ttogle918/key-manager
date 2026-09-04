@@ -14,7 +14,14 @@ export const syncRelayConfigured = Boolean(RELAY_URL)
 
 export class SyncRelayError extends Error {}
 
-/** POST /sync/request — 확인 메일 발송을 요청한다(실제 첨부는 사용자가 그 메일의 링크를 눌러야 감). */
+/**
+ * POST /sync/request - 확인 메일 발송을 요청하고 **확인 코드**를 돌려받는다.
+ *
+ * 코드는 메일에 들어 있지 않다. 앱 화면에만 뜨고, 사용자가 확인 페이지에 그걸 입력해야
+ * 실제 파일이 발송된다. 메일함을 가진 사람이 아니라 요청을 시작한 사람만 발송을 끝낼 수
+ * 있게 하려는 것이다 - 수신 주소를 오타 냈을 때 낯선 사람이 링크만으로 번들을 받아가는
+ * 걸 막는다(메일 보안 스캐너의 링크 자동 열람도 같은 이유로 막힌다).
+ */
 export async function requestEmailExport(
   destinationEmail: string,
   bundle: unknown,
@@ -23,7 +30,7 @@ export async function requestEmailExport(
   // 클라이언트 타임아웃을 그보다 넉넉히 길게 잡아 실제로는 성공한 발송을 스푸리어스
   // "응답이 너무 늦어요" 에러로 오탐하지 않게 한다.
   timeoutMs = 20000,
-): Promise<void> {
+): Promise<string> {
   if (!RELAY_URL) throw new SyncRelayError('이메일 동기화가 설정되지 않았어요')
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
@@ -40,6 +47,13 @@ export async function requestEmailExport(
       }
       throw new SyncRelayError(`문제가 발생했어요 (오류 ${res.status}) — 잠시 후 다시 시도해 보세요.`)
     }
+    const body = (await res.json()) as { code?: unknown }
+    if (typeof body.code !== 'string' || !/^[0-9]{6}$/.test(body.code)) {
+      // 코드 없이 진행하면 사용자가 확인 페이지에서 넣을 게 없어 발송이 영영 끝나지 않는다.
+      // 구버전 릴레이에 붙었을 때 조용히 반쪽으로 도는 것보다 여기서 멈추는 게 낫다.
+      throw new SyncRelayError('릴레이 서버가 확인 코드를 주지 않았어요 — 서버를 최신으로 올려주세요.')
+    }
+    return body.code
   } catch (e) {
     if (e instanceof SyncRelayError) throw e
     if (e instanceof DOMException && e.name === 'AbortError') {

@@ -1,6 +1,9 @@
 # SPDX-FileCopyrightText: 2026 [Your Name]
 # SPDX-License-Identifier: MIT
 """엔드포인트 상태코드/부수효과 테스트. httpx(certifi/MPL) 회피 — 라우트 함수 직접 호출."""
+import asyncio
+import urllib.parse
+
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
@@ -9,7 +12,7 @@ from app import main
 from app.mailer import MailSendError
 from app.models import SyncRequestBody
 from app.rate_limit import RateLimiter
-from app.token_store import TokenStore
+from app.token_store import MAX_CODE_ATTEMPTS, TokenStore
 
 # backend/app/vault_repo.py 의 실제 BUNDLE_FORMAT("keylens-vault")과 일치해야 SyncRequestBody
 # 의 형식 검증(Fix 6)을 통과한다.
@@ -35,15 +38,47 @@ def relay(monkeypatch):
     return sent
 
 
-def test_sync_request_issues_token_and_sends_confirm_email(relay):
+def _token_from(relay) -> str:
+    _, confirm_url = relay["confirm"][-1]
+    return confirm_url.split("token=")[1]
+
+
+class _FakeRequest:
+    """urlencoded 폼 본문만 돌려주는 최소 요청 - httpx(certifi/MPL) 없이 POST 라우트를 부른다."""
+
+    def __init__(self, fields: dict):
+        self._raw = urllib.parse.urlencode(fields).encode("utf-8")
+
+    async def body(self) -> bytes:
+        return self._raw
+
+
+def _post_confirm(token: str, code: str):
+    return asyncio.run(main.sync_confirm_submit(_FakeRequest({"token": token, "code": code})))
+
+
+def _text(response) -> str:
+    return response.body.decode() if isinstance(response.body, bytes) else response.body
+
+
+def test_sync_request_returns_a_code_and_never_mails_it(relay):
+    """코드는 요청한 앱에만 간다.
+
+    메일에 넣으면 이 장치의 의미가 사라진다 - 수신 주소를 오타 냈을 때 낯선 사람이
+    링크와 코드를 한꺼번에 받아 번들을 받아갈 수 있다.
+    """
     result = main.sync_request(
         SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
     )
-    assert result == {"requested": True}
-    assert len(relay["confirm"]) == 1
+
+    assert result["requested"] is True
+    code = result["code"]
+    assert len(code) == 6 and code.isdigit()
+
     dest, confirm_url = relay["confirm"][0]
     assert dest == "dest@example.com"
     assert "/sync/confirm?token=" in confirm_url
+    assert code not in confirm_url
 
 
 def test_sync_request_rate_limited_by_email(relay):
@@ -70,55 +105,101 @@ def test_sync_request_confirm_email_failure_raises_502(relay, monkeypatch):
     assert exc_info.value.status_code == 502
 
 
-def test_sync_confirm_valid_token_sends_bundle_and_consumes(relay):
+def test_confirm_link_alone_sends_nothing(relay):
+    """GET 은 폼만 보여주고 **아무것도 발송하지 않는다.**
+
+    회귀 방지: 예전에는 이 GET 이 곧바로 발송하고 토큰을 소진했다. Gmail·Outlook ATP 같은
+    메일 보안 스캐너가 링크를 미리 열어보면 사용자가 누르지도 않았는데 발송이 일어나고,
+    정작 사용자가 누르면 "만료됐다"는 화면을 보게 된다.
+    """
     main.sync_request(
         SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
     )
-    _, confirm_url = relay["confirm"][0]
-    token = confirm_url.split("token=")[1]
+    token = _token_from(relay)
 
-    response = main.sync_confirm(token)
+    response = main.sync_confirm_form(token)
+
     assert response.status_code == 200
-    body = response.body.decode() if isinstance(response.body, bytes) else response.body
-    assert "발송" in body
+    assert "코드" in _text(response)
+    assert relay["bundle"] == [], "링크를 여는 것만으로 발송되면 안 된다"
+    # 폼을 봤다고 토큰이 소진되지도 않아야 한다.
+    assert main.STORE.peek(token) is not None
+
+
+def test_right_code_sends_the_bundle_and_consumes_the_token(relay):
+    result = main.sync_request(
+        SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
+    )
+    token = _token_from(relay)
+
+    response = _post_confirm(token, result["code"])
+
+    assert response.status_code == 200
+    assert "발송" in _text(response)
     assert len(relay["bundle"]) == 1
     dest, bundle_json = relay["bundle"][0]
     assert dest == "dest@example.com"
-    assert '"format": "keylens-vault"' in bundle_json or '"format":"keylens-vault"' in bundle_json
+    assert "keylens-vault" in bundle_json
 
-    # 1회용 소진 — 같은 토큰 재사용은 410(안내 HTML)
-    retry = main.sync_confirm(token)
-    assert retry.status_code == 410
-    retry_body = retry.body.decode() if isinstance(retry.body, bytes) else retry.body
-    assert "만료" in retry_body
+    # 1회용 - 같은 토큰 재사용은 410
+    assert _post_confirm(token, result["code"]).status_code == 410
 
 
-def test_sync_confirm_unknown_token_returns_410_html(relay):
-    response = main.sync_confirm("nonexistent-token")
-    assert response.status_code == 410
-    body = response.body.decode() if isinstance(response.body, bytes) else response.body
-    assert "만료" in body
-
-
-def test_sync_confirm_bundle_send_failure_keeps_token_for_retry(relay, monkeypatch):
-    main.sync_request(
+def test_wrong_code_sends_nothing_and_counts_down(relay):
+    result = main.sync_request(
         SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
     )
-    _, confirm_url = relay["confirm"][0]
-    token = confirm_url.split("token=")[1]
+    token = _token_from(relay)
+    wrong = "000000" if result["code"] != "000000" else "111111"
+
+    response = _post_confirm(token, wrong)
+
+    assert response.status_code == 200
+    assert "맞지 않아요" in _text(response)
+    assert relay["bundle"] == []
+    # 아직 유효하므로 올바른 코드로는 통과해야 한다.
+    assert _post_confirm(token, result["code"]).status_code == 200
+
+
+def test_repeated_wrong_codes_kill_the_token(relay):
+    """무제한 대입을 막는다 - 6자리는 시간만 주면 뚫린다."""
+    result = main.sync_request(
+        SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
+    )
+    token = _token_from(relay)
+    wrong = "000000" if result["code"] != "000000" else "111111"
+
+    for _ in range(MAX_CODE_ATTEMPTS - 1):
+        assert _post_confirm(token, wrong).status_code == 200
+    final = _post_confirm(token, wrong)
+
+    assert final.status_code == 410
+    assert relay["bundle"] == []
+    # 토큰이 버려졌으므로 이제는 올바른 코드도 통하지 않는다.
+    assert _post_confirm(token, result["code"]).status_code == 410
+
+
+def test_unknown_token_returns_410_on_both_methods(relay):
+    assert main.sync_confirm_form("nonexistent-token").status_code == 410
+    assert _post_confirm("nonexistent-token", "123456").status_code == 410
+
+
+def test_send_failure_keeps_the_token_so_the_code_can_be_retried(relay, monkeypatch):
+    """발송만 실패한 경우다 - 사용자가 코드를 다시 넣으면 되어야 한다."""
+    result = main.sync_request(
+        SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
+    )
+    token = _token_from(relay)
 
     def failing_send(config, destination_email, bundle_json):
         raise MailSendError("boom")
 
     monkeypatch.setattr(main, "send_bundle_email", failing_send)
-    response = main.sync_confirm(token)
+    response = _post_confirm(token, result["code"])
     assert response.status_code == 502
-    body = response.body.decode() if isinstance(response.body, bytes) else response.body
-    assert "발송" in body
 
-    # 소진되지 않았으므로 재시도(다음 클릭)는 여전히 유효한 토큰으로 처리돼야 함
     monkeypatch.setattr(main, "send_bundle_email", lambda c, d, b: relay["bundle"].append((d, b)))
-    main.sync_confirm(token)
+    assert _post_confirm(token, result["code"]).status_code == 200
     assert len(relay["bundle"]) == 1
 
 

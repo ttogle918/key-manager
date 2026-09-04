@@ -202,6 +202,11 @@ interface KeylensState {
    * 그때는 "찾아보기" 버튼을 아예 그리지 않는다 - 눌렀을 때 실패하는 것보다 낫다.
    */
   canPickDirectory: boolean
+  /**
+   * 이메일 내보내기 확인 코드. 요청이 성공하면 채워지고, 모달은 이걸 화면에 띄운다.
+   * 사용자가 확인 페이지에 입력해야 실제 발송이 끝난다(메일에는 들어 있지 않다).
+   */
+  emailSyncCode: string | null
   toast: string | null
 
   // ── 액션 ──
@@ -463,6 +468,7 @@ export const useKeylens = create<KeylensState>((set, get) => {
     newDirPath: '',
     allSdkDirs: [],
     canPickDirectory: false,
+    emailSyncCode: null,
     toast: null,
 
     showToast: (msg) => {
@@ -1513,8 +1519,8 @@ export const useKeylens = create<KeylensState>((set, get) => {
     },
     openSync: () => set({ syncOpen: true }),
     closeSync: () => set({ syncOpen: false }),
-    openEmailSync: () => set({ emailSyncOpen: true }),
-    closeEmailSync: () => set({ emailSyncOpen: false }),
+    openEmailSync: () => set({ emailSyncOpen: true, emailSyncCode: null }),
+    closeEmailSync: () => set({ emailSyncOpen: false, emailSyncCode: null }),
     emailExport: async (destEmail) => {
       if (get().locked) {
         get().showToast('잠금 상태에서는 내보낼 수 없어요 — 먼저 잠금을 해제하세요')
@@ -1522,9 +1528,10 @@ export const useKeylens = create<KeylensState>((set, get) => {
       }
       try {
         const bundle = await vaultApi.exportBundle()
-        await requestEmailExport(destEmail, bundle)
-        set({ emailSyncOpen: false })
-        get().showToast('확인 메일을 보냈어요 — 메일함에서 링크를 클릭하면 실제 파일이 발송됩니다')
+        const code = await requestEmailExport(destEmail, bundle)
+        // 모달을 닫지 않는다 - 코드를 여기서만 볼 수 있으므로, 닫으면 발송을 끝낼 방법이 없다.
+        set({ emailSyncCode: code })
+        get().showToast('확인 메일을 보냈어요 — 링크를 열고 아래 코드를 입력하면 발송됩니다')
         return true
       } catch (e) {
         if (e instanceof VaultApiError && e.status === 401) {
