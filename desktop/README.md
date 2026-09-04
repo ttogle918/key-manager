@@ -74,6 +74,36 @@ cd desktop && python package.py
 삭제는 그 자체가 데이터 사고이고, 앱이 실행 중이라 잠긴 금고일 수도 있기 때문입니다.
 이 가드는 CI(`packaging-guard-test`)에서 매번 테스트합니다.
 
+### 게시 전에 배포물을 검수하세요
+
+zip 을 만든 뒤, GitHub Releases 에 올리기 **전에** 돌립니다.
+
+```bash
+cd desktop && python -m pytest test_release_artifact.py -v
+```
+
+`test_release_artifact.py` 는 zip 을 새 디렉토리에 풀고 그 자리에서 앱을 띄워, 사용자가 겪는
+순서 그대로 확인합니다 - 금고/비밀 파일 부재, 동봉물(SPA·지식베이스·OCR 모델), `/health` 의
+서비스 수가 동봉된 YAML 수와 일치하는지, SPA 와 그 자산이 실제로 200 인지, 새 사용자에게
+잠금 대신 **금고 만들기**가 뜨는지, 금고 생성 전 SDK 조회가 200 인지, 그리고 **프리즈 상태의
+OCR** 이 데모 스크린샷을 분류하는지.
+
+CI 에서는 돌지 않습니다(리눅스 러너에 Windows exe 가 없습니다). zip 이 없으면 전부 건너뛰니
+레포를 막 받은 사람에게 실패로 보이지 않습니다.
+
+다른 아티팩트를 검수하려면 `KEYLENS_RELEASE_ZIP` 로 경로를 주세요 - 게시된 릴리스를 내려받아
+확인하거나, 예전 버전에 대고 돌려 이 테스트가 **실제로 실패할 수 있는지** 볼 때 씁니다.
+
+```bash
+KEYLENS_RELEASE_ZIP=build/KeyLens-v0.5.0-win64.zip python -m pytest test_release_artifact.py -v
+#   → test_artifact_carries_no_vault_or_secrets 가 실패합니다(그 버전에 vault.db 가 들어 있음).
+#     v0.5.1 에서는 통과합니다. 회귀 테스트는 실패할 줄 알아야 테스트입니다.
+```
+
+> 왜 굳이: v0.5.0 의 두 버그(zip 에 금고 동봉, 금고 생성 전 SDK 500)는 백엔드 테스트 338개와
+> CI 6종을 **전부 통과한 상태에서** 나왔습니다. 소스 트리에서 도는 테스트로는 원리적으로 잡을
+> 수 없고, "배포물을 받아서 열어본다"는 행동으로만 드러납니다.
+
 `requirements-build.txt` 는 런타임 의존성(`requirements.txt`)에 패키저(`cx_Freeze==8.6.4`)만 얹은
 빌드 전용 목록입니다 — cx_Freeze 는 실행 파일에 실리지 않는 도구라 런타임 목록과 분리해 뒀습니다.
 
