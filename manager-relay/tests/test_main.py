@@ -380,3 +380,30 @@ def test_normal_request_through_real_app_is_not_rejected_by_size_guard(relay):
     # 즉 크기 제한 미들웨어가 이 경로를 잘못 가로채지 않았다는 뜻.
     assert result["status"] != 413
     assert result["status"] == 410
+
+
+def test_failed_confirm_mail_does_not_burn_the_users_quota(relay, monkeypatch):
+    """메일이 한 통도 나가지 않았으면 어뷰징이 아니다 - 몫을 깎지 않는다.
+
+    한도가 빠듯할수록(주소당 시간당 몇 회) 이 한 칸이 사용자에게는 크다. 실제로 개발 중
+    정상 사용만으로 한도를 소진한 적이 있다.
+    """
+    def failing_send(config, destination_email, confirm_url):
+        raise MailSendError("boom")
+
+    monkeypatch.setattr(main, "send_confirm_email", failing_send)
+    for _ in range(5):  # 픽스처의 주소당 한도(3)보다 많이 시도한다
+        with pytest.raises(HTTPException) as e:
+            main.sync_request(
+                SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE),
+                client_ip="1.2.3.4",
+            )
+        assert e.value.status_code == 502, "429 가 아니라 502 여야 한다 - 몫이 깎이지 않았으므로"
+
+    # 서버가 회복되면 곧바로 성공해야 한다(한도가 남아 있어야 한다).
+    monkeypatch.setattr(
+        main, "send_confirm_email", lambda c, d, u: relay["confirm"].append((d, u))
+    )
+    assert main.sync_request(
+        SyncRequestBody(destination_email="dest@example.com", bundle=BUNDLE), client_ip="1.2.3.4"
+    )["requested"] is True

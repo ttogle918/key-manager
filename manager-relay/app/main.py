@@ -69,8 +69,14 @@ _int = lambda k, d: int(os.environ.get(k, d))  # noqa: E731
 # 어뷰징 방지의 1차 방어선은 dest_email별 제한이다(임의 주소로 스팸을 보내지 못하게 막는
 # 핵심 장치). IP별 제한은 2차 백업일 뿐이라 기본값을 넉넉히 잡는다 — 강의실처럼 여러
 # 학생이 같은 NAT(공유 IP)를 쓰는 환경에서 서로를 막지 않도록 하기 위함이다.
-RATE_PER_EMAIL = RateLimiter(limit=_int("RELAY_RATE_LIMIT_PER_EMAIL", 3))
-RATE_PER_IP = RateLimiter(limit=_int("RELAY_RATE_LIMIT_PER_IP", 30))
+# 창(window)도 환경변수로 뺀다 - 운영자가 한도만 만지고 기간은 못 만지면 조절이 반쪽이다.
+RATE_WINDOW = _int("RELAY_RATE_LIMIT_WINDOW_SECONDS", 3600)
+# 기본값을 3에서 10으로 올린다. 3은 "정상적으로 쓰는 사람"이 먼저 걸리는 수였다: 기기를
+# 옮기느라 두 번 보내고, 주소를 한 번 잘못 적고, 확인 코드 15분 TTL 을 넘겨 재요청하면
+# 그것만으로 끝이다(실제로 개발 중 정상 사용만으로 소진됐다). 어뷰징의 실질적 상한은
+# IP별 제한이고, 주소별 제한은 "한 사람에게 반복 발송"을 막는 장치라 이 정도면 충분하다.
+RATE_PER_EMAIL = RateLimiter(limit=_int("RELAY_RATE_LIMIT_PER_EMAIL", 10), window_seconds=RATE_WINDOW)
+RATE_PER_IP = RateLimiter(limit=_int("RELAY_RATE_LIMIT_PER_IP", 30), window_seconds=RATE_WINDOW)
 PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:8090").rstrip("/")
 
 
@@ -102,6 +108,9 @@ def sync_request(body: SyncRequestBody, client_ip: str = Depends(_client_ip)) ->
         send_confirm_email(SMTP, body.destination_email, confirm_url)
     except MailSendError as e:
         STORE.consume(token)
+        # 메일이 한 통도 나가지 않았다 - 사용자 몫을 깎지 않는다.
+        RATE_PER_EMAIL.refund(body.destination_email)
+        RATE_PER_IP.refund(client_ip)
         raise HTTPException(
             status_code=502, detail="확인 메일 발송에 실패했어요 — 잠시 후 다시 시도하세요"
         ) from e

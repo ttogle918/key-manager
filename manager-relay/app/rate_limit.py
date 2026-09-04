@@ -41,3 +41,15 @@ class RateLimiter:
                 raise RateLimitExceeded(retry_after)
             hits.append(now)
             self._hits[key] = hits
+
+    def refund(self, key: str) -> None:
+        """가장 최근 1회를 되돌린다 - 발송이 실제로 일어나지 않았을 때만 쓴다.
+
+        check() 는 시도 시점에 카운트한다. 그런데 SMTP 오류로 메일이 한 통도 나가지 않았다면
+        어뷰징이 발생하지 않은 것이므로 사용자 몫을 깎을 이유가 없다. 한도가 빠듯할수록
+        (기본 시간당 몇 회) 이 한 칸이 사용자에게는 크다.
+        """
+        with self._lock:
+            hits = self._hits.get(key)
+            if hits:
+                hits.pop()
