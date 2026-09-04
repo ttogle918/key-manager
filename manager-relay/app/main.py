@@ -112,7 +112,7 @@ def sync_request(body: SyncRequestBody, client_ip: str = Depends(_client_ip)) ->
         RATE_PER_EMAIL.refund(body.destination_email)
         RATE_PER_IP.refund(client_ip)
         raise HTTPException(
-            status_code=502, detail="확인 메일 발송에 실패했어요 — 잠시 후 다시 시도하세요"
+            status_code=502, detail="확인 메일 발송에 실패했어요 - 잠시 후 다시 시도하세요"
         ) from e
     # 코드는 **메일에 넣지 않는다**. 메일함을 가진 사람이 아니라 요청을 시작한 사람만
     # 발송을 끝낼 수 있어야 하므로, 요청한 앱에만 돌려주고 앱이 자기 화면에 띄운다.

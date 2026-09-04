@@ -97,7 +97,7 @@ def decrypt(key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes | None = Non
     try:
         return AESGCM(key).decrypt(nonce, ciphertext, aad).decode("utf-8")
     except InvalidTag as e:
-        raise DecryptError("복호화 실패 — 비밀번호가 틀렸거나 데이터가 변조됨") from e
+        raise DecryptError("복호화 실패 - 비밀번호가 틀렸거나 데이터가 변조됨") from e
 
 
 def with_new_salt(params: KdfParams) -> KdfParams:

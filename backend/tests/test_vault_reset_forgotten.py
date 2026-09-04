@@ -85,3 +85,82 @@ def test_password_based_reset_still_requires_the_password(vault):
 
     assert e.value.status_code == 401
     assert vault.is_initialized() is True
+
+
+# ── 인증 백오프가 초기화를 넘어 살아남던 문제 ──
+
+
+def _burn_attempts(svc: VaultService, n: int = 8) -> None:
+    """비밀번호를 잊은 사람이 실제로 하는 일 - 계속 틀린다."""
+    from app import crypto
+    from app.vault_session import VaultRateLimited
+
+    svc.lock()
+    for i in range(n):
+        try:
+            svc.unlock(f"wrong-guess-{i}")
+        except (crypto.DecryptError, VaultRateLimited):
+            pass
+
+
+def test_forgotten_reset_clears_the_auth_backoff(tmp_path):
+    """이 기능을 쓰는 사람은 정의상 여러 번 틀린 뒤에 온다.
+
+    실패 이력이 초기화를 넘어 남으면, 새 비밀번호를 정한 직후 **올바른 값으로도** 거부당한다.
+    사라진 금고에 대한 실패 횟수를 새 금고에 물려줄 이유가 없다.
+    """
+    from app.vault_session import VaultRateLimited
+
+    svc = VaultService(str(tmp_path / "vault.db"))
+    svc.init("OldPassword2026!")
+    _burn_attempts(svc)
+    assert svc._fail_count > 0, "선행 조건 - 실패가 쌓여 있어야 한다"
+
+    svc.reset_forgotten()
+
+    assert svc._fail_count == 0
+    assert svc._locked_until == 0.0
+    svc.init("BrandNewPass2026!")
+    svc.lock()
+    svc.unlock("BrandNewPass2026!")  # VaultRateLimited 가 나면 실패
+    assert svc._is_unlocked() is True
+
+
+def test_password_reset_also_clears_the_backoff(tmp_path):
+    svc = VaultService(str(tmp_path / "vault.db"))
+    svc.init("OldPassword2026!")
+    _burn_attempts(svc)
+
+    svc.reset("OldPassword2026!")
+
+    assert svc._fail_count == 0
+    assert svc._locked_until == 0.0
+
+
+def test_lock_does_not_clear_the_backoff(tmp_path):
+    """무차별 대입 방어의 핵심 - /vault/lock 은 인증이 없다.
+
+    잠그는 것으로 백오프가 지워지면, 공격자는 추측 사이사이에 잠금을 걸어 지연을 매번
+    초기화할 수 있다. 그러면 지수 백오프가 통째로 무력화된다.
+    """
+    svc = VaultService(str(tmp_path / "vault.db"))
+    svc.init("OldPassword2026!")
+    _burn_attempts(svc, n=5)
+    before = svc._fail_count
+
+    svc.lock()
+
+    assert svc._fail_count == before, "잠그는 것만으로 실패 이력이 사라지면 안 된다"
+
+
+def test_rate_limit_message_has_no_em_dash():
+    """한글 Windows 콘솔(cp949)에서 em dash 는 UnicodeEncodeError 로 죽는다.
+
+    이 메시지는 SDK·CLI 를 거쳐 터미널로 나갈 수 있다.
+    """
+    from app.vault_session import VaultRateLimited
+
+    msg = str(VaultRateLimited(12.3))
+
+    assert "\u2014" not in msg
+    msg.encode("cp949")  # 인코딩 자체가 실패하면 안 된다

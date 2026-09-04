@@ -14,7 +14,7 @@ from typing import Callable
 
 class RateLimitExceeded(Exception):
     def __init__(self, retry_after: float) -> None:
-        super().__init__(f"요청이 너무 많습니다 — {retry_after:.0f}초 후 다시 시도하세요")
+        super().__init__(f"요청이 너무 많습니다 - {retry_after:.0f}초 후 다시 시도하세요")
         self.retry_after = retry_after
 
 

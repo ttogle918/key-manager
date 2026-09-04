@@ -162,7 +162,7 @@ async def analyze_image_endpoint(
         raise HTTPException(status_code=503, detail=str(e)) from None
     except Exception:
         raise HTTPException(
-            status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+            status_code=422, detail="이미지를 읽지 못했어요 - 다른 스크린샷으로 시도해 주세요"
         ) from None
 
     combined_text = "\n".join(t for t in (ocr_text, text) if t)
@@ -192,7 +192,7 @@ async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageR
     if OLLAMA_CONFIG is None:
         raise HTTPException(
             status_code=503,
-            detail="화면 설명 기능이 설정되지 않았어요 — OLLAMA_MODEL 환경변수를 설정하세요",
+            detail="화면 설명 기능이 설정되지 않았어요 - OLLAMA_MODEL 환경변수를 설정하세요",
         )
     if image.content_type is None or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=422, detail="이미지 파일만 업로드할 수 있어요")
@@ -214,11 +214,11 @@ async def explain_image_endpoint(image: UploadFile = File(...)) -> ExplainImageR
     except ollama_client.OllamaUnavailableError:
         raise HTTPException(
             status_code=503,
-            detail="로컬 LLM에 연결할 수 없어요 — Ollama가 실행 중인지 확인하세요",
+            detail="로컬 LLM에 연결할 수 없어요 - Ollama가 실행 중인지 확인하세요",
         ) from None
     except Exception:
         raise HTTPException(
-            status_code=422, detail="이미지를 읽지 못했어요 — 다른 스크린샷으로 시도해 주세요"
+            status_code=422, detail="이미지를 읽지 못했어요 - 다른 스크린샷으로 시도해 주세요"
         ) from None
     return ExplainImageResponse(boxes=boxes)
 
@@ -252,7 +252,7 @@ def vault_status() -> VaultStatus:
 @app.post("/vault/init", response_model=VaultStatus)
 def vault_init(body: VaultInit) -> VaultStatus:
     if VAULT.is_initialized():
-        raise HTTPException(status_code=409, detail="이미 금고가 있습니다 — 잠금 해제하세요")
+        raise HTTPException(status_code=409, detail="이미 금고가 있습니다 - 잠금 해제하세요")
     try:
         crypto.check_password_strength(body.password)
     except crypto.WeakPasswordError as e:
@@ -302,7 +302,7 @@ def vault_add(body: VaultEntryCreate) -> VaultEntryMeta:
             expires_at=body.expires_at,
         )
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == eid)
 
 
@@ -358,7 +358,7 @@ def vault_update(entry_id: int, body: VaultEntryUpdate) -> VaultEntryMeta:
     try:
         ok = VAULT.update_meta(entry_id, **fields)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     if not ok:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
     return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == entry_id)
@@ -369,7 +369,7 @@ def vault_rotate(entry_id: int, body: VaultRotate) -> VaultEntryMeta:
     try:
         ok = VAULT.rotate(entry_id, body.value)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     if not ok:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
     return next(m for m in [VaultEntryMeta(**x) for x in VAULT.list_entries()] if m.id == entry_id)
@@ -380,7 +380,7 @@ def vault_delete(entry_id: int) -> VaultStatus:
     try:
         ok = VAULT.delete_entry(entry_id)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     if not ok:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
     return VaultStatus(**VAULT.status())
@@ -396,11 +396,11 @@ def vault_get_value(entry_id: int, event: str = "reveal") -> VaultValue:
     try:
         return VaultValue(value=VAULT.get_value(entry_id, event))
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     except KeyError:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
     except crypto.DecryptError:
-        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+        raise HTTPException(status_code=422, detail="복호화 실패 - 데이터 무결성 오류") from None
 
 
 @app.post("/vault/entries/{entry_id}/verify", response_model=VaultVerifyResult)
@@ -427,11 +427,11 @@ def vault_verify(entry_id: int) -> VaultVerifyResult:
     try:
         status, detail = VAULT.verify_entry(entry_id, cred.verify)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     except KeyError:
         raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다") from None
     except crypto.DecryptError:
-        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+        raise HTTPException(status_code=422, detail="복호화 실패 - 데이터 무결성 오류") from None
     return VaultVerifyResult(status=status, detail=detail)
 
 
@@ -440,7 +440,7 @@ def vault_history(entry_id: int) -> list[VaultHistoryEntry]:
     try:
         return [VaultHistoryEntry(**h) for h in VAULT.history(entry_id)]
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
 
 
 @app.post("/vault/export")
@@ -449,7 +449,7 @@ def vault_export() -> dict:
     try:
         return VAULT.export_bundle()
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     except ValueError as e:  # 초기화되지 않은 금고
         raise HTTPException(status_code=409, detail=str(e)) from e
 
@@ -535,11 +535,11 @@ def sdk_env(body: SdkEnvRequest) -> SdkEnvResponse:
     try:
         values = VAULT.sdk_env(body.project, body.path)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     except SdkApprovalPending as e:
         raise HTTPException(status_code=403, detail=str(e)) from None
     except crypto.DecryptError:
-        raise HTTPException(status_code=422, detail="복호화 실패 — 데이터 무결성 오류") from None
+        raise HTTPException(status_code=422, detail="복호화 실패 - 데이터 무결성 오류") from None
     return SdkEnvResponse(values=values)
 
 
@@ -558,7 +558,7 @@ def sdk_add_dir(project: str, body: SdkAddDirRequest) -> SdkProjectDir:
     try:
         return SdkProjectDir(**VAULT.add_project_dir(project, body.path))
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
 
 
 @app.delete("/sdk/projects/{project}/directories/{dir_id}")
@@ -610,7 +610,7 @@ def sdk_approve_pending(pending_id: int) -> dict:
     try:
         ok = VAULT.approve_pending(pending_id)
     except VaultLocked:
-        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 — 인증하세요") from None
+        raise HTTPException(status_code=401, detail="금고가 잠겨 있습니다 - 인증하세요") from None
     if not ok:
         raise HTTPException(status_code=404, detail="대기 중인 요청을 찾을 수 없습니다")
     return {"approved": True}

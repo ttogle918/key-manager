@@ -46,7 +46,7 @@ def _get_engine() -> RapidOCR:
         if _engine is None:
             if not _KOREAN_REC_MODEL.exists():
                 raise OcrUnavailableError(
-                    "OCR 모델이 없습니다 — "
+                    "OCR 모델이 없습니다 - "
                     "`python backend/scripts/vendor_ocr_models.py` 를 먼저 실행하세요."
                 )
             _engine = RapidOCR(

@@ -28,7 +28,7 @@ class VaultRateLimited(Exception):
     """연속 실패로 잠시 인증 시도 차단."""
 
     def __init__(self, retry_after: float) -> None:
-        super().__init__(f"인증 시도가 많습니다 — {retry_after}s 후 다시 시도하세요")
+        super().__init__(f"인증 시도가 많습니다 - {retry_after}s 후 다시 시도하세요")
         self.retry_after = retry_after
 
 
@@ -107,6 +107,8 @@ class VaultService:
             key = vault_repo.init_vault(conn, password)
         finally:
             conn.close()
+        # 새 금고는 이전 금고의 실패 이력을 물려받지 않는다.
+        self._clear_auth_throttle()
         self._set_unlocked(key)
 
     def unlock(self, password: str) -> None:
@@ -130,6 +132,17 @@ class VaultService:
 
     def lock(self) -> None:
         self._key = None
+
+    def _clear_auth_throttle(self) -> None:
+        """실패 카운터와 백오프를 지운다 - **금고가 사라진 경로에서만** 부른다.
+
+        lock() 에서는 절대 부르지 않는다. /vault/lock 은 인증이 없어서, 공격자가 추측
+        사이사이에 잠금을 걸어 백오프를 매번 초기화할 수 있게 된다 - 무차별 대입 방어가
+        통째로 무력화된다. init() 은 안전하다: 이미 초기화된 금고에서는 init_vault 가
+        거부하므로, 살아 있는 금고의 백오프를 지우는 데 쓸 수 없다.
+        """
+        self._fail_count = 0
+        self._locked_until = 0.0
 
     def _set_unlocked(self, key: bytes) -> None:
         self._key = key
@@ -300,6 +313,10 @@ class VaultService:
             vault_repo.reset_vault(conn)
         finally:
             conn.close()
+        # 금고가 사라졌으므로 그 금고에 대한 실패 이력도 의미가 없다. 이걸 남기면
+        # 비밀번호를 잊어 여러 번 틀린 사용자가(= 이 기능을 쓰는 바로 그 사람이)
+        # 새 비밀번호를 정한 직후 올바른 값으로도 거부당한다.
+        self._clear_auth_throttle()
         self.lock()
 
     def reset_forgotten(self) -> None:
@@ -322,6 +339,10 @@ class VaultService:
             vault_repo.reset_vault(conn)
         finally:
             conn.close()
+        # 금고가 사라졌으므로 그 금고에 대한 실패 이력도 의미가 없다. 이걸 남기면
+        # 비밀번호를 잊어 여러 번 틀린 사용자가(= 이 기능을 쓰는 바로 그 사람이)
+        # 새 비밀번호를 정한 직후 올바른 값으로도 거부당한다.
+        self._clear_auth_throttle()
         self.lock()
 
     # ── RUNTIME-1: SDK 접근 관리 ──
@@ -343,7 +364,7 @@ class VaultService:
                 if not already_pending and self._on_pending is not None:
                     self._on_pending(project, path)
                 raise SdkApprovalPending(
-                    f"'{path}'가 '{project}' 프로젝트 키를 요청했어요 — KeyLens에서 허용해 주세요"
+                    f"'{path}'가 '{project}' 프로젝트 키를 요청했어요 - KeyLens에서 허용해 주세요"
                 )
             env = sdk_repo.entries_for_env(conn, key, project)
             ids = sdk_repo.entry_ids_for_names(conn, project, list(env.keys()))
