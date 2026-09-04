@@ -742,7 +742,9 @@ export const useKeylens = create<KeylensState>((set, get) => {
     approvePending: async (id) => {
       try {
         await sdkApi.approve(id)
-        await get().loadPending()
+        // 허용은 곧 디렉토리 등록이다 - 같은 화면의 "이미 허용한 디렉토리"가 그 자리에서
+        // 늘어나야 한다. 대기 목록만 새로 불러오면 방금 허용한 항목이 어디에도 안 보인다.
+        await Promise.all([get().loadPending(), get().loadAllSdkDirs()])
         get().showToast('요청을 허용했어요 — 이후 자동으로 값을 받아갑니다')
       } catch (e) {
         // 허용은 권한 부여라 백엔드가 잠금 해제를 요구한다(401) — 잠긴 사실을 UI에 반영한다.
