@@ -98,6 +98,11 @@ flowchart LR
 | Node.js | 20+ | `node --version` | https://nodejs.org/ (LTS 권장) |
 | Git | 아무 최신 | `git --version` | https://git-scm.com/downloads |
 
+> **Linux(슬림 이미지·서버)에서 추가로 필요한 것**: OCR 엔진이 쓰는 OpenCV가 시스템 라이브러리를
+> 요구합니다. 없으면 백엔드가 `ImportError: libGL.so.1` 로 아예 뜨지 않습니다.
+> `sudo apt-get install -y libgl1 libglib2.0-0` (Debian·Ubuntu 계열, 데스크톱 환경에는 보통 이미 있습니다).
+> Windows·macOS는 필요 없습니다.
+
 > OCR은 로컬 백엔드에서 RapidOCR(ONNX)로 동작합니다 - 이미지가 기기를 떠나지 않습니다.
 > 한국어 인식 모델만 최초 1회 내려받으면 되고(아래 2단계), 그 뒤로는 오프라인에서도 동작합니다.
 > `node scripts/dev.mjs` 로 기동하면 이 단계를 자동으로 확인·처리합니다.

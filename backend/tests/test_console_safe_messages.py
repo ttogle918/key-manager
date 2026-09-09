@@ -35,11 +35,20 @@ def _user_facing_strings(path: pathlib.Path):
                         yield node.lineno, v.value
 
 
+# 빌드 산출물·가상환경은 우리가 쓴 코드가 아니다. cx_Freeze 가 `desktop/build/` 에 떨궈 둔
+# 서드파티 복사본까지 검사하면, 오래된 빌드 디렉토리 하나 때문에 남의 코드로 테스트가 깨진다.
+_SKIP_DIRS = {"build", "dist", "__pycache__", ".venv", "node_modules", ".mypy_cache"}
+
+
+def _is_ours(path: pathlib.Path) -> bool:
+    return not any(part in _SKIP_DIRS or part.endswith(".egg-info") for part in path.parts)
+
+
 def _sources():
     for root in ROOTS:
         base = REPO / root
         if base.exists():
-            yield from sorted(base.rglob("*.py"))
+            yield from sorted(p for p in base.rglob("*.py") if _is_ours(p))
 
 
 @pytest.mark.parametrize("path", list(_sources()), ids=lambda p: p.name)

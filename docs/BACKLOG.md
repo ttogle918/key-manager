@@ -658,6 +658,15 @@ SPDX-License-Identifier: MIT
   - [x] **깨끗한 환경(컨테이너)에서 README대로 처음부터 실행 검증(2026-07-30)** — `git clone`(로컬 커밋 상태) → Docker `nikolaik/python-nodejs:python3.11-nodejs20`(요구사항표와 동일 버전: Python 3.11.15·Node 20.20.2, node_modules·venv·vendored 자산 전혀 없는 새 컨테이너) → README 그대로 `pip install -r requirements.txt`·`npm ci`·`node scripts/dev.mjs`. 결과: tesseract/폰트 벤더링이 네트워크에서 새로 받아짐(로컬 캐시 의존 없음 확인) → 백엔드 :8003·프론트 :5173 정상 기동 → `/health`(services:9)·`/knowledge`·`/analyze`(더미 `sk-` 값 → `OPENAI_API_KEY` high 분류) 정상 응답 → `frontend/`가 문서 안내대로 `localhost:5173`으로 정상 서빙(`127.0.0.1`은 Node/Vite가 IPv6 우선 바인딩이라 안 됨 — README가 이미 `localhost`로 안내 중이라 실사용에 영향 없음, 참고 메모만 남김) → 같은 venv에서 `pytest -q` **149 passed**.
 - **테스트 체크리스트**
   - [x] ✅ 새 컨테이너(요구사항 버전 동일)에서 README 문서만 보고 설치·기동·분류까지 성공 (2026-07-30)
+  - [x] ✅ **재검증(2026-09-09)** — 위 검증은 브라우저 OCR 시절 기록이라 RapidOCR 전환 후 다시 돌렸다.
+        같은 이미지(`nikolaik/python-nodejs:python3.11-nodejs20`)에서 `git clone` → README 그대로 진행.
+        **1차 실패**: `rapidocr` 가 끌어오는 `opencv-python` 이 `libGL.so.1` 을 요구하는데 슬림 이미지에
+        없어서 `import app.main` 부터 죽었다 — OCR 만 못 쓰는 게 아니라 **백엔드 전체가 안 뜬다**.
+        Windows·macOS 는 wheel 에 다 들어 있어 드러나지 않던 문제이고, 07-30 검증은 백엔드 OCR 도입
+        이전이라 잡히지 않았다. **선행조건을 README 에 명시**(`libgl1`·`libglib2.0-0`)한 뒤 재실행:
+        모델 벤더링(네트워크에서 새로 받음) → 백엔드 기동 → `/health`(services 10 · credentials 23) →
+        `/analyze`(더미 `sk-` → `OPENAI_API_KEY` high) → 실제 데모 이미지 OCR(`aws.png` 5줄,
+        `AKIA…` 정상 인식) → `pytest -q` **396 passed** 전부 통과.
   - [x] ✅ 데모용 더미 데이터로 즉시 체험 가능(`docs/demo/*.png`)
 
 ### OSS-4 🔴 3분 시연영상 + 결과보고서 — ✅ 영상 공개 · 문서 3종 완료(붙임2 AI 비율 기입만 작성자 몫)
