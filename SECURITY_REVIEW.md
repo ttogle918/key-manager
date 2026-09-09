@@ -213,7 +213,7 @@ SPDX-License-Identifier: MIT
 | 3-3 | 중 | 해제 직후 전체 값 5초 자동 노출 | ✅ 적용 — 일괄 노출 제거, 항목별 클릭 시 4초 표시로 일원화 |
 | 2-4 | 중 | 클립보드 30초 삭제 허위 안내 | ✅ 적용 — 30초 후 검증-후-삭제 실제 구현(readText 미지원 브라우저는 삭제 생략) |
 | 1-3 | 중 | `.env.example` 유령 설정 (`VITE_API_BASE_URL` 등) | ✅ 적용 — 실제 읽히는 `VITE_API_BASE`만 남기고 미래 설정은 주석 처리 |
-| 1-2 | 중 | README 네이티브 Tesseract 오안내 | ✅ 적용 — tesseract.js(브라우저) 기준으로 요구사항·아키텍처 수정 |
+| 1-2 | 중 | README 네이티브 Tesseract 오안내 | ✅ 적용 — tesseract.js(브라우저) 기준으로 요구사항·아키텍처 수정. *(이후 CORE-3에서 백엔드 RapidOCR로 재전환, 2026-09-09 README 재정합 — 이 행은 당시 기록)* |
 | 1-4 | 중 | Kakao Native 키 프론트 매핑 누락 | ✅ 적용 — TYPE_MAP에 KAKAO_NATIVE_APP_KEY 추가 (근본 해법인 /knowledge 동적화는 INTEG-1 후속) |
 | 2-3 | 중 | "회전 기록"이 값 교체가 아님 | ✅ 적용 — 실제 값 교체(재암호화, 옛 값 폐기) 모달 + "키 교체" 이력 |
 | 3-2 | 중 | 자동 잠금·실패 지연 부재 | ✅ 적용 — VAULT-2: 무활동 자동 잠금 + 연속 실패 백오프(429) |

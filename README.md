@@ -98,8 +98,8 @@ flowchart LR
 | Node.js | 20+ | `node --version` | https://nodejs.org/ (LTS 권장) |
 | Git | 아무 최신 | `git --version` | https://git-scm.com/downloads |
 
-> OCR은 브라우저 안에서 tesseract.js(WASM)로 동작합니다 - 별도 설치가 필요 없고,
-> 필요한 로컬 자산은 `npm run dev`/`npm run build` 시 자동으로 벤더링됩니다(`scripts/vendor-tesseract.mjs`).
+> OCR은 로컬 백엔드에서 RapidOCR(ONNX)로 동작합니다 - 이미지가 기기를 떠나지 않습니다.
+> 한국어 인식 모델만 최초 1회 내려받으면 되고(아래 2단계), 그 뒤로는 오프라인에서도 동작합니다.
 
 ### 1) 내려받기
 
@@ -115,6 +115,7 @@ cd key-manager
 cd backend && python -m venv .venv
 .venv\Scripts\activate      # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
+python scripts/vendor_ocr_models.py   # 한국어 OCR 인식 모델 벤더링 (최초 1회, 이미 있으면 건너뜀)
 cd ..
 
 # 프론트엔드
@@ -151,6 +152,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 pip install -r requirements.txt
+python scripts/vendor_ocr_models.py   # 최초 1회 (OCR 인식 모델)
 uvicorn app.main:app --port 8003
 ```
 
@@ -171,7 +173,7 @@ npm run dev
 ### 빠른 체험
 
 1. 데모 이미지(`docs/demo/notion.png`·`kakao.png`·`gcp.png`·`openai.png`, 전부 더미 값)를 입력 화면에 드래그·붙여넣기
-2. 브라우저 안에서 OCR(tesseract.js) → 값과 라벨이 자동 분류되어 `NOTION_API_KEY`, `NOTION_DATABASE_ID` 등으로 매핑된 카드 확인 (이미지는 기기를 떠나지 않음)
+2. 로컬 백엔드에서 OCR(RapidOCR) → 값과 라벨이 자동 분류되어 `NOTION_API_KEY`, `NOTION_DATABASE_ID` 등으로 매핑된 카드 확인 (이미지는 기기를 떠나지 않음)
 3. 최초 실행 시 마스터 비밀번호로 금고 생성 → 확정 후 값이 AES-256-GCM으로 암호화되어 저장, 보관함에서 인증 후 조회·복사(잠금 시 값 마스킹)
 
 > ⚠️ 체험 시에도 실제 발급 키 대신 더미 값 사용을 권장합니다. 데모·문서의 모든 예시는 명백한 가짜 값(`sk-xxxxxxxx` 등)입니다.
