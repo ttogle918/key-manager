@@ -16,11 +16,11 @@ import pathlib
 import pytest
 
 REPO = pathlib.Path(__file__).resolve().parent.parent.parent
-ROOTS = ["backend/app", "manager-relay/app", "keylens-env/src"]
+ROOTS = ["backend/app", "backend/scripts", "manager-relay/app", "keylens-env/src", "desktop"]
 
 
 def _user_facing_strings(path: pathlib.Path):
-    """(줄번호, 문자열) - 예외 인자와 HTTPException(detail=...) 만."""
+    """(줄번호, 문자열) - 예외 인자, HTTPException(detail=...), print() 인자."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):

@@ -34,7 +34,7 @@ def _sha256(path: Path) -> str:
 
 def main() -> None:
     if DEST.exists() and _sha256(DEST) == SHA256:
-        print(f"[vendor-ocr] 이미 있음(해시 일치) — 건너뜀: {DEST}")
+        print(f"[vendor-ocr] 이미 있음(해시 일치) - 건너뜀: {DEST}")
         return
 
     DEST.parent.mkdir(parents=True, exist_ok=True)
@@ -43,13 +43,13 @@ def main() -> None:
     try:
         urllib.request.urlretrieve(MODEL_URL, tmp)
     except OSError as e:
-        print(f"[vendor-ocr] 다운로드 실패 — 네트워크 확인: {e}", file=sys.stderr)
+        print(f"[vendor-ocr] 다운로드 실패 - 네트워크 확인: {e}", file=sys.stderr)
         sys.exit(1)
 
     digest = _sha256(tmp)
     if digest != SHA256:
         tmp.unlink(missing_ok=True)
-        print(f"[vendor-ocr] 해시 불일치(기대 {SHA256}, 실제 {digest}) — 손상된 다운로드", file=sys.stderr)
+        print(f"[vendor-ocr] 해시 불일치(기대 {SHA256}, 실제 {digest}) - 손상된 다운로드", file=sys.stderr)
         sys.exit(1)
 
     tmp.replace(DEST)
