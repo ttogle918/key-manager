@@ -55,7 +55,7 @@ def mount_spa() -> None:
     """
     if not DIST.is_dir():
         raise SystemExit(
-            "frontend/dist 가 없습니다 — 먼저 프론트를 빌드하세요:\n"
+            "frontend/dist 가 없습니다 - 먼저 프론트를 빌드하세요:\n"
             "  cd frontend && npm ci && npm run build"
         )
     if any(getattr(r, "name", None) == "spa" for r in app.router.routes):
